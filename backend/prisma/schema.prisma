@@ -1,4 +1,5 @@
 // Prisma schema for BrewLite project
+// Database: PostgreSQL
 
 generator client {
   provider = "prisma-client-js"
@@ -9,15 +10,158 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Model Product cho Sprint 1 (M3 có thể bổ sung các trường nếu cần)
-model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  price       Float
-  imageUrl    String?
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// 1. Bảng Người dùng & Xác thực (BFD Cột 5)
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  fullName      String?  @map("full_name")
+  loyaltyPoints Int      @default(0) @map("loyalty_points")
+  role          String   @default("CUSTOMER") // CUSTOMER, BARISTA, ADMIN
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  orders Order[]
+
+  @@map("users")
 }
 
+// 2. Bảng Danh mục đồ uống (BFD Cột 1.1.1)
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  products Product[]
+
+  @@map("categories")
+}
+
+// 3. Bảng Món / Đồ uống (BFD Cột 1)
+model Product {
+  id          String   @id @default(uuid())
+  categoryId  String   @map("category_id")
+  name        String
+  description String?
+  basePrice   Decimal  @map("base_price") @db.Decimal(10, 2)
+  imageUrl    String?  @map("image_url")
+  stock       Int      @default(100)
+  version     Int      @default(1) // Phục vụ Optimistic Lock (Task 10 - Sprint 3)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  category   Category    @relation(fields: [categoryId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+// 4. Bảng Topping (BFD Cột 1.2.2)
+model Topping {
+  id          String  @id @default(uuid())
+  name        String
+  price       Decimal @db.Decimal(10, 2)
+  stock       Int?    @default(100)
+  isAvailable Boolean @default(true) @map("is_available")
+
+  // Relationships
+  orderItemToppings OrderItemTopping[]
+
+  @@map("toppings")
+}
+
+// 5. Bảng Khuyến mãi / Voucher (BFD Cột 4.1)
+model Promotion {
+  code              String    @id
+  discountType      String    @map("discount_type") // PERCENTAGE, FIXED_AMOUNT
+  discountValue     Decimal   @map("discount_value") @db.Decimal(10, 2)
+  minOrderAmount    Decimal?  @map("min_order_amount") @db.Decimal(10, 2)
+  maxDiscountAmount Decimal?  @map("max_discount_amount") @db.Decimal(10, 2)
+  validUntil        DateTime? @map("valid_until")
+  isActive          Boolean   @default(true) @map("is_active")
+
+  // Relationships
+  orders Order[]
+
+  @@map("promotions")
+}
+
+// 6. Bảng Đơn hàng (BFD Cột 3 & 4)
+model Order {
+  id              String   @id @default(uuid())
+  orderCode       String   @unique @map("order_code") @db.VarChar(20)
+  userId          String?  @map("user_id") // Nullable cho khách vãng lai
+  customerName    String   @map("customer_name")
+  phone           String
+  deliveryAddress String?  @map("delivery_address")
+  notes           String?
+  promotionCode   String?  @map("promotion_code") // Nullable khi không áp mã
+  status          String   @default("PENDING") // PENDING, PAID, READY, COMPLETED, CANCELLED
+  subtotal        Decimal  @db.Decimal(10, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
+  pointsEarned    Int?     @default(0) @map("points_earned")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  user       User?       @relation(fields: [userId], references: [id])
+  promotion  Promotion?  @relation(fields: [promotionCode], references: [code])
+  orderItems OrderItem[]
+  payments   Payment[]
+
+  @@map("orders")
+}
+
+// 7. Bảng Chi tiết món trong đơn (BFD Cột 2 & 3)
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String  @map("order_id")
+  productId String  @map("product_id")
+  size      String  @db.VarChar(5) // S, M, L
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  qty       Int
+  lineTotal Decimal @map("line_total") @db.Decimal(10, 2)
+
+  // Relationships
+  order    Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product  Product            @relation(fields: [productId], references: [id])
+  toppings OrderItemTopping[]
+
+  @@map("order_items")
+}
+
+// 8. Bảng Topping đi kèm món trong đơn
+model OrderItemTopping {
+  id          String  @id @default(uuid())
+  orderItemId String  @map("order_item_id")
+  toppingId   String  @map("topping_id")
+  price       Decimal @db.Decimal(10, 2)
+
+  // Relationships
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  topping   Topping   @relation(fields: [toppingId], references: [id])
+
+  @@map("order_item_toppings")
+}
+
+// 9. Bảng Thanh toán (BFD Cột 4.2)
+model Payment {
+  id             String   @id @default(uuid())
+  orderId        String   @map("order_id")
+  idempotencyKey String   @unique @map("idempotency_key") // Chặn trừ tiền 2 lần
+  method         String // VNPAY, MOMO, CASH, BANK_TRANSFER
+  status         String   @default("PENDING") // PENDING, SUCCESS, FAILED
+  amount         Decimal  @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}

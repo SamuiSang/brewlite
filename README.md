@@ -45,6 +45,11 @@ Tạo file `.env` từ file mẫu (nếu chưa có):
 npx prisma db push
 ```
 
+Nạp dữ liệu mẫu đồ uống (Menu, Topping, Voucher):
+```bash
+npx prisma db seed
+```
+
 Chạy Backend ở chế độ phát triển:
 ```bash
 npm run start:dev

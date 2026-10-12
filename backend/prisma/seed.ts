@@ -3,132 +3,225 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Bắt đầu nạp dữ liệu mẫu (Seed Data) cho BrewLite...');
+  console.log('[Seed] Bat dau khoi tao du lieu mau cho BrewLite...');
 
-  // 1. Tạo Danh mục (Categories)
-  const coffeeCat = await prisma.category.upsert({
-    where: { id: 'c1111111-1111-1111-1111-111111111111' },
-    update: {},
-    create: {
+  // 1. Danh muc do uong (Categories)
+  const categories = [
+    {
       id: 'c1111111-1111-1111-1111-111111111111',
-      name: 'Cà phê',
-      description: 'Cà phê pha phin truyền thống và pha máy đặc sản',
+      name: 'Cà phê Việt Nam',
+      description: 'Cà phê Robusta truyền thống pha phin đậm đà',
       isActive: true,
     },
-  });
-
-  const teaCat = await prisma.category.upsert({
-    where: { id: 'c2222222-2222-2222-2222-222222222222' },
-    update: {},
-    create: {
+    {
       id: 'c2222222-2222-2222-2222-222222222222',
-      name: 'Trà trái cây',
-      description: 'Trà trái cây tươi thanh mát, giải nhiệt',
+      name: 'Cà phê Máy',
+      description: 'Cà phê pha máy từ hạt Arabica nguyên chất',
       isActive: true,
     },
-  });
-
-  const milkTeaCat = await prisma.category.upsert({
-    where: { id: 'c3333333-3333-3333-3333-333333333333' },
-    update: {},
-    create: {
+    {
       id: 'c3333333-3333-3333-3333-333333333333',
-      name: 'Trà sữa',
-      description: 'Trà sữa đậm vị trà béo vị sữa thơm lừng',
+      name: 'Trà Trái Cây',
+      description: 'Trà ủ lạnh kết hợp trái cây nhiệt đới thanh mát',
       isActive: true,
     },
-  });
-
-  const freezeCat = await prisma.category.upsert({
-    where: { id: 'c4444444-4444-4444-4444-444444444444' },
-    update: {},
-    create: {
+    {
       id: 'c4444444-4444-4444-4444-444444444444',
-      name: 'Freeze / Đá xay',
-      description: 'Đá xay mát lạnh phủ kem tươi ngọt ngào',
+      name: 'Trà Sữa',
+      description: 'Trà đậm vị kết hợp sữa tươi thanh trùng',
       isActive: true,
     },
-  });
+    {
+      id: 'c5555555-5555-5555-5555-555555555555',
+      name: 'Đá Xay',
+      description: 'Đồ uống đá xay mát lạnh phủ kem whipping béo mịn',
+      isActive: true,
+    },
+  ];
 
-  console.log('✅ Đã tạo danh mục đồ uống');
+  for (const cat of categories) {
+    await prisma.category.upsert({
+      where: { id: cat.id },
+      update: cat,
+      create: cat,
+    });
+  }
+  console.log(`[Seed] Da tao ${categories.length} danh muc do uong`);
 
-  // 2. Tạo Topping
+  // 2. Topping
   const toppings = [
-    { id: 't1111111-1111-1111-1111-111111111111', name: 'Trân châu đen đường đen', price: 10000, stock: 100 },
-    { id: 't2222222-2222-2222-2222-222222222222', name: 'Thạch củ năng giòn ngọt', price: 10000, stock: 100 },
-    { id: 't3333333-3333-3333-3333-333333333333', name: 'Kem Cheese (Macchiato)', price: 12000, stock: 100 },
-    { id: 't4444444-4444-4444-4444-444444444444', name: 'Trân châu trắng 3Q', price: 10000, stock: 100 },
+    { id: 't1111111-1111-1111-1111-111111111111', name: 'Trân châu đen', price: 10000, stock: 150 },
+    { id: 't2222222-2222-2222-2222-222222222222', name: 'Trân châu trắng 3Q', price: 10000, stock: 150 },
+    { id: 't3333333-3333-3333-3333-333333333333', name: 'Thạch cà phê', price: 10000, stock: 100 },
+    { id: 't4444444-4444-4444-4444-444444444444', name: 'Thạch củ năng', price: 10000, stock: 100 },
+    { id: 't5555555-5555-5555-5555-555555555555', name: 'Kem Macchiato phô mai', price: 12000, stock: 80 },
+    { id: 't6666666-6666-6666-6666-666666666666', name: 'Đào ngâm miếng', price: 12000, stock: 80 },
+    { id: 't7777777-7777-7777-7777-777777777777', name: 'Hạt sen tươi', price: 12000, stock: 60 },
+    { id: 't8888888-8888-8888-8888-888888888888', name: 'Vải thiều ngâm', price: 12000, stock: 60 },
   ];
 
   for (const t of toppings) {
     await prisma.topping.upsert({
       where: { id: t.id },
-      update: {},
-      create: {
-        id: t.id,
-        name: t.name,
-        price: t.price,
-        stock: t.stock,
-        isAvailable: true,
-      },
+      update: { name: t.name, price: t.price, stock: t.stock, isAvailable: true },
+      create: { id: t.id, name: t.name, price: t.price, stock: t.stock, isAvailable: true },
     });
   }
-  console.log('✅ Đã tạo danh sách Topping');
+  console.log(`[Seed] Da tao ${toppings.length} loai topping`);
 
-  // 3. Tạo Món / Đồ uống (Products)
+  // 3. Danh sach Mon (Products)
   const products = [
+    // Nhóm 1: Cà phê Việt Nam (cat-1)
     {
       id: 'p1111111-1111-1111-1111-111111111111',
-      categoryId: coffeeCat.id,
-      name: 'Cà phê muối xứ Huế',
-      description: 'Vị đắng êm của cà phê hòa quyện cùng lớp kem muối béo ngậy đặc trưng.',
-      basePrice: 35000,
+      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      name: 'Cà phê đen đá',
+      description: 'Cà phê phin truyền thống, vị đắng đậm nguyên bản từ hạt Robusta Đắk Lắk.',
+      basePrice: 25000,
       imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {
-      id: 'p2222222-2222-2222-2222-222222222222',
-      categoryId: coffeeCat.id,
-      name: 'Bạc xỉu 3 tầng',
-      description: 'Sữa đặc, sữa tươi và cà phê Robusta nguyên chất tạo nên 3 tầng hương vị.',
+      id: 'p1111111-1111-1111-1111-222222222222',
+      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      name: 'Cà phê sữa đá',
+      description: 'Cà phê phin đậm đà hòa quyện cùng sữa đặc béo ngọt truyền thống.',
+      basePrice: 29000,
+      imageUrl: 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p1111111-1111-1111-1111-333333333333',
+      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      name: 'Bạc xỉu',
+      description: 'Nhiều sữa ít cà phê, vị ngọt béo dịu nhẹ phù hợp với người thích vị ngọt ngào.',
       basePrice: 32000,
       imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {
-      id: 'p3333333-3333-3333-3333-333333333333',
-      categoryId: teaCat.id,
-      name: 'Trà đào cam sả thanh nhiệt',
-      description: 'Vị trà thanh dịu kết hợp miếng đào giòn ngọt và hương sả thơm lừng.',
+      id: 'p1111111-1111-1111-1111-444444444444',
+      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      name: 'Cà phê muối',
+      description: 'Cà phê truyền thống kết hợp lớp kem mặn béo mịn màng đặc trưng.',
+      basePrice: 35000,
+      imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+
+    // Nhóm 2: Cà phê Máy (cat-2)
+    {
+      id: 'p2222222-2222-2222-2222-111111111111',
+      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      name: 'Americano',
+      description: 'Espresso pha loãng với nước, vị thanh thoát và hậu vị êm dịu.',
+      basePrice: 35000,
+      imageUrl: 'https://images.unsplash.com/photo-1551030173-122aabc4489c?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p2222222-2222-2222-2222-222222222222',
+      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      name: 'Latte',
+      description: 'Espresso kết hợp sữa tươi đánh nóng với lớp bọt sữa mỏng mềm mịn.',
+      basePrice: 45000,
+      imageUrl: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p2222222-2222-2222-2222-333333333333',
+      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      name: 'Cappuccino',
+      description: 'Tỉ lệ cân bằng giữa Espresso, sữa tươi và lớp bọt sữa dày rắc bột cacao.',
+      basePrice: 45000,
+      imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668ba67e53?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p2222222-2222-2222-2222-444444444444',
+      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      name: 'Caramel Macchiato',
+      description: 'Sữa tươi hương vani kết hợp Espresso đậm đà và sốt caramel thơm lừng.',
+      basePrice: 49000,
+      imageUrl: 'https://images.unsplash.com/photo-1485808191629-be0dc82f8141?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+
+    // Nhóm 3: Trà Trái Cây (cat-3)
+    {
+      id: 'p3333333-3333-3333-3333-111111111111',
+      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      name: 'Trà đào cam sả',
+      description: 'Trà đen thơm nồng kết hợp hương cam tươi, sả đập dập và đào giòn ngọt.',
       basePrice: 42000,
       imageUrl: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {
-      id: 'p4444444-4444-4444-4444-444444444444',
-      categoryId: teaCat.id,
-      name: 'Trà lài dâu tằm Macchiato',
-      description: 'Trà hoa lài ướp hương dâu tằm tươi chua ngọt, phủ lớp kem cheese mặn béo.',
+      id: 'p3333333-3333-3333-3333-222222222222',
+      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      name: 'Trà vải lài',
+      description: 'Trà xanh hoa lài thanh mát hòa quyện cùng nước cốt vải ngọt thanh dịu nhẹ.',
+      basePrice: 42000,
+      imageUrl: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p3333333-3333-3333-3333-333333333333',
+      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      name: 'Trà thanh đào',
+      description: 'Trà thanh đào thanh lọc cơ thể, giải nhiệt hiệu quả ngày oi bức.',
+      basePrice: 39000,
+      imageUrl: 'https://images.unsplash.com/photo-1499638673689-79a0b5115d87?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p3333333-3333-3333-3333-444444444444',
+      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      name: 'Trà dâu tằm tuyết',
+      description: 'Trà hoa lài ủ lạnh kết hợp dâu tằm tươi Đà Lạt, chua ngọt tự nhiên sảng khoái.',
       basePrice: 45000,
       imageUrl: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
+
+    // Nhóm 4: Trà Sữa (cat-4)
     {
-      id: 'p5555555-5555-5555-5555-555555555555',
-      categoryId: milkTeaCat.id,
-      name: 'Trà sữa Ô Long nướng trân châu',
-      description: 'Lá trà Ô Long được sao nướng đậm vị, kết hợp sữa béo ngậy ngọt dịu.',
+      id: 'p4444444-4444-4444-4444-111111111111',
+      categoryId: 'c4444444-4444-4444-4444-444444444444',
+      name: 'Trà sữa Ô Long nướng',
+      description: 'Cốt trà Ô Long sao nướng đậm vị khói, kết hợp vị sữa béo ngậy ngọt dịu.',
       basePrice: 39000,
       imageUrl: 'https://images.unsplash.com/photo-1558857563-b37cf5a9c9f2?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {
-      id: 'p6666666-6666-6666-6666-666666666666',
-      categoryId: freezeCat.id,
-      name: 'Matcha Freeze đá xay',
-      description: 'Bột trà xanh Uji Nhật Bản nguyên chất xay nhuyễn cùng đá, phủ kem tươi.',
+      id: 'p4444444-4444-4444-4444-222222222222',
+      categoryId: 'c4444444-4444-4444-4444-444444444444',
+      name: 'Trà sữa lài',
+      description: 'Vị trà lài ngát hương quyện cùng sữa thơm béo, thanh tao nhẹ nhàng.',
+      basePrice: 39000,
+      imageUrl: 'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+
+    // Nhóm 5: Đá Xay (cat-5)
+    {
+      id: 'p5555555-5555-5555-5555-111111111111',
+      categoryId: 'c5555555-5555-5555-5555-555555555555',
+      name: 'Matcha Freeze',
+      description: 'Bột trà xanh Uji Nhật Bản xay cùng đá tuyết và sữa, phủ lớp kem whipping.',
       basePrice: 49000,
       imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80',
+      stock: 100,
+    },
+    {
+      id: 'p5555555-5555-5555-5555-222222222222',
+      categoryId: 'c5555555-5555-5555-5555-555555555555',
+      name: 'Caramel Freeze',
+      description: 'Cà phê nguyên chất xay nhuyễn cùng sốt caramel béo mịn, phủ kem whipping.',
+      basePrice: 49000,
+      imageUrl: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
   ];
@@ -136,7 +229,16 @@ async function main() {
   for (const p of products) {
     await prisma.product.upsert({
       where: { id: p.id },
-      update: {},
+      update: {
+        categoryId: p.categoryId,
+        name: p.name,
+        description: p.description,
+        basePrice: p.basePrice,
+        imageUrl: p.imageUrl,
+        stock: p.stock,
+        version: 1,
+        isActive: true,
+      },
       create: {
         id: p.id,
         categoryId: p.categoryId,
@@ -150,52 +252,83 @@ async function main() {
       },
     });
   }
-  console.log('✅ Đã tạo danh sách Đồ uống (Products)');
+  console.log(`[Seed] Da tao ${products.length} mon do uong`);
 
-  // 4. Tạo Voucher khuyến mãi mẫu
-  await prisma.promotion.upsert({
-    where: { code: 'BREWLITE10' },
-    update: {},
-    create: {
-      code: 'BREWLITE10',
+  // 4. Voucher khuyen mai
+  const promotions = [
+    {
+      code: 'WELCOME10',
       discountType: 'PERCENTAGE',
       discountValue: 10,
-      minOrderAmount: 50000,
-      maxDiscountAmount: 30000,
+      minOrderAmount: 40000,
+      maxDiscountAmount: 20000,
       isActive: true,
     },
-  });
-  console.log('✅ Đã tạo Voucher khuyến mãi: BREWLITE10');
+    {
+      code: 'GIAM20K',
+      discountType: 'FIXED_AMOUNT',
+      discountValue: 20000,
+      minOrderAmount: 60000,
+      maxDiscountAmount: 20000,
+      isActive: true,
+    },
+    {
+      code: 'BREWLITE',
+      discountType: 'PERCENTAGE',
+      discountValue: 15,
+      minOrderAmount: 100000,
+      maxDiscountAmount: 50000,
+      isActive: true,
+    },
+  ];
 
-  // 5. Tạo Người dùng mẫu (Admin & Customer)
-  await prisma.user.upsert({
-    where: { email: 'admin@brewlite.vn' },
-    update: {},
-    create: {
+  for (const promo of promotions) {
+    await prisma.promotion.upsert({
+      where: { code: promo.code },
+      update: promo,
+      create: promo,
+    });
+  }
+  console.log(`[Seed] Da tao ${promotions.length} ma voucher khuyen mai`);
+
+  // 5. Nguoi dung mau (Users)
+  const users = [
+    {
       id: 'u1111111-1111-1111-1111-111111111111',
       email: 'admin@brewlite.vn',
       passwordHash: '$2b$10$demo_hash_admin',
-      fullName: 'Quản trị viên BrewLite',
+      fullName: 'Quan tri vien BrewLite',
       role: 'ADMIN',
       loyaltyPoints: 1000,
     },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'khachhang@gmail.com' },
-    update: {},
-    create: {
+    {
       id: 'u2222222-2222-2222-2222-222222222222',
       email: 'khachhang@gmail.com',
       passwordHash: '$2b$10$demo_hash_customer',
-      fullName: 'Nguyễn Văn Khách',
+      fullName: 'Nguyen Van A',
       role: 'CUSTOMER',
       loyaltyPoints: 50,
     },
-  });
-  console.log('✅ Đã tạo tài khoản mẫu');
+    {
+      id: 'u3333333-3333-3333-3333-333333333333',
+      email: 'barista@brewlite.vn',
+      passwordHash: '$2b$10$demo_hash_barista',
+      fullName: 'Nhan vien Pha che',
+      role: 'BARISTA',
+      loyaltyPoints: 100,
+    },
+  ];
 
-  console.log('🎉 Seed dữ liệu mẫu hoàn tất 100%!');
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: u,
+      create: u,
+    });
+  }
+  console.log(`[Seed] Da tao ${users.length} tai khoan nguoi dung mau`);
+
+  console.log('[Seed] Hoan tat nap du lieu mau thanh cong 100%.');
 }
 
 main()

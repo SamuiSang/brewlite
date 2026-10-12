@@ -4,12 +4,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { ProductsModule } from './products/products.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
     PrismaModule,
+    ProductsModule,
     // Distributed tracing, auto-correlated logs, request/job metrics, error
     // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
     ObserveModule.forRoot({

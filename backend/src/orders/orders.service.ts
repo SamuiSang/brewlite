@@ -314,7 +314,7 @@ export class OrdersService {
    * Cập nhật trạng thái đơn hàng (PENDING -> PAID -> READY -> COMPLETED / CANCELLED)
    */
   async updateStatus(id: string, status: string) {
-    const validStatuses = ['PENDING', 'PAID', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED'];
+    const validStatuses = ['PENDING', 'PAID', 'PAYMENT_FAILED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED'];
     const upperStatus = status.toUpperCase();
 
     if (!validStatuses.includes(upperStatus)) {

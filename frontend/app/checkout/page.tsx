@@ -8,6 +8,11 @@ import { MapPin, ArrowRight } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
+interface DbProduct {
+  id: string;
+  name: string;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -22,6 +27,7 @@ export default function CheckoutPage() {
   const [expiryDate, setExpiryDate] = useState('12 / 28');
   const [cvv, setCvv] = useState('•••');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
   const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder } = useCartStore();
 
@@ -34,9 +40,67 @@ export default function CheckoutPage() {
   const discount = mounted ? getDiscount() : 5000;
   const total = mounted ? getTotal() : 119000;
 
-  const handlePay = (e: React.FormEvent) => {
+  const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const isSuccess = mockOutcome === 'success' && cvv !== '000';
+
+    try {
+      // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế (hoặc dùng đơn hàng mẫu)
+      const prodRes = await fetch(`${apiUrl}/products`);
+      const dbProducts: DbProduct[] = await prodRes.json();
+      const defaultProductId = dbProducts[0]?.id;
+
+      let backendOrderId = '';
+
+      if (defaultProductId) {
+        // Tạo đơn hàng trạng thái PENDING trên Backend
+        const orderRes = await fetch(`${apiUrl}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName,
+            phone: phoneNumber,
+            notes: orderNote,
+            items:
+              items.length > 0
+                ? items.map((it) => ({
+                    productId:
+                      dbProducts.find((p) => p.name === it.name)?.id || defaultProductId,
+                    size: it.size,
+                    qty: it.quantity,
+                  }))
+                : [{ productId: defaultProductId, size: 'M', qty: 1 }],
+          }),
+        });
+        const createdOrder: { id: string } = await orderRes.json();
+        backendOrderId = createdOrder.id;
+      }
+
+      // 2. Gọi POST /payments để xử lý Mock Payment
+      if (backendOrderId) {
+        await fetch(`${apiUrl}/payments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: backendOrderId,
+            method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
+            mockSuccess: isSuccess,
+          }),
+        });
+      }
+    } catch (err) {
+      console.error('Lỗi kết nối API:', err);
+    }
+
+    // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
+    if (!isSuccess) {
+      setIsProcessing(false);
+      router.push('/payment-failed');
+      return;
+    }
 
     const paymentDesc =
       paymentMethod === 'card'
@@ -52,7 +116,7 @@ export default function CheckoutPage() {
 
     setTimeout(() => {
       router.push(`/orders/${newOrderId}`);
-    }, 600);
+    }, 500);
   };
 
   return (
@@ -211,6 +275,36 @@ export default function CheckoutPage() {
                   </div>
                   <span className="text-[11px] text-[#708076]">Visa / Mastercard</span>
                 </button>
+              </div>
+
+              <div className="pt-3 border-t border-[#f0ebe0]">
+                <label className="block text-xs font-bold text-[#163d2c] mb-2">
+                  Chế độ giả lập (Mock Payment)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMockOutcome('success')}
+                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                      mockOutcome === 'success'
+                        ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
+                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
+                    }`}
+                  >
+                    ✅ Giả lập Thành công (PAID)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMockOutcome('failed')}
+                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                      mockOutcome === 'failed'
+                        ? 'bg-[#fce9e5] border-[#b33e2a] text-[#b33e2a]'
+                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
+                    }`}
+                  >
+                    ❌ Giả lập Thất bại (FAILED)
+                  </button>
+                </div>
               </div>
 
               {/* Card Inputs (if Bank card selected) */}
@@ -377,7 +471,7 @@ export default function CheckoutPage() {
                 id="pay-button"
                 className="w-full bg-[#d6955b] hover:bg-[#c4844a] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
-                <span>{isProcessing ? 'Đang xử lý thanh toán...' : `Thanh toán $`}</span>
+                <span>{isProcessing ? 'Đang xử lý thanh toán...' : `Thanh toán ${formatVND(total)}`}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

@@ -1,21 +1,22 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
 export default function FloatingCartBar() {
-  const [mounted, setMounted] = useState(false);
   const totalItems = useCartStore((state) => state.getTotalItems());
   const total = useCartStore((state) => state.getTotal());
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const hasHydrated = useSyncExternalStore(
+    useCartStore.persist.onFinishHydration,
+    useCartStore.persist.hasHydrated,
+    () => false,
+  );
 
-  if (!mounted || totalItems === 0) {
+  if (!hasHydrated || totalItems === 0) {
     return null;
   }
 

@@ -1,6 +1,6 @@
 'use client';
+import React, { useState, useSyncExternalStore } from 'react';
 
-import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, ShoppingBag, LogOut, User, ChevronDown } from 'lucide-react';
@@ -9,18 +9,17 @@ import { useCartStore } from '@/lib/store';
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const authUser = useCartStore((state) => state.authUser);
-  const clearAuth = useCartStore((state) => state.clearAuth);
+  const hasHydrated = useSyncExternalStore(
+    useCartStore.persist.onFinishHydration,
+    useCartStore.persist.hasHydrated,
+    () => false,
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -124,7 +123,7 @@ export default function Navbar() {
             className="flex items-center gap-1.5 bg-[#d6955b] hover:bg-[#c4844a] text-[#163d2c] font-semibold text-xs px-3 py-1.5 rounded-full transition-transform active:scale-95 shadow-sm"
           >
             <ShoppingBag className="w-3.5 h-3.5 stroke-[2.2]" />
-            <span id="cart-badge-count">{mounted ? totalItems : 0}</span>
+            <span id="cart-badge-count">{hasHydrated ? totalItems : 0}</span>
           </Link>
 
           {/* User Profile / Auth */}

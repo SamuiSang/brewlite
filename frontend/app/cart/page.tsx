@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,6 @@ import { formatVND } from '@/lib/data';
 
 export default function CartPage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState('');
 
   const {
@@ -27,17 +26,16 @@ export default function CartPage() {
     getTotal,
   } = useCartStore();
 
-  useEffect(() => {
-    setMounted(true);
-    if (appliedVoucher) {
-      setInputCode(appliedVoucher.code);
-    }
-  }, [appliedVoucher]);
+  const hasHydrated = useSyncExternalStore(
+    useCartStore.persist.onFinishHydration,
+    useCartStore.persist.hasHydrated,
+    () => false,
+  );
 
-  const totalItems = mounted ? getTotalItems() : 0;
-  const subtotal = mounted ? getSubtotal() : 0;
-  const discount = mounted ? getDiscount() : 0;
-  const total = mounted ? getTotal() : 0;
+  const totalItems = hasHydrated ? getTotalItems() : 0;
+  const subtotal = hasHydrated ? getSubtotal() : 0;
+  const discount = hasHydrated ? getDiscount() : 0;
+  const total = hasHydrated ? getTotal() : 0;
 
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault();

@@ -157,7 +157,7 @@ export default function MenuContent() {
             <div className="md:col-span-5 flex justify-center md:justify-end">
               <div className="relative w-full max-w-sm aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl border border-[#234d39]">
                 <Image
-                  src="/images/hero-drink.png"
+                  src="/images/drinks/hero-drink.png"
                   alt="Ly cà phê kem béo mát lạnh BrewLite"
                   fill
                   className="object-cover"

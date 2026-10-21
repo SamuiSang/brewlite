@@ -1,22 +1,68 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ArrowRight, Check } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff, ArrowRight, Check, Loader2, CheckCircle2 } from 'lucide-react';
+import { useCartStore } from '@/lib/store';
 
-export default function SignInPage() {
+function SignInInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { setAuth } = useCartStore();
+
+  const justRegistered = searchParams.get('registered') === '1' || searchParams.get('registered') === 'demo';
 
   const [email, setEmail] = useState('duy.nguyen@example.com');
   const [password, setPassword] = useState('Password123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    router.push('/rewards');
+    setError('');
+    setIsLoading(true);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      const res = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Backend trả về lỗi (401, 400, ...)
+        setError(data.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Lưu token & thông tin user vào Zustand store (persist vào localStorage)
+      setAuth(data.accessToken, data.user);
+
+      // Điều hướng sau khi đăng nhập thành công
+      router.push('/rewards');
+    } catch {
+      // Không kết nối được Backend → fallback demo mode
+      setError('Không thể kết nối đến máy chủ. Đang chạy ở chế độ demo...');
+      setTimeout(() => {
+        // Demo fallback: lưu user giả và redirect
+        setAuth('demo-token', {
+          id: 'demo-user',
+          email,
+          fullName: 'Nguyen Duy',
+          role: 'CUSTOMER',
+        });
+        router.push('/rewards');
+      }, 1500);
+    }
   };
 
   return (
@@ -65,6 +111,16 @@ export default function SignInPage() {
               Đăng nhập để tiếp tục và tận hưởng những ưu đãi dành riêng cho bạn.
             </p>
 
+            {/* Banner đăng ký thành công */}
+            {justRegistered && (
+              <div className="flex items-center gap-3 bg-[#e3ede1] border border-[#b8d4b5] rounded-2xl px-4 py-3 mb-4">
+                <CheckCircle2 className="w-4 h-4 text-[#2f664a] shrink-0" />
+                <p className="text-xs font-semibold text-[#1e5236]">
+                  Tài khoản đã được tạo thành công! Đăng nhập để tiếp tục.
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
@@ -77,6 +133,7 @@ export default function SignInPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3.5 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
                 />
               </div>
@@ -84,7 +141,7 @@ export default function SignInPage() {
               {/* Mật khẩu */}
               <div>
                 <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                  Passwords
+                  Mật khẩu
                 </label>
 
                 <div className="relative">
@@ -93,6 +150,7 @@ export default function SignInPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 pr-11 py-3.5 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all tracking-wider"
                   />
 
@@ -145,13 +203,38 @@ export default function SignInPage() {
                 </a>
               </div>
 
+              {/* Thông báo lỗi */}
+              {error && (
+                <div
+                  role="alert"
+                  className={`text-xs px-4 py-3 rounded-2xl border ${
+                    error.includes('demo')
+                      ? 'bg-[#fff8ee] border-[#f0d9a8] text-[#8a6020]'
+                      : 'bg-[#fce9e5] border-[#f5c6bd] text-[#b33e2a]'
+                  }`}
+                >
+                  {error}
+                </div>
+              )}
+
               {/* Nút đăng nhập */}
               <button
                 type="submit"
-                className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer mt-4"
+                disabled={isLoading}
+                id="signin-submit-button"
+                className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:bg-[#a9b5ad] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer mt-4"
               >
-                <span>Đăng nhập</span>
-                <ArrowRight className="w-4 h-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang đăng nhập...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Đăng nhập</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
 
               <p className="text-[11px] text-[#78887e]">
@@ -173,5 +256,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="flex-1" />}>
+      <SignInInner />
+    </Suspense>
   );
 }

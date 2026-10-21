@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MapPin, ArrowRight } from 'lucide-react';
+import { MapPin, ArrowRight, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
@@ -29,7 +29,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder } = useCartStore();
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser } = useCartStore();
 
   useEffect(() => {
     setMounted(true);
@@ -40,12 +40,27 @@ export default function CheckoutPage() {
   const discount = mounted ? getDiscount() : 5000;
   const total = mounted ? getTotal() : 119000;
 
+  // Điền sẵn tên từ tài khoản đã đăng nhập
+  useEffect(() => {
+    if (authUser && authUser.fullName) {
+      setCustomerName(authUser.fullName);
+    }
+  }, [authUser]);
+
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const isSuccess = mockOutcome === 'success' && cvv !== '000';
+
+    // Chuẩn bị header xác thực (gửi JWT nếu đã đăng nhập)
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (authToken) {
+      authHeaders['Authorization'] = `Bearer ${authToken}`;
+    }
 
     try {
       // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế (hoặc dùng đơn hàng mẫu)
@@ -56,10 +71,10 @@ export default function CheckoutPage() {
       let backendOrderId = '';
 
       if (defaultProductId) {
-        // Tạo đơn hàng trạng thái PENDING trên Backend
+        // Tạo đơn hàng trạng thái PENDING trên Backend (kèm JWT nếu đã đăng nhập)
         const orderRes = await fetch(`${apiUrl}/orders`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
             customerName,
             phone: phoneNumber,
@@ -79,11 +94,11 @@ export default function CheckoutPage() {
         backendOrderId = createdOrder.id;
       }
 
-      // 2. Gọi POST /payments để xử lý Mock Payment
+      // 2. Gọi POST /payments để xử lý Mock Payment (kèm JWT nếu đã đăng nhập)
       if (backendOrderId) {
         await fetch(`${apiUrl}/payments`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
             orderId: backendOrderId,
             method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
@@ -471,8 +486,17 @@ export default function CheckoutPage() {
                 id="pay-button"
                 className="w-full bg-[#d6955b] hover:bg-[#c4844a] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
-                <span>{isProcessing ? 'Đang xử lý thanh toán...' : `Thanh toán ${formatVND(total)}`}</span>
-                <ArrowRight className="w-4 h-4" />
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang xử lý thanh toán...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Thanh toán {formatVND(total)}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
 
               <p className="text-[10px] text-[#8ca094] leading-relaxed text-center">

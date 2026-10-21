@@ -9,21 +9,6 @@
 
 **BrewLite** là ứng dụng web đặt đồ uống trực tuyến áp dụng mô hình *Order & Pick-up* (đặt trước lấy tại quầy). Hệ thống giúp khách hàng thoải mái xem thực đơn, tùy biến đồ uống (size, topping), áp mã giảm giá và thanh toán không dùng tiền mặt trước khi đến quán, giúp loại bỏ hoàn toàn việc phải xếp hàng chờ đợi trong giờ cao điểm.
 
----
-
-## 👥 Thành viên nhóm phát triển
-
-| STT | Thành viên | Vai trò | Phụ trách chính |
-| :-: | :--- | :--- | :--- |
-| 1 | **Nguyễn Thanh Sang** | Nhóm trưởng / Fullstack | Khởi tạo kiến trúc monorepo, Docker PostgreSQL, Prisma ORM, API/UI Lịch sử đơn hàng, đóng gói Docker Compose bàn giao. |
-| 2 | **Hiếu** | Fullstack | API Đăng ký / Đăng nhập (JWT, Bcrypt, Auth Guard), Mock Payment API & UI Thanh toán không tiền mặt. |
-| 3 | **Chiến** | Backend Developer | API Danh mục đồ uống, API Chi tiết sản phẩm, API Tạo đơn hàng PENDING và validate dữ liệu. |
-| 4 | **Quang** | Backend Developer | Core Logic nâng cao: Máy trạng thái (Order State Machine), Chống trừ tiền 2 lần (Idempotency), Khóa tồn kho đồng thời (Optimistic Lock) và bộ kiểm thử tự động (Unit Tests). |
-| 5 | **Duy** | Frontend Developer | Giao diện Thực đơn (Menu), bộ lọc danh mục đồ uống, tìm kiếm món, màn hình Chi tiết sản phẩm & tùy biến topping/size. |
-| 6 | **Quỳnh** | Frontend Developer | Giao diện Giỏ hàng (Cart), quản lý State toàn cục bằng Zustand persist, tính toán tổng tiền và áp mã voucher. |
-
----
-
 ## 🛠 Công nghệ sử dụng (Tech Stack)
 
 * **Frontend:** Next.js 16 (App Router), React 19, TypeScript, TailwindCSS v4, Zustand.

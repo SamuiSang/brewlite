@@ -1,8 +1,10 @@
+'use client';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, ArrowRight, Check } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, Check, Loader2 } from 'lucide-react';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -15,32 +17,58 @@ export default function SignUpPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreed, setAgreed] = useState(true);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
+    // Validate phía client trước
     if (password.length < 8) {
       setError('Mật khẩu phải có ít nhất 8 ký tự.');
       return;
     }
-
     if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
       setError('Mật khẩu phải bao gồm cả chữ cái và chữ số.');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
     }
-
     if (!agreed) {
       setError('Vui lòng đồng ý với điều khoản và chính sách bảo mật.');
       return;
     }
 
-    router.push('/rewards');
+    setIsLoading(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      const res = await fetch(`${apiUrl}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Email đã tồn tại hoặc lỗi validation từ backend
+        setError(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Đăng ký thành công → chuyển sang đăng nhập
+      router.push('/signin?registered=1');
+    } catch {
+      // Không kết nối được Backend → fallback demo mode
+      setError('Không thể kết nối đến máy chủ. Đang chuyển sang demo...');
+      setTimeout(() => {
+        router.push('/signin?registered=demo');
+      }, 1500);
+    }
   };
 
   return (
@@ -126,7 +154,7 @@ export default function SignUpPage() {
               {/* Mật khẩu */}
               <div>
                 <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                  Passwords
+                  Mật khẩu
                 </label>
 
                 <div className="relative">
@@ -216,22 +244,36 @@ export default function SignUpPage() {
 
               {/* Thông báo lỗi */}
               {error && (
-                <p
+                <div
                   role="alert"
-                  className="text-xs text-red-600"
+                  className={`text-xs px-4 py-3 rounded-2xl border ${
+                    error.includes('demo')
+                      ? 'bg-[#fff8ee] border-[#f0d9a8] text-[#8a6020]'
+                      : 'bg-[#fce9e5] border-[#f5c6bd] text-[#b33e2a]'
+                  }`}
                 >
                   {error}
-                </p>
+                </div>
               )}
 
               {/* Nút đăng ký */}
               <button
                 type="submit"
-                disabled={!agreed}
+                disabled={!agreed || isLoading}
+                id="signup-submit-button"
                 className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:bg-[#a9b5ad] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer mt-3"
               >
-                <span>Tạo tài khoản</span>
-                <ArrowRight className="w-4 h-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Đang tạo tài khoản...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Tạo tài khoản</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
 
               {/* Chuyển sang đăng nhập */}

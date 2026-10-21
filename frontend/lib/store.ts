@@ -63,6 +63,13 @@ export interface UserProfileState {
   verified: boolean;
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 interface CartStore {
   items: CartItem[];
   voucherCode: string;
@@ -70,6 +77,10 @@ interface CartStore {
   voucherError: string | null;
   orders: Order[];
   profile: UserProfileState;
+
+  // Auth state
+  authToken: string | null;
+  authUser: AuthUser | null;
 
   // Actions
   addItem: (item: Omit<CartItem, 'id'> & { id?: string }) => void;
@@ -88,6 +99,10 @@ interface CartStore {
     orderNote?: string;
     paymentMethod: string;
   }) => string;
+
+  // Auth actions
+  setAuth: (token: string, user: AuthUser) => void;
+  clearAuth: () => void;
 
   // Profile actions
   updateProfile: (updated: Partial<UserProfileState>) => void;
@@ -154,6 +169,8 @@ export const useCartStore = create<CartStore>()(
       voucherError: null,
       orders: INITIAL_ORDERS as Order[],
       profile: USER_PROFILE,
+      authToken: null,
+      authUser: null,
 
       addItem: (newItem) => {
         set((state) => {
@@ -326,6 +343,14 @@ export const useCartStore = create<CartStore>()(
         return nextId;
       },
 
+      setAuth: (token, user) => {
+        set({ authToken: token, authUser: user });
+      },
+
+      clearAuth: () => {
+        set({ authToken: null, authUser: null });
+      },
+
       updateProfile: (updated) => {
         set((state) => ({
           profile: { ...state.profile, ...updated },
@@ -374,6 +399,8 @@ export const useCartStore = create<CartStore>()(
         appliedVoucher: state.appliedVoucher,
         orders: state.orders,
         profile: state.profile,
+        authToken: state.authToken,
+        authUser: state.authUser,
       }),
     }
   )

@@ -8,14 +8,23 @@ import {
   Query,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   /**
-   * API Tạo đơn hàng mới (Task 6 - Sprint 2)
+   * API Kiểm tra mã voucher và tính toán giảm giá
+   * POST /orders/validate-voucher
+   */
+  @Post('validate-voucher')
+  validateVoucher(@Body() dto: ValidateVoucherDto) {
+    return this.ordersService.validateVoucher(dto);
+  }
+
+  /**
+   * API Tạo đơn hàng mới (kèm Khóa tồn kho Optimistic Lock & Voucher/Loyalty)
    * POST /orders
    */
   @Post()
@@ -44,6 +53,15 @@ export class OrdersController {
   @Get('code/:orderCode')
   findByOrderCode(@Param('orderCode') orderCode: string) {
     return this.ordersService.findByOrderCode(orderCode);
+  }
+
+  /**
+   * API Lấy các trạng thái kế tiếp hợp lệ theo Order State Machine
+   * GET /orders/:id/allowed-transitions
+   */
+  @Get(':id/allowed-transitions')
+  getAllowedNextStatuses(@Param('id') id: string) {
+    return this.ordersService.getAllowedNextStatuses(id);
   }
 
   /**

@@ -55,9 +55,24 @@ export class CreateOrderDto {
   @IsOptional()
   promotionCode?: string;
 
+  @IsInt({ message: 'Số điểm tích lũy sử dụng phải là số nguyên' })
+  @Min(0, { message: 'Số điểm sử dụng không được âm' })
+  @IsOptional()
+  useLoyaltyPoints?: number;
+
   @IsArray({ message: 'Danh sách món (items) phải là một mảng' })
   @ArrayMinSize(1, { message: 'Đơn hàng phải có ít nhất 1 món' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
 }
+
+export class ValidateVoucherDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Mã khuyến mãi không được để trống' })
+  code: string;
+
+  @Min(0, { message: 'Tổng tiền đơn hàng không được âm' })
+  subtotal: number;
+}
+

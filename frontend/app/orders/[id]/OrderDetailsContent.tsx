@@ -10,6 +10,53 @@ import { useCartStore } from '@/lib/store';
 export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const [mounted, setMounted] = useState(false);
   const getOrderById = useCartStore((state) => state.getOrderById);
+  const [apiOrder, setApiOrder] = useState<any | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+
+    async function loadOrder() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const code = orderId.startsWith('#') ? orderId.slice(1) : orderId;
+        const res = await fetch(`${apiUrl}/orders/code/${encodeURIComponent(code)}`);
+        if (res.ok) {
+          const o = await res.json();
+          if (o && o.id) {
+            setApiOrder({
+              id: code,
+              orderCode: o.orderCode || `#${code}`,
+              status: o.status,
+              statusLabel: o.status === 'PAID' ? 'Đã nhận thanh toán' : o.status,
+              date: new Date(o.createdAt).toLocaleDateString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+              }),
+              title: o.orderItems?.[0]?.product?.name || `Đơn hàng #${code}`,
+              total: Number(o.totalAmount || o.subtotal || 0),
+              active: ['PENDING', 'PAID', 'PREPARING', 'READY'].includes(o.status),
+              items: o.orderItems?.map((it: any) => ({
+                id: it.id,
+                name: it.product?.name,
+                image: it.product?.imageUrl || '/images/brown-sugar-latte.png',
+                price: Number(it.unitPrice || 0),
+                quantity: it.qty,
+                size: it.size,
+                selectedToppings: it.toppings?.map((tp: any) => tp.topping?.name || 'Topping'),
+              })) || [],
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Dùng dữ liệu local order details:', e);
+      }
+    }
+
+    loadOrder();
+  }, [orderId]);
 
   useEffect(() => {
     setMounted(true);
@@ -17,6 +64,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
 
   const orderFromStore = mounted ? getOrderById(orderId) : undefined;
   const order =
+    apiOrder ||
     orderFromStore ||
     INITIAL_ORDERS.find((o) => o.id === orderId) ||
     INITIAL_ORDERS[0];
@@ -209,7 +257,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
               </div>
 
               <div className="divide-y divide-[#f2eee7]">
-                {order.items.map((item, idx) => (
+                {order.items.map((item: any, idx: number) => (
                   <div key={idx} className="py-4 first:pt-0 last:pb-0 flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#e8e2d8] shrink-0 border border-[#eee8df]">
                       <Image

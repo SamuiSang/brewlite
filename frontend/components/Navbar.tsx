@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -14,11 +14,10 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const totalItems = useCartStore((state) => state.getTotalItems());
-  const hasHydrated = useSyncExternalStore(
-    useCartStore.persist.onFinishHydration,
-    useCartStore.persist.hasHydrated,
-    () => false,
-  );
+  const authUser = useCartStore((state) => state.authUser);
+  const clearAuth = useCartStore((state) => state.clearAuth);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  useEffect(() => { setHasHydrated(true); }, []);
 
 
   // Đóng dropdown khi click ra ngoài
@@ -53,11 +52,11 @@ export default function Navbar() {
   };
 
   // Lấy tên hiển thị ngắn gọn (tên cuối)
-  const displayName = mounted && authUser
+  const displayName = hasHydrated && authUser
     ? authUser.fullName.split(' ').pop() || authUser.fullName
     : 'Duy';
 
-  const isLoggedIn = mounted && !!authUser;
+  const isLoggedIn = hasHydrated && !!authUser;
 
   return (
     <header className="bg-[#163d2c] text-[#f7f4ee] sticky top-0 z-50 shadow-sm border-b border-[#123324]">

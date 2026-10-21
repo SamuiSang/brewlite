@@ -433,6 +433,34 @@ export class OrdersService {
   /**
    * Lấy danh sách tất cả các đơn hàng
    */
+  /**
+   * Lấy danh sách lịch sử đơn hàng của người dùng đang đăng nhập (Task 9 - Sprint 3)
+   * GET /orders/me
+   */
+  async findMyOrders(userId: string) {
+    if (!userId) {
+      throw new BadRequestException('Không tìm thấy thông tin tài khoản người dùng');
+    }
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+            toppings: {
+              include: {
+                topping: true,
+              },
+            },
+          },
+        },
+        promotion: true,
+        payments: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findAll(query?: { status?: string; userId?: string; phone?: string }) {
     return this.prisma.order.findMany({
       where: {

@@ -85,6 +85,20 @@ Frontend sẽ khởi chạy tại: 👉 **http://localhost:3000**
 
 ---
 
+### 🐳 5. Khởi động trọn gói 3 dịch vụ bằng Docker Compose (Demo Bàn giao - Task 9)
+
+Để chạy cùng lúc toàn bộ hệ thống (**Frontend, Backend, PostgreSQL CSDL**) chỉ bằng 1 câu lệnh duy nhất phục vụ nghiệm thu / demo:
+
+```bash
+docker compose up -d --build
+```
+
+- **Frontend Web:** 👉 **http://localhost:3000**
+- **Backend API:** 👉 **http://localhost:3001**
+- **PostgreSQL Database:** Cổng `5432`
+
+---
+
 ## 🌿 Quy Trình Làm Việc Với Git & GitHub
 
 ### 1. Quy tắc đặt tên nhánh

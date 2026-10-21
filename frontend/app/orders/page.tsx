@@ -15,12 +15,91 @@ export default function OrdersPage() {
   const [mounted, setMounted] = useState(false);
 
   const ordersFromStore = useCartStore((state) => state.orders);
+  const authToken = useCartStore((state) => state.authToken);
+  const [apiOrders, setApiOrders] = useState<any[] | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+
+    async function loadOrders() {
+      setIsLoading(true);
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        let res: Response | null = null;
+        if (authToken) {
+          // Gọi API GET /orders/me theo đúng yêu cầu Task 9
+          res = await fetch(`${apiUrl}/orders/me`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+        }
+        if (!res || !res.ok) {
+          res = await fetch(`${apiUrl}/orders`);
+        }
+        if (res && res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setApiOrders(
+              data.map((o: any) => {
+                const code = o.orderCode ? o.orderCode.replace('#', '') : o.id.slice(0, 4);
+                const firstItem = o.orderItems?.[0];
+                const count = (o.orderItems?.length || 1) - 1;
+                const title = firstItem?.product?.name
+                  ? `${firstItem.product.name}${count > 0 ? ` + ${count} món khác` : ''}`
+                  : `Đơn hàng #${code}`;
+
+                const isActive = ['PENDING', 'PAID', 'PREPARING', 'READY'].includes(o.status);
+                const statusLabels: Record<string, string> = {
+                  PENDING: 'Chờ thanh toán',
+                  PAID: 'Đã thanh toán',
+                  PREPARING: 'Đang pha chế',
+                  READY: 'Đã pha xong - Mời tới quầy',
+                  COMPLETED: 'Hoàn thành',
+                  CANCELLED: 'Đã hủy',
+                  PAYMENT_FAILED: 'Thanh toán thất bại',
+                };
+
+                return {
+                  id: code,
+                  orderCode: o.orderCode || `#${code}`,
+                  status: o.status,
+                  statusLabel: statusLabels[o.status] || o.status,
+                  date: new Date(o.createdAt).toLocaleDateString('vi-VN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  }),
+                  title,
+                  total: Number(o.totalAmount || o.subtotal || 0),
+                  active: isActive,
+                  items: o.orderItems?.map((it: any) => ({
+                    name: it.product?.name,
+                    image: it.product?.imageUrl || '/images/brown-sugar-latte.png',
+                    qty: it.qty,
+                    size: it.size,
+                  })) || [{ image: '/images/brown-sugar-latte.png' }],
+                };
+              }),
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Sử dụng dữ liệu local orders:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadOrders();
+  }, [authToken]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const orders = mounted ? ordersFromStore : INITIAL_ORDERS;
+  const orders = apiOrders && apiOrders.length > 0 ? apiOrders : (mounted ? ordersFromStore : INITIAL_ORDERS);
 
   // Tên hiển thị tiếng Việt, giữ nguyên giá trị lọc nội bộ
   const filterLabels = {

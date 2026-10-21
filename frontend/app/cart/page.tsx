@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -26,11 +26,8 @@ export default function CartPage() {
     getTotal,
   } = useCartStore();
 
-  const hasHydrated = useSyncExternalStore(
-    useCartStore.persist.onFinishHydration,
-    useCartStore.persist.hasHydrated,
-    () => false,
-  );
+  const [hasHydrated, setHasHydrated] = useState(false);
+  useEffect(() => { setHasHydrated(true); }, []);
 
   const totalItems = hasHydrated ? getTotalItems() : 0;
   const subtotal = hasHydrated ? getSubtotal() : 0;

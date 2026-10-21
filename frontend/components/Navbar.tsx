@@ -1,15 +1,17 @@
 'use client';
-
 import React, { useState, useSyncExternalStore } from 'react';
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, ShoppingBag } from 'lucide-react';
+import { Search, ShoppingBag, LogOut, User, ChevronDown } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const totalItems = useCartStore((state) => state.getTotalItems());
   const hasHydrated = useSyncExternalStore(
@@ -17,6 +19,18 @@ export default function Navbar() {
     useCartStore.persist.hasHydrated,
     () => false,
   );
+
+
+  // Đóng dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navLinks = [
     { name: 'Thực đơn', href: '/' },
@@ -31,6 +45,19 @@ export default function Navbar() {
       router.push(`/?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
+
+  const handleLogout = () => {
+    clearAuth();
+    setShowUserMenu(false);
+    router.push('/signin');
+  };
+
+  // Lấy tên hiển thị ngắn gọn (tên cuối)
+  const displayName = mounted && authUser
+    ? authUser.fullName.split(' ').pop() || authUser.fullName
+    : 'Duy';
+
+  const isLoggedIn = mounted && !!authUser;
 
   return (
     <header className="bg-[#163d2c] text-[#f7f4ee] sticky top-0 z-50 shadow-sm border-b border-[#123324]">
@@ -75,7 +102,7 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Right Search, Cart & User */}
+        {/* Right: Search, Cart & User */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="relative hidden sm:block">
@@ -100,12 +127,54 @@ export default function Navbar() {
           </Link>
 
           {/* User Profile / Auth */}
-          <Link
-            href="/rewards"
-            className="text-xs font-medium text-[#c2d1c7] hover:text-white transition-colors"
-          >
-            Chào, Duy
-          </Link>
+          {isLoggedIn ? (
+            /* Đã đăng nhập: hiển thị tên + dropdown */
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                id="navbar-user-menu-button"
+                className="flex items-center gap-1.5 text-xs font-medium text-[#c2d1c7] hover:text-white transition-colors cursor-pointer"
+              >
+                <div className="w-6 h-6 rounded-full bg-[#d6955b] flex items-center justify-center text-[#163d2c] font-bold text-[10px] shrink-0">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <span>Chào, {displayName}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Dropdown menu */}
+              {showUserMenu && (
+                <div className="absolute right-0 top-full mt-2 w-44 bg-[#163d2c] border border-[#234d39] rounded-2xl shadow-xl overflow-hidden z-50">
+                  <Link
+                    href="/rewards"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#c2d1c7] hover:bg-[#1d4e38] hover:text-white transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Tài khoản & Điểm thưởng</span>
+                  </Link>
+                  <div className="border-t border-[#234d39]" />
+                  <button
+                    onClick={handleLogout}
+                    id="navbar-logout-button"
+                    className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#e8a07a] hover:bg-[#1d4e38] hover:text-[#d6955b] transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Chưa đăng nhập: hiển thị nút Đăng nhập */
+            <Link
+              href="/signin"
+              id="navbar-signin-link"
+              className="text-xs font-medium text-[#c2d1c7] hover:text-white transition-colors"
+            >
+              Đăng nhập
+            </Link>
+          )}
         </div>
       </div>
     </header>

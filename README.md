@@ -1,7 +1,7 @@
 # BrewLite ☕🍹
 
 > **Hệ thống đặt đồ uống trực tuyến không dùng tiền mặt (Cashless Beverage Ordering System)**  
-> Đồ án môn học: **Công nghệ Phần mềm (Software Engineering)** — Khoa Công nghệ Thông tin, Trường Đại học Sài Gòn.
+> Đồ án môn học: **Công nghệ Phần mềm (Software Engineering)**.
 
 ---
 

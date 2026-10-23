@@ -563,8 +563,10 @@ export class OrdersService {
   }
 
   /**
-   * Cập nhật trạng thái đơn hàng tuân thủ Máy trạng thái đơn hàng (Order State Machine)
-   * Kèm Hoàn trả tồn kho và Khôi phục điểm thưởng khi đơn bị CANCELLED
+   * Task 10.1 (Chiến): Cập nhật trạng thái đơn hàng tuân thủ Máy trạng thái đơn hàng (Order State Machine)
+   * Bổ sung logic: nếu trạng thái đơn chuyển sang 'CANCELLED' -> tự động cộng hoàn lại
+   * số lượng tồn kho stock và tăng version của sản phẩm trong CSDL.
+   * Đồng thời thu hồi điểm thưởng loyalty nếu đơn đã thanh toán trước đó.
    */
   async updateStatus(id: string, status: string) {
     const upperStatus = status.toUpperCase();
@@ -591,18 +593,18 @@ export class OrdersService {
     const currentStatus = order.status as OrderStatus;
     const targetStatus = upperStatus as OrderStatus;
 
-    // Xác thực chuyển đổi trạng thái bằng Order State Machine
+    // Xác thực chuyển đổi trạng thái bằng Order State Machine (Task 10.1)
     OrderStateMachine.validateTransition(currentStatus, targetStatus);
 
     if (currentStatus === targetStatus) {
       return this.findOne(id);
     }
 
-    // Thực hiện chuyển đổi trạng thái kèm Side-effects trong Transaction
+    // Thực hiện chuyển đổi trạng thái kèm Side-effects trong Transaction (Task 10.1)
     return await this.prisma.$transaction(async (tx) => {
       // Khi hủy đơn hàng (CANCELLED): Hoàn trả tồn kho cho tất cả các món trong đơn
       if (targetStatus === 'CANCELLED') {
-        // 1. Hoàn trả tồn kho (Restock / Replenishment)
+        // 1. Hoàn trả tồn kho stock và tăng version của từng sản phẩm trong CSDL (Task 10.1 - Chiến)
         for (const item of order.orderItems) {
           await tx.product.update({
             where: { id: item.productId },

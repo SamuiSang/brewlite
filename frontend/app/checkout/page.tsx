@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -29,12 +29,20 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
+  // Task 10.2 — Idempotency key
+  // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
+  // Idempotency-Key để backend nhận biết request trùng (double-click / retry)
+  // và chỉ xử lý đúng 1 lần. Reset UUID mới sau khi thanh toán thất bại.
+  const idempotencyKeyRef = useRef<string>('');
+
   const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Task 10.2: sinh UUID phía client, an toàn với SSR/prerender
+    idempotencyKeyRef.current = crypto.randomUUID();
   }, []);
 
   const totalItems = mounted ? getTotalItems() : 2;
@@ -70,6 +78,8 @@ export default function CheckoutPage() {
     if (authToken) {
       authHeaders['Authorization'] = `Bearer ${authToken}`;
     }
+    // Task 10.2: Gắn idempotency-key vào mọi request thanh toán
+    authHeaders['Idempotency-Key'] = idempotencyKeyRef.current;
 
     try {
       // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế (hoặc dùng đơn hàng mẫu)
@@ -123,6 +133,8 @@ export default function CheckoutPage() {
 
     // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
     if (!isSuccess) {
+      // Task 10.2: Reset idempotency-key để lần thử lại là request hoàn toàn mới
+      idempotencyKeyRef.current = crypto.randomUUID();
       setIsProcessing(false);
       router.push('/payment-failed');
       return;

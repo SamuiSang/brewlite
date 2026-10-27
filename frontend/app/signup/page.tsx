@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight, Check, Loader2 } from 'lucide-react';
 
-export default function SignUpPage() {
+function SignUpInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   const [fullName, setFullName] = useState('Nguyen Duy');
   const [email, setEmail] = useState('duy.nguyen@example.com');
@@ -60,13 +62,19 @@ export default function SignUpPage() {
         return;
       }
 
-      // Đăng ký thành công → chuyển sang đăng nhập
-      router.push('/signin?registered=1');
+      // Đăng ký thành công → chuyển sang đăng nhập (kèm redirect nếu có)
+      const signinUrl = redirect
+        ? `/signin?registered=1&redirect=${encodeURIComponent(redirect)}`
+        : '/signin?registered=1';
+      router.push(signinUrl);
     } catch {
       // Không kết nối được Backend → fallback demo mode
       setError('Không thể kết nối đến máy chủ. Đang chuyển sang demo...');
       setTimeout(() => {
-        router.push('/signin?registered=demo');
+        const demoUrl = redirect
+          ? `/signin?registered=demo&redirect=${encodeURIComponent(redirect)}`
+          : '/signin?registered=demo';
+        router.push(demoUrl);
       }, 1500);
     }
   };
@@ -279,7 +287,7 @@ export default function SignUpPage() {
               {/* Chuyển sang đăng nhập */}
               <div className="pt-4 border-t border-[#ede7dc]">
                 <Link
-                  href="/signin"
+                  href={redirect ? `/signin?redirect=${encodeURIComponent(redirect)}` : '/signin'}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-[#163d2c] hover:underline"
                 >
                   <span>Đã có tài khoản? Đăng nhập</span>
@@ -292,5 +300,13 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="flex-1" />}>
+      <SignUpInner />
+    </Suspense>
   );
 }

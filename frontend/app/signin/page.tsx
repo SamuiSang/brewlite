@@ -13,6 +13,8 @@ function SignInInner() {
   const { setAuth } = useCartStore();
 
   const justRegistered = searchParams.get('registered') === '1' || searchParams.get('registered') === 'demo';
+  const redirectTo = searchParams.get('redirect') || '/rewards';
+  const isFromCheckout = searchParams.get('redirect') === '/checkout';
 
   const [email, setEmail] = useState('duy.nguyen@example.com');
   const [password, setPassword] = useState('Password123');
@@ -47,8 +49,8 @@ function SignInInner() {
       // Lưu token & thông tin user vào Zustand store (persist vào localStorage)
       setAuth(data.accessToken, data.user);
 
-      // Điều hướng sau khi đăng nhập thành công
-      router.push('/rewards');
+      // Điều hướng sau khi đăng nhập thành công (về trang trước đó hoặc rewards)
+      router.push(redirectTo);
     } catch {
       // Không kết nối được Backend → fallback demo mode
       setError('Không thể kết nối đến máy chủ. Đang chạy ở chế độ demo...');
@@ -60,7 +62,7 @@ function SignInInner() {
           fullName: 'Nguyen Duy',
           role: 'CUSTOMER',
         });
-        router.push('/rewards');
+        router.push(redirectTo);
       }, 1500);
     }
   };
@@ -110,6 +112,16 @@ function SignInInner() {
             <p className="text-xs sm:text-sm text-[#66776c] mb-8">
               Đăng nhập để tiếp tục và tận hưởng những ưu đãi dành riêng cho bạn.
             </p>
+
+            {/* Banner yêu cầu đăng nhập từ giỏ hàng / thanh toán */}
+            {isFromCheckout && (
+              <div className="flex items-center gap-3 bg-[#fff9f0] border border-[#f3d9b1] rounded-2xl px-4 py-3 mb-4">
+                <CheckCircle2 className="w-4 h-4 text-[#d6955b] shrink-0" />
+                <p className="text-xs font-semibold text-[#8c5e2d]">
+                  Vui lòng đăng nhập tài khoản để tiếp tục thanh toán đơn hàng của bạn.
+                </p>
+              </div>
+            )}
 
             {/* Banner đăng ký thành công */}
             {justRegistered && (
@@ -244,7 +256,7 @@ function SignInInner() {
               {/* Đăng ký */}
               <div className="pt-6 border-t border-[#ede7dc]">
                 <Link
-                  href="/signup"
+                  href={searchParams.get('redirect') ? `/signup?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/signup'}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-[#163d2c] hover:underline"
                 >
                   <span>Chưa có tài khoản Brewlite? Đăng ký ngay</span>

@@ -6,9 +6,12 @@ import {
   Body,
   Param,
   Query,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
@@ -25,10 +28,15 @@ export class OrdersController {
 
   /**
    * API Tạo đơn hàng mới (kèm Khóa tồn kho Optimistic Lock & Voucher/Loyalty)
+   * Bắt buộc người dùng phải đăng nhập tài khoản (JwtAuthGuard)
    * POST /orders
    */
+  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: CreateOrderDto) {
+  create(@Body() dto: CreateOrderDto, @Req() req: any) {
+    if (req?.user?.sub && !dto.userId) {
+      dto.userId = req.user.sub;
+    }
     return this.ordersService.createOrder(dto);
   }
 

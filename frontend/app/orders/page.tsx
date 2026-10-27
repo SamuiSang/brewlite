@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { formatVND, INITIAL_ORDERS } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 
@@ -15,11 +15,14 @@ export default function OrdersPage() {
   const [mounted, setMounted] = useState(false);
 
   const ordersFromStore = useCartStore((state) => state.orders);
+  const authToken = useCartStore((state) => state.authToken);
+  const authUser = useCartStore((state) => state.authUser);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const isLoggedIn = Boolean(mounted && authToken && authUser);
   const orders = mounted ? ordersFromStore : INITIAL_ORDERS;
 
   // Tên hiển thị tiếng Việt, giữ nguyên giá trị lọc nội bộ
@@ -51,6 +54,37 @@ export default function OrdersPage() {
   });
 
   const activeOrder = orders.find((o) => o.active);
+
+  if (mounted && !isLoggedIn) {
+    return (
+      <div className="flex-1 py-16 px-4">
+        <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-[#e8e2d7] shadow-sm text-center flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#e4ede3] border border-[#d2ded1] flex items-center justify-center text-[#163d2c] mb-4">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[#14241b] mb-2">
+            Đăng nhập để xem đơn hàng
+          </h2>
+          <p className="text-xs text-[#66776c] mb-6 leading-relaxed">
+            Vui lòng đăng nhập tài khoản của bạn để tra cứu các đơn hàng đã đặt và theo dõi tiến độ pha chế.
+          </p>
+          <Link
+            href="/signin?redirect=/orders"
+            className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3.5 px-5 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <span>Đăng nhập ngay</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/"
+            className="mt-4 text-xs text-[#738478] hover:text-[#163d2c] font-medium"
+          >
+            Khám phá thực đơn
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 py-8 sm:py-12">

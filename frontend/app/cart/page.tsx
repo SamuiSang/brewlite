@@ -10,7 +10,6 @@ import { formatVND } from '@/lib/data';
 
 export default function CartPage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [inputCode, setInputCode] = useState('');
 
   const {
@@ -29,12 +28,8 @@ export default function CartPage() {
     authUser,
   } = useCartStore();
 
-  useEffect(() => {
-    setMounted(true);
-    if (appliedVoucher) {
-      setInputCode(appliedVoucher.code);
-    }
-  }, [appliedVoucher]);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  useEffect(() => { setHasHydrated(true); }, []);
 
   const isLoggedIn = Boolean(mounted && authToken && authUser);
   const totalItems = mounted ? getTotalItems() : 0;
@@ -53,7 +48,9 @@ export default function CartPage() {
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputCode.trim()) {
-      applyVoucher(inputCode);
+      if (applyVoucher(inputCode)) {
+        setInputCode('');
+      }
     }
   };
 
@@ -256,7 +253,7 @@ export default function CartPage() {
                     type="text"
                     value={inputCode}
                     onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                    placeholder="Nhập mã khuyến mãi (VD: BREW5)"
+                    placeholder="Nhập mã khuyến mãi (VD: BREWLITE10)"
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl pl-4 pr-24 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all uppercase placeholder:normal-case placeholder:font-normal"
                   />
                   {appliedVoucher ? (
@@ -304,7 +301,7 @@ export default function CartPage() {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Ưu đãi thành viên</span>
+                    <span>Khuyến mãi</span>
                     <span className="font-semibold">-{formatVND(discount)}</span>
                   </div>
                 )}

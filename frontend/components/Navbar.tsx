@@ -1,6 +1,6 @@
 'use client';
-
 import React, { useState, useEffect, useRef } from 'react';
+
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, ShoppingBag, LogOut, User, ChevronDown } from 'lucide-react';
@@ -9,7 +9,6 @@ import { useCartStore } from '@/lib/store';
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -17,10 +16,9 @@ export default function Navbar() {
   const totalItems = useCartStore((state) => state.getTotalItems());
   const authUser = useCartStore((state) => state.authUser);
   const clearAuth = useCartStore((state) => state.clearAuth);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  useEffect(() => { setHasHydrated(true); }, []);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -54,11 +52,11 @@ export default function Navbar() {
   };
 
   // Lấy tên hiển thị ngắn gọn (tên cuối)
-  const displayName = mounted && authUser
+  const displayName = hasHydrated && authUser
     ? authUser.fullName.split(' ').pop() || authUser.fullName
     : 'Duy';
 
-  const isLoggedIn = mounted && !!authUser;
+  const isLoggedIn = hasHydrated && !!authUser;
 
   return (
     <header className="bg-[#163d2c] text-[#f7f4ee] sticky top-0 z-50 shadow-sm border-b border-[#123324]">
@@ -124,7 +122,7 @@ export default function Navbar() {
             className="flex items-center gap-1.5 bg-[#d6955b] hover:bg-[#c4844a] text-[#163d2c] font-semibold text-xs px-3 py-1.5 rounded-full transition-transform active:scale-95 shadow-sm"
           >
             <ShoppingBag className="w-3.5 h-3.5 stroke-[2.2]" />
-            <span id="cart-badge-count">{mounted ? totalItems : 0}</span>
+            <span id="cart-badge-count">{hasHydrated ? totalItems : 0}</span>
           </Link>
 
           {/* User Profile / Auth */}

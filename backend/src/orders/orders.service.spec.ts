@@ -367,4 +367,28 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       });
     });
   });
+
+  describe('Task 9: Lịch sử đơn của tôi (findMyOrders)', () => {
+    it('trả về danh sách đơn hàng của user tương ứng sắp xếp theo thời gian mới nhất', async () => {
+      const mockOrders = [
+        { id: 'ord-1', userId: 'user-1', status: 'COMPLETED' },
+        { id: 'ord-2', userId: 'user-1', status: 'PAID' },
+      ];
+      prisma.order.findMany.mockResolvedValue(mockOrders);
+
+      const result = await service.findMyOrders('user-1');
+
+      expect(prisma.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+          orderBy: { createdAt: 'desc' },
+        }),
+      );
+      expect(result).toEqual(mockOrders);
+    });
+
+    it('ném lỗi BadRequestException nếu không có userId', async () => {
+      await expect(service.findMyOrders('')).rejects.toThrow(BadRequestException);
+    });
+  });
 });

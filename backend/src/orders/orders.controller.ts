@@ -76,6 +76,17 @@ export class OrdersController {
    * API Lấy chi tiết đơn hàng theo ID (UUID)
    * GET /orders/:id
    */
+  /**
+   * API Lấy danh sách lịch sử đơn hàng của người dùng đăng nhập (Task 9 - Sprint 3)
+   * GET /orders/me
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  findMyOrders(@Req() req: any) {
+    const userId = req.user?.sub || req.user?.id || req.user?.userId;
+    return this.ordersService.findMyOrders(userId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.ordersService.findOne(id);

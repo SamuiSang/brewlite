@@ -29,7 +29,9 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser } = useCartStore();
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
+
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -45,7 +47,14 @@ export default function CheckoutPage() {
   const totalItems = mounted ? getTotalItems() : 2;
   const subtotal = mounted ? getSubtotal() : 124000;
   const discount = mounted ? getDiscount() : 5000;
-  const total = mounted ? getTotal() : 119000;
+  const baseTotal = mounted ? getTotal() : 119000;
+
+  const availablePoints = mounted ? (profile?.points ?? 120) : 120;
+  const maxPointsDiscount = Math.min(availablePoints * 1000, Math.max(0, subtotal - discount));
+  const pointsUsed = useLoyaltyPoints ? Math.ceil(maxPointsDiscount / 1000) : 0;
+  const pointsDiscount = useLoyaltyPoints ? pointsUsed * 1000 : 0;
+  const finalTotal = Math.max(0, baseTotal - pointsDiscount);
+  const pointsToEarn = Math.floor(finalTotal / 10000);
 
   // Điền sẵn thông tin từ tài khoản đã đăng nhập
   useEffect(() => {
@@ -93,6 +102,7 @@ export default function CheckoutPage() {
             customerName: customerName || authUser.fullName,
             phone: phoneNumber,
             notes: orderNote,
+            useLoyaltyPoints: pointsUsed,
             items:
               items.length > 0
                 ? items.map((it) => ({
@@ -149,6 +159,10 @@ export default function CheckoutPage() {
       orderNote,
       paymentMethod: paymentDesc,
     });
+
+    if (pointsUsed > 0 && updateProfile && profile) {
+      updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
+    }
 
     setTimeout(() => {
       router.push(`/orders/${newOrderId}`);
@@ -499,6 +513,35 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Dùng điểm thưởng */}
+              <div className="pt-4 border-t border-[#f0ebe0]">
+                <div className="p-3.5 bg-[#f4f7f5] rounded-2xl border border-[#d8e5dd] flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-xs text-[#14241b]">
+                        Dùng điểm tích lũy
+                      </p>
+                      <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
+                        1 điểm = 1.000đ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#6e8074] mt-0.5">
+                      Điểm hiện có: <strong className="text-[#24523c] font-bold">{availablePoints}</strong>
+                      {availablePoints > 0 && ` (giảm tối đa ${formatVND(maxPointsDiscount)})`}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useLoyaltyPoints}
+                      disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
+                      onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                      className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Subtotal, discount & total */}
               <div className="pt-4 border-t border-[#f0ebe0] space-y-2 text-xs text-[#6e8074]">
                 <div className="flex justify-between">
@@ -513,10 +556,17 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-[#266345]">
+                    <span>Đổi điểm thưởng ({pointsUsed} điểm)</span>
+                    <span className="font-semibold">-{formatVND(pointsDiscount)}</span>
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-[#f0ebe0] flex items-baseline justify-between">
                   <span className="text-xs text-[#6e8074] font-medium">Tổng cộng</span>
                   <span className="font-serif text-2xl sm:text-3xl font-bold text-[#14241b]">
-                    {formatVND(total)}
+                    {formatVND(finalTotal)}
                   </span>
                 </div>
               </div>
@@ -546,11 +596,15 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <span>Thanh toán {formatVND(total)}</span>
+                    <span>Thanh toán {formatVND(finalTotal)}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
+
+              <div className="bg-[#1f4a36] text-[#d6ede0] rounded-xl py-2 px-3 text-center text-[11px] border border-[#2d6148]">
+                <span>Tích lũy thêm <strong className="text-white font-bold">+{pointsToEarn} điểm</strong> sau khi hoàn tất đơn.</span>
+              </div>
 
               <p className="text-[10px] text-[#8ca094] leading-relaxed text-center">
                 Khi thanh toán, bạn đồng ý với các điều khoản đặt hàng của chúng tôi. Chỉ hỗ trợ thanh toán không tiền mặt và nhận hàng tại quầy.

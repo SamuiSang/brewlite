@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MapPin, ArrowRight, Loader2 } from 'lucide-react';
+import { MapPin, ArrowRight, Loader2, Lock } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
@@ -37,6 +37,13 @@ export default function CheckoutPage() {
     setMounted(true);
   }, []);
 
+  // Kiểm tra đăng nhập: nếu chưa đăng nhập thì tự động chuyển hướng đến /signin
+  useEffect(() => {
+    if (mounted && (!authToken || !authUser)) {
+      router.push('/signin?redirect=/checkout');
+    }
+  }, [mounted, authToken, authUser, router]);
+
   const totalItems = mounted ? getTotalItems() : 2;
   const subtotal = mounted ? getSubtotal() : 124000;
   const discount = mounted ? getDiscount() : 5000;
@@ -49,30 +56,36 @@ export default function CheckoutPage() {
   const finalTotal = Math.max(0, baseTotal - pointsDiscount);
   const pointsToEarn = Math.floor(finalTotal / 10000);
 
-  // Điền sẵn tên từ tài khoản đã đăng nhập
+  // Điền sẵn thông tin từ tài khoản đã đăng nhập
   useEffect(() => {
     if (authUser && authUser.fullName) {
       setCustomerName(authUser.fullName);
+      setCardholderName(authUser.fullName.toUpperCase());
     }
   }, [authUser]);
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Bắt buộc người dùng phải đăng nhập mới được thanh toán
+    if (!authToken || !authUser) {
+      router.push('/signin?redirect=/checkout');
+      return;
+    }
+
     setIsProcessing(true);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     const isSuccess = mockOutcome === 'success' && cvv !== '000';
 
-    // Chuẩn bị header xác thực (gửi JWT nếu đã đăng nhập)
+    // Header xác thực bắt buộc gửi kèm JWT token của tài khoản đang đăng nhập
     const authHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
     };
-    if (authToken) {
-      authHeaders['Authorization'] = `Bearer ${authToken}`;
-    }
 
     try {
-      // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế (hoặc dùng đơn hàng mẫu)
+      // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế
       const prodRes = await fetch(`${apiUrl}/products`);
       const dbProducts: DbProduct[] = await prodRes.json();
       const defaultProductId = dbProducts[0]?.id;
@@ -80,13 +93,13 @@ export default function CheckoutPage() {
       let backendOrderId = '';
 
       if (defaultProductId) {
-        // Tạo đơn hàng trạng thái PENDING trên Backend (kèm JWT nếu đã đăng nhập)
+        // Tạo đơn hàng trạng thái PENDING trên Backend (gửi kèm JWT và userId)
         const orderRes = await fetch(`${apiUrl}/orders`, {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({
-            userId: authUser?.id,
-            customerName,
+            userId: authUser.id,
+            customerName: customerName || authUser.fullName,
             phone: phoneNumber,
             notes: orderNote,
             useLoyaltyPoints: pointsUsed,
@@ -101,11 +114,18 @@ export default function CheckoutPage() {
                 : [{ productId: defaultProductId, size: 'M', qty: 1 }],
           }),
         });
+
+        if (orderRes.status === 401) {
+          setIsProcessing(false);
+          router.push('/signin?redirect=/checkout');
+          return;
+        }
+
         const createdOrder: { id: string } = await orderRes.json();
         backendOrderId = createdOrder.id;
       }
 
-      // 2. Gọi POST /payments để xử lý Mock Payment (kèm JWT nếu đã đăng nhập)
+      // 2. Gọi POST /payments để xử lý Mock Payment
       if (backendOrderId) {
         await fetch(`${apiUrl}/payments`, {
           method: 'POST',
@@ -134,7 +154,7 @@ export default function CheckoutPage() {
         : 'E-wallet · MoMo / ZaloPay';
 
     const newOrderId = createOrder({
-      customerName,
+      customerName: customerName || authUser.fullName,
       phoneNumber,
       orderNote,
       paymentMethod: paymentDesc,
@@ -148,6 +168,38 @@ export default function CheckoutPage() {
       router.push(`/orders/${newOrderId}`);
     }, 500);
   };
+
+  // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
+  if (mounted && (!authToken || !authUser)) {
+    return (
+      <div className="flex-1 py-16 px-4">
+        <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-[#e8e2d7] shadow-sm text-center flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#e4ede3] border border-[#d2ded1] flex items-center justify-center text-[#163d2c] mb-4">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[#14241b] mb-2">
+            Yêu cầu đăng nhập
+          </h2>
+          <p className="text-xs text-[#66776c] mb-6 leading-relaxed">
+            Bạn cần đăng nhập tài khoản thành viên để tiếp tục đặt hàng và thanh toán.
+          </p>
+          <Link
+            href="/signin?redirect=/checkout"
+            className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3.5 px-5 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <span>Đăng nhập ngay</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/cart"
+            className="mt-4 text-xs text-[#738478] hover:text-[#163d2c] font-medium"
+          >
+            Quay lại giỏ hàng
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 py-8 sm:py-12">

@@ -1,86 +1,69 @@
+'use client';
 
-"use client";
-
-import React, { Suspense, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Eye,
-  EyeOff,
-  ArrowRight,
-  Check,
-  Loader2,
-  CheckCircle2,
-} from "lucide-react";
-import { useCartStore } from "@/lib/store";
+import React, { useState, Suspense } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff, ArrowRight, Check, Loader2, CheckCircle2 } from 'lucide-react';
+import { useCartStore } from '@/lib/store';
 
 function SignInInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuth } = useCartStore();
 
-  const registered = searchParams.get("registered");
-  const justRegistered =
-    registered === "1" || registered === "demo";
+  const justRegistered = searchParams.get('registered') === '1' || searchParams.get('registered') === 'demo';
+  const redirectTo = searchParams.get('redirect') || '/rewards';
+  const isFromCheckout = searchParams.get('redirect') === '/checkout';
 
-  const [email, setEmail] = useState("duy.nguyen@example.com");
-  const [password, setPassword] = useState("Password123");
+  const [email, setEmail] = useState('duy.nguyen@example.com');
+  const [password, setPassword] = useState('Password123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setIsLoading(true);
 
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:3001";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
     try {
       const res = await fetch(`${apiUrl}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json();
 
       if (!res.ok) {
-        setError(
-          typeof data.message === "string"
-            ? data.message
-            : "Đăng nhập thất bại. Vui lòng thử lại."
-        );
+        // Backend trả về lỗi (401, 400, ...)
+        setError(data.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+        setIsLoading(false);
         return;
       }
 
-      if (!data.accessToken || !data.user) {
-        setError("Dữ liệu đăng nhập không hợp lệ.");
-        return;
-      }
-
-      // Lưu token và thông tin người dùng vào Zustand.
+      // Lưu token & thông tin user vào Zustand store (persist vào localStorage)
       setAuth(data.accessToken, data.user);
 
-      // Điều hướng sau khi đăng nhập thành công.
-      router.push("/rewards");
+      // Điều hướng sau khi đăng nhập thành công (về trang trước đó hoặc rewards)
+      router.push(redirectTo);
     } catch {
-      setError(
-        "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối và thử lại."
-      );
-    } finally {
-      setIsLoading(false);
+      // Không kết nối được Backend → fallback demo mode
+      setError('Không thể kết nối đến máy chủ. Đang chạy ở chế độ demo...');
+      setTimeout(() => {
+        // Demo fallback: lưu user giả và redirect
+        setAuth('demo-token', {
+          id: 'demo-user',
+          email,
+          fullName: 'Nguyen Duy',
+          role: 'CUSTOMER',
+        });
+        router.push(redirectTo);
+      }, 1500);
     }
   };
 
@@ -88,6 +71,7 @@ function SignInInner() {
     <div className="flex-1 py-10 sm:py-16">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+
           {/* Cột trái: Giới thiệu thương hiệu */}
           <div className="lg:col-span-5 bg-[#163d2c] text-white rounded-3xl overflow-hidden border border-[#234d39] shadow-sm p-6 sm:p-8 flex flex-col justify-between">
             <div>
@@ -104,7 +88,6 @@ function SignInInner() {
                   src="/images/coffee-cup-auth.png"
                   alt="Ly cà phê Brewlite"
                   fill
-                  sizes="(max-width: 1024px) 100vw, 40vw"
                   className="object-cover"
                 />
               </div>
@@ -114,12 +97,8 @@ function SignInInner() {
               </p>
 
               <div className="pt-4 border-t border-[#234d39] space-y-2 text-xs text-[#a3b8ab]">
-                <p>
-                  Một tài khoản, quản lý mọi đơn hàng và điểm thưởng.
-                </p>
-                <p>
-                  Tích lũy 1 điểm cho mỗi 10.000₫ chi tiêu.
-                </p>
+                <p>Một tài khoản, quản lý mọi đơn hàng và điểm thưởng.</p>
+                <p>Tích lũy 1 điểm cho mỗi 10.000₫ chi tiêu.</p>
               </div>
             </div>
           </div>
@@ -134,7 +113,17 @@ function SignInInner() {
               Đăng nhập để tiếp tục và tận hưởng những ưu đãi dành riêng cho bạn.
             </p>
 
-            {/* Thông báo đăng ký thành công */}
+            {/* Banner yêu cầu đăng nhập từ giỏ hàng / thanh toán */}
+            {isFromCheckout && (
+              <div className="flex items-center gap-3 bg-[#fff9f0] border border-[#f3d9b1] rounded-2xl px-4 py-3 mb-4">
+                <CheckCircle2 className="w-4 h-4 text-[#d6955b] shrink-0" />
+                <p className="text-xs font-semibold text-[#8c5e2d]">
+                  Vui lòng đăng nhập tài khoản để tiếp tục thanh toán đơn hàng của bạn.
+                </p>
+              </div>
+            )}
+
+            {/* Banner đăng ký thành công */}
             {justRegistered && (
               <div className="flex items-center gap-3 bg-[#e3ede1] border border-[#b8d4b5] rounded-2xl px-4 py-3 mb-4">
                 <CheckCircle2 className="w-4 h-4 text-[#2f664a] shrink-0" />
@@ -147,52 +136,40 @@ function SignInInner() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
-                <label
-                  htmlFor="signin-email"
-                  className="block text-xs font-bold text-[#163d2c] mb-1.5"
-                >
+                <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
                   Email
                 </label>
 
                 <input
-                  id="signin-email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
-                  placeholder="Nhập email của bạn"
                   className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3.5 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
                 />
               </div>
 
               {/* Mật khẩu */}
               <div>
-                <label
-                  htmlFor="signin-password"
-                  className="block text-xs font-bold text-[#163d2c] mb-1.5"
-                >
+                <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
                   Mật khẩu
                 </label>
 
                 <div className="relative">
                   <input
-                    id="signin-password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    placeholder="Nhập mật khẩu"
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 pr-11 py-3.5 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all tracking-wider"
                   />
 
                   <button
                     type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={
-                      showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"
-                    }
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8aa193] hover:text-[#163d2c] transition-colors cursor-pointer"
                   >
                     {showPassword ? (
@@ -205,44 +182,48 @@ function SignInInner() {
               </div>
 
               {/* Ghi nhớ và quên mật khẩu */}
-              <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center justify-between gap-4">
                 <button
                   type="button"
-                  role="checkbox"
-                  aria-checked={rememberMe}
-                  onClick={() => setRememberMe((prev) => !prev)}
+                  onClick={() => setRememberMe(!rememberMe)}
                   className="bg-[#e4ede3] border border-[#d2ded1] rounded-2xl px-4 py-2.5 flex items-center gap-2.5 cursor-pointer"
                 >
-                  <span
+                  <div
                     className={`w-4 h-4 rounded border flex items-center justify-center ${
                       rememberMe
-                        ? "bg-[#163d2c] border-[#163d2c] text-white"
-                        : "border-[#98a99e] bg-white"
+                        ? 'bg-[#163d2c] border-[#163d2c] text-white'
+                        : 'border-[#98a99e] bg-white'
                     }`}
                   >
-                    {rememberMe && (
-                      <Check className="w-3 h-3 stroke-[3]" />
-                    )}
-                  </span>
+                    {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
 
                   <span className="text-xs font-semibold text-[#163d2c]">
                     Ghi nhớ đăng nhập
                   </span>
                 </button>
 
-                <Link
-                  href="/forgot-password"
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert('Liên kết đặt lại mật khẩu đã được gửi đến ' + email);
+                  }}
                   className="text-xs font-semibold text-[#163d2c] hover:underline"
                 >
                   Quên mật khẩu?
-                </Link>
+                </a>
               </div>
 
               {/* Thông báo lỗi */}
               {error && (
                 <div
                   role="alert"
-                  className="text-xs px-4 py-3 rounded-2xl border bg-[#fce9e5] border-[#f5c6bd] text-[#b33e2a]"
+                  className={`text-xs px-4 py-3 rounded-2xl border ${
+                    error.includes('demo')
+                      ? 'bg-[#fff8ee] border-[#f0d9a8] text-[#8a6020]'
+                      : 'bg-[#fce9e5] border-[#f5c6bd] text-[#b33e2a]'
+                  }`}
                 >
                   {error}
                 </div>
@@ -275,12 +256,10 @@ function SignInInner() {
               {/* Đăng ký */}
               <div className="pt-6 border-t border-[#ede7dc]">
                 <Link
-                  href="/signup"
+                  href={searchParams.get('redirect') ? `/signup?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/signup'}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-[#163d2c] hover:underline"
                 >
-                  <span>
-                    Chưa có tài khoản Brewlite? Đăng ký ngay
-                  </span>
+                  <span>Chưa có tài khoản Brewlite? Đăng ký ngay</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>

@@ -28,10 +28,15 @@ export class OrdersController {
 
   /**
    * API Tạo đơn hàng mới (kèm Khóa tồn kho Optimistic Lock & Voucher/Loyalty)
+   * Bắt buộc người dùng phải đăng nhập tài khoản (JwtAuthGuard)
    * POST /orders
    */
+  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: CreateOrderDto) {
+  create(@Body() dto: CreateOrderDto, @Req() req: any) {
+    if (req?.user?.sub && !dto.userId) {
+      dto.userId = req.user.sub;
+    }
     return this.ordersService.createOrder(dto);
   }
 

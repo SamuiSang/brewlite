@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Lock } from 'lucide-react';
 import { formatVND, INITIAL_ORDERS } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 
@@ -16,90 +16,14 @@ export default function OrdersPage() {
 
   const ordersFromStore = useCartStore((state) => state.orders);
   const authToken = useCartStore((state) => state.authToken);
-  const [apiOrders, setApiOrders] = useState<any[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-
-    async function loadOrders() {
-      setIsLoading(true);
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        let res: Response | null = null;
-        if (authToken) {
-          // Gọi API GET /orders/me theo đúng yêu cầu Task 9
-          res = await fetch(`${apiUrl}/orders/me`, {
-            headers: { Authorization: `Bearer ${authToken}` },
-          });
-        }
-        if (!res || !res.ok) {
-          res = await fetch(`${apiUrl}/orders`);
-        }
-        if (res && res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            setApiOrders(
-              data.map((o: any) => {
-                const code = o.orderCode ? o.orderCode.replace('#', '') : o.id.slice(0, 4);
-                const firstItem = o.orderItems?.[0];
-                const count = (o.orderItems?.length || 1) - 1;
-                const title = firstItem?.product?.name
-                  ? `${firstItem.product.name}${count > 0 ? ` + ${count} món khác` : ''}`
-                  : `Đơn hàng #${code}`;
-
-                const isActive = ['PENDING', 'PAID', 'PREPARING', 'READY'].includes(o.status);
-                const statusLabels: Record<string, string> = {
-                  PENDING: 'Chờ thanh toán',
-                  PAID: 'Đã thanh toán',
-                  PREPARING: 'Đang pha chế',
-                  READY: 'Đã pha xong - Mời tới quầy',
-                  COMPLETED: 'Hoàn thành',
-                  CANCELLED: 'Đã hủy',
-                  PAYMENT_FAILED: 'Thanh toán thất bại',
-                };
-
-                return {
-                  id: code,
-                  orderCode: o.orderCode || `#${code}`,
-                  status: o.status,
-                  statusLabel: statusLabels[o.status] || o.status,
-                  date: new Date(o.createdAt).toLocaleDateString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  }),
-                  title,
-                  total: Number(o.totalAmount || o.subtotal || 0),
-                  active: isActive,
-                  items: o.orderItems?.map((it: any) => ({
-                    name: it.product?.name,
-                    image: it.product?.imageUrl || '/images/brown-sugar-latte.png',
-                    qty: it.qty,
-                    size: it.size,
-                  })) || [{ image: '/images/brown-sugar-latte.png' }],
-                };
-              }),
-            );
-          }
-        }
-      } catch (err) {
-        console.warn('Sử dụng dữ liệu local orders:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadOrders();
-  }, [authToken]);
+  const authUser = useCartStore((state) => state.authUser);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const orders = apiOrders && apiOrders.length > 0 ? apiOrders : (mounted ? ordersFromStore : INITIAL_ORDERS);
+  const isLoggedIn = Boolean(mounted && authToken && authUser);
+  const orders = mounted ? ordersFromStore : INITIAL_ORDERS;
 
   // Tên hiển thị tiếng Việt, giữ nguyên giá trị lọc nội bộ
   const filterLabels = {
@@ -130,6 +54,37 @@ export default function OrdersPage() {
   });
 
   const activeOrder = orders.find((o) => o.active);
+
+  if (mounted && !isLoggedIn) {
+    return (
+      <div className="flex-1 py-16 px-4">
+        <div className="max-w-md mx-auto bg-white rounded-3xl p-8 border border-[#e8e2d7] shadow-sm text-center flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#e4ede3] border border-[#d2ded1] flex items-center justify-center text-[#163d2c] mb-4">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="font-serif text-2xl font-bold text-[#14241b] mb-2">
+            Đăng nhập để xem đơn hàng
+          </h2>
+          <p className="text-xs text-[#66776c] mb-6 leading-relaxed">
+            Vui lòng đăng nhập tài khoản của bạn để tra cứu các đơn hàng đã đặt và theo dõi tiến độ pha chế.
+          </p>
+          <Link
+            href="/signin?redirect=/orders"
+            className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3.5 px-5 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
+          >
+            <span>Đăng nhập ngay</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <Link
+            href="/"
+            className="mt-4 text-xs text-[#738478] hover:text-[#163d2c] font-medium"
+          >
+            Khám phá thực đơn
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 py-8 sm:py-12">

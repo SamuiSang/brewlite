@@ -24,15 +24,26 @@ export default function CartPage() {
     getSubtotal,
     getDiscount,
     getTotal,
+    authToken,
+    authUser,
   } = useCartStore();
 
   const [hasHydrated, setHasHydrated] = useState(false);
   useEffect(() => { setHasHydrated(true); }, []);
 
-  const totalItems = hasHydrated ? getTotalItems() : 0;
-  const subtotal = hasHydrated ? getSubtotal() : 0;
-  const discount = hasHydrated ? getDiscount() : 0;
-  const total = hasHydrated ? getTotal() : 0;
+  const isLoggedIn = Boolean(mounted && authToken && authUser);
+  const totalItems = mounted ? getTotalItems() : 0;
+  const subtotal = mounted ? getSubtotal() : 0;
+  const discount = mounted ? getDiscount() : 0;
+  const total = mounted ? getTotal() : 0;
+
+  const handleCheckout = () => {
+    if (!authToken || !authUser) {
+      router.push('/signin?redirect=/checkout');
+      return;
+    }
+    router.push('/checkout');
+  };
 
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,14 +314,33 @@ export default function CartPage() {
                 </div>
               </div>
 
+              {/* Banner nhắc đăng nhập nếu chưa đăng nhập */}
+              {!isLoggedIn && items.length > 0 && (
+                <div className="bg-[#fff9f0] border border-[#f3d9b1] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[#8c5e2d]">
+                  <AlertCircle className="w-4 h-4 text-[#d6955b] shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-[#6e461f]">Bạn chưa đăng nhập</p>
+                    <p className="text-[11px] text-[#8c5e2d] mt-0.5 leading-relaxed">
+                      Vui lòng đăng nhập tài khoản để tiếp tục thanh toán đơn hàng và tích lũy điểm thưởng.
+                    </p>
+                    <Link
+                      href="/signin?redirect=/checkout"
+                      className="inline-block mt-1.5 font-bold text-[#163d2c] hover:underline"
+                    >
+                      Đăng nhập ngay &rarr;
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               {/* Checkout Button */}
               <button
                 type="button"
                 disabled={items.length === 0}
-                onClick={() => router.push('/checkout')}
+                onClick={handleCheckout}
                 className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:bg-[#a9b5ad] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
-                <span>Tiếp tục thanh toán</span>
+                <span>{isLoggedIn ? 'Tiếp tục thanh toán' : 'Đăng nhập để thanh toán'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

@@ -25,6 +25,7 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
         create: jest.fn<any>(),
       },
       order: {
+        updateMany: jest.fn<any>().mockResolvedValue({ count: 1 }),
         findFirst: jest.fn<any>(),
         findUnique: jest.fn<any>(),
         update: jest.fn<any>(),
@@ -133,7 +134,9 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
       prisma.order.findFirst.mockResolvedValue(mockOrder);
 
       // Request 2 bị chặn bởi Unique Constraint ở DB
-      const p2002Error: any = new Error('Unique constraint failed on the fields: (idempotency_key)');
+      const p2002Error: any = new Error(
+        'Unique constraint failed on the fields: (idempotency_key)',
+      );
       p2002Error.code = 'P2002';
       prisma.payment.create.mockRejectedValue(p2002Error);
 

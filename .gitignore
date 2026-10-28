@@ -1,3 +1,6 @@
+# Local agent worktrees
+.claude/worktrees/
+
 # Logs
 logs
 *.log

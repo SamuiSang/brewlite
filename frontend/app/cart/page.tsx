@@ -31,11 +31,11 @@ export default function CartPage() {
   const [hasHydrated, setHasHydrated] = useState(false);
   useEffect(() => { setHasHydrated(true); }, []);
 
-  const isLoggedIn = Boolean(mounted && authToken && authUser);
-  const totalItems = mounted ? getTotalItems() : 0;
-  const subtotal = mounted ? getSubtotal() : 0;
-  const discount = mounted ? getDiscount() : 0;
-  const total = mounted ? getTotal() : 0;
+  const isLoggedIn = Boolean(hasHydrated && authToken && authUser);
+  const totalItems = hasHydrated ? getTotalItems() : 0;
+  const subtotal = hasHydrated ? getSubtotal() : 0;
+  const discount = hasHydrated ? getDiscount() : 0;
+  const total = hasHydrated ? getTotal() : 0;
 
   const handleCheckout = () => {
     if (!authToken || !authUser) {

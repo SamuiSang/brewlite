@@ -34,9 +34,7 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() dto: CreateOrderDto, @Req() req: any) {
-    if (req?.user?.sub && !dto.userId) {
-      dto.userId = req.user.sub;
-    }
+    dto.userId = req.user.sub;
     return this.ordersService.createOrder(dto);
   }
 
@@ -97,10 +95,7 @@ export class OrdersController {
    * PATCH /orders/:id/status
    */
   @Patch(':id/status')
-  updateStatus(
-    @Param('id') id: string,
-    @Body('status') status: string,
-  ) {
+  updateStatus(@Param('id') id: string, @Body('status') status: string) {
     return this.ordersService.updateStatus(id, status);
   }
 }

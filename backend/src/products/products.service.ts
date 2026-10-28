@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { withAvailability } from './recipe';
 
 @Injectable()
 export class ProductsService {
@@ -19,7 +20,7 @@ export class ProductsService {
   }
 
   async findAll(categoryId?: string, search?: string) {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         isActive: true,
         ...(categoryId ? { categoryId } : {}),
@@ -34,9 +35,11 @@ export class ProductsService {
       },
       include: {
         category: true,
+        recipeIngredients: { include: { ingredient: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
+    return products.map(withAvailability);
   }
 
   async findOne(id: string) {
@@ -44,6 +47,7 @@ export class ProductsService {
       where: { id },
       include: {
         category: true,
+        recipeIngredients: { include: { ingredient: true } },
       },
     });
 
@@ -51,6 +55,6 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
-    return product;
+    return withAvailability(product);
   }
 }

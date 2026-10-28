@@ -27,6 +27,7 @@ export interface ApiProduct {
   basePrice: number | string;
   imageUrl?: string | null;
   stock?: number;
+  stockBySize?: Record<'S' | 'M' | 'L', number>;
   categoryId?: string;
   category?: ApiCategory;
   isActive?: boolean;
@@ -45,6 +46,7 @@ export interface NormalizedProduct {
   bestseller?: boolean;
   description: string;
   stock: number;
+  stockBySize?: Record<'S' | 'M' | 'L', number>;
 }
 
 // Dữ liệu topping dự phòng phong phú đúng theo CSDL backend
@@ -89,7 +91,8 @@ export function normalizeProduct(apiItem: ApiProduct): NormalizedProduct {
     largeImage: defaultImage,
     bestseller: false,
     description: apiItem.description || 'Thức uống được pha chế tỉ mỉ từ nguyên liệu tươi ngon.',
-    stock: apiItem.stock ?? 100,
+    stock: apiItem.stockBySize?.S ?? apiItem.stock ?? 0,
+    stockBySize: apiItem.stockBySize,
   };
 }
 
@@ -107,7 +110,7 @@ export function getFallbackProducts(): NormalizedProduct[] {
     largeImage: d.largeImage,
     bestseller: d.bestseller,
     description: d.description,
-    stock: 100,
+    stock: 0,
   }));
 }
 
@@ -258,7 +261,7 @@ export async function fetchProductById(id: string): Promise<NormalizedProduct | 
       largeImage: found.largeImage,
       bestseller: found.bestseller,
       description: found.description,
-      stock: 100,
+      stock: 0,
     };
   }
 

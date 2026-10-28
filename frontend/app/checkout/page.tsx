@@ -50,9 +50,9 @@ export default function CheckoutPage() {
   const baseTotal = mounted ? getTotal() : 119000;
 
   const availablePoints = mounted ? (profile?.points ?? 120) : 120;
-  const maxPointsDiscount = Math.min(availablePoints * 1000, Math.max(0, subtotal - discount));
-  const pointsUsed = useLoyaltyPoints ? Math.ceil(maxPointsDiscount / 1000) : 0;
-  const pointsDiscount = useLoyaltyPoints ? pointsUsed * 1000 : 0;
+  const maxPointsDiscount = Math.min(availablePoints * 500, Math.max(0, subtotal - discount));
+  const pointsUsed = useLoyaltyPoints ? Math.ceil(maxPointsDiscount / 500) : 0;
+  const pointsDiscount = useLoyaltyPoints ? maxPointsDiscount : 0;
   const finalTotal = Math.max(0, baseTotal - pointsDiscount);
   const pointsToEarn = Math.floor(finalTotal / 10000);
 
@@ -522,7 +522,7 @@ export default function CheckoutPage() {
                         Dùng điểm tích lũy
                       </p>
                       <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
-                        1 điểm = 1.000đ
+                        1 điểm = 500đ
                       </span>
                     </div>
                     <p className="text-[11px] text-[#6e8074] mt-0.5">

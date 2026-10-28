@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -29,7 +30,10 @@ export class PaymentsService {
         where: { id: existingPayment.orderId },
         include: {
           orderItems: {
-            include: { product: true, toppings: { include: { topping: true } } },
+            include: {
+              product: true,
+              toppings: { include: { topping: true } },
+            },
           },
         },
       });
@@ -60,16 +64,22 @@ export class PaymentsService {
 
     // Chặn thanh toán lại nếu đơn đã ở trạng thái PAID
     if (order.status === 'PAID') {
-      throw new BadRequestException('Đơn hàng này đã được thanh toán thành công trước đó');
+      throw new BadRequestException(
+        'Đơn hàng này đã được thanh toán thành công trước đó',
+      );
     }
 
     // Chặn thanh toán nếu đơn đã bị CANCELLED hoặc COMPLETED
     if (order.status === 'CANCELLED') {
-      throw new BadRequestException('Đơn hàng này đã bị hủy, không thể tiến hành thanh toán');
+      throw new BadRequestException(
+        'Đơn hàng này đã bị hủy, không thể tiến hành thanh toán',
+      );
     }
 
     if (order.status === 'COMPLETED') {
-      throw new BadRequestException('Đơn hàng này đã hoàn tất, không thể thanh toán lại');
+      throw new BadRequestException(
+        'Đơn hàng này đã hoàn tất, không thể thanh toán lại',
+      );
     }
 
     // 3. Xác định kết quả Mock Payment (mặc định là true nếu không truyền)
@@ -86,6 +96,15 @@ export class PaymentsService {
     // 4. Thực thi Transaction lưu Payment + Cập nhật Order status + Cộng điểm Loyalty
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        const claimed = await tx.order.updateMany({
+          where: { id: order.id, status: order.status },
+          data: { status: nextOrderStatus },
+        });
+        if (claimed.count !== 1)
+          throw new ConflictException(
+            'Trạng thái đơn vừa thay đổi. Vui lòng tải lại.',
+          );
+
         // Tạo bản ghi Payment với Idempotency Key duy nhất
         const payment = await tx.payment.create({
           data: {
@@ -163,7 +182,8 @@ export class PaymentsService {
           });
 
           return {
-            message: 'Giao dịch đã được xử lý đồng thời trước đó (Idempotent response)',
+            message:
+              'Giao dịch đã được xử lý đồng thời trước đó (Idempotent response)',
             success: existing.status === 'SUCCESS',
             isIdempotent: true,
             payment: existing,

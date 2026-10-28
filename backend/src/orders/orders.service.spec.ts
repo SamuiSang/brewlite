@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { jest } from '@jest/globals';
 
@@ -16,7 +13,20 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
     id: 'prod-1',
     name: 'Cà phê Muối',
     basePrice: new Prisma.Decimal(35000),
-    stock: 10,
+    recipeIngredients: [
+      {
+        ingredientId: 'coffee',
+        size: 'S',
+        quantity: new Prisma.Decimal(10),
+        ingredient: {
+          id: 'coffee',
+          name: 'Cà phê',
+          unit: 'g',
+          stock: new Prisma.Decimal(100),
+          version: 1,
+        },
+      },
+    ],
     version: 1,
     isActive: true,
   };
@@ -54,6 +64,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         updateMany: jest.fn<any>(),
         update: jest.fn<any>(),
       },
+      ingredient: { updateMany: jest.fn<any>(), update: jest.fn<any>() },
       topping: {
         findMany: jest.fn<any>().mockResolvedValue([]),
       },
@@ -61,10 +72,12 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         findUnique: jest.fn<any>(),
       },
       user: {
+        updateMany: jest.fn<any>().mockResolvedValue({ count: 1 }),
         findUnique: jest.fn<any>(),
         update: jest.fn<any>(),
       },
       order: {
+        updateMany: jest.fn<any>().mockResolvedValue({ count: 1 }),
         findFirst: jest.fn<any>(),
         findUnique: jest.fn<any>(),
         findMany: jest.fn<any>(),
@@ -91,7 +104,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
     it('khi tạo đơn hàng thành công: kiểm tra trừ tồn kho và tăng version bằng Optimistic Lock', async () => {
       prisma.product.findMany.mockResolvedValue([mockProductA]);
       prisma.order.findFirst.mockResolvedValue({ orderCode: '#1042' });
-      prisma.product.updateMany.mockResolvedValue({ count: 1 }); // OCC Update thành công
+      prisma.ingredient.updateMany.mockResolvedValue({ count: 1 }); // OCC Update thành công
 
       const createdMockOrder = {
         id: 'ord-123',
@@ -116,15 +129,15 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       const result = await service.createOrder(dto);
 
       expect(result).toEqual(createdMockOrder);
-      // Đảm bảo prisma.product.updateMany được gọi với điều kiện version và stock
-      expect(prisma.product.updateMany).toHaveBeenCalledWith({
+      // Đảm bảo prisma.ingredient.updateMany được gọi với điều kiện version và stock
+      expect(prisma.ingredient.updateMany).toHaveBeenCalledWith({
         where: {
-          id: 'prod-1',
+          id: 'coffee',
           version: 1, // OCC version check
-          stock: { gte: 2 },
+          stock: { gte: new Prisma.Decimal(20) },
         },
         data: {
-          stock: { decrement: 2 },
+          stock: { decrement: new Prisma.Decimal(20) },
           version: { increment: 1 }, // OCC version increment
         },
       });
@@ -133,7 +146,20 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
 
     it('khi số lượng đặt vượt quá số lượng tồn kho: ném lỗi BadRequestException', async () => {
       // Mock tồn kho chỉ còn 1
-      prisma.product.findMany.mockResolvedValue([{ ...mockProductA, stock: 1 }]);
+      prisma.product.findMany.mockResolvedValue([
+        {
+          ...mockProductA,
+          recipeIngredients: [
+            {
+              ...mockProductA.recipeIngredients[0],
+              ingredient: {
+                ...mockProductA.recipeIngredients[0].ingredient,
+                stock: new Prisma.Decimal(10),
+              },
+            },
+          ],
+        },
+      ]);
 
       const dto = {
         customerName: 'Nguyễn Văn Quang',
@@ -151,7 +177,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         BadRequestException,
       );
       await expect(service.createOrder(dto)).rejects.toThrow(
-        /không đủ số lượng tồn kho/,
+        /Không đủ nguyên liệu/,
       );
     });
 
@@ -160,7 +186,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       prisma.order.findFirst.mockResolvedValue({ orderCode: '#1042' });
 
       // updateMany trả về count: 0 (version không khớp)
-      prisma.product.updateMany.mockResolvedValue({ count: 0 });
+      prisma.ingredient.updateMany.mockResolvedValue({ count: 0 });
 
       const dto = {
         customerName: 'Nguyễn Văn Quang',
@@ -174,9 +200,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         ],
       };
 
-      await expect(service.createOrder(dto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.createOrder(dto)).rejects.toThrow(ConflictException);
     });
   });
 
@@ -233,7 +257,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
     it('cho phép dùng điểm tích lũy để giảm giá khi đặt hàng', async () => {
       prisma.product.findMany.mockResolvedValue([mockProductA]);
       prisma.user.findUnique.mockResolvedValue(mockUser);
-      prisma.product.updateMany.mockResolvedValue({ count: 1 });
+      prisma.ingredient.updateMany.mockResolvedValue({ count: 1 });
       prisma.order.findFirst.mockResolvedValue({ orderCode: '#1042' });
 
       let capturedOrderData: any;
@@ -246,24 +270,27 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         userId: 'user-1',
         customerName: 'Quang',
         phone: '0901234567',
-        useLoyaltyPoints: 10, // 10 điểm = 10.000đ
+        useLoyaltyPoints: 10, // 10 điểm = 5.000đ
         items: [{ productId: 'prod-1', size: 'S' as const, qty: 1 }], // 35.000đ
       };
 
       await service.createOrder(dto);
 
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'user-1', loyaltyPoints: { gte: 10 } },
         data: { loyaltyPoints: { decrement: 10 } },
       });
-      // 35.000đ - 10.000đ = 25.000đ
-      expect(capturedOrderData.discountAmount).toBe(10000);
-      expect(capturedOrderData.totalAmount).toBe(25000);
+      // 35.000đ - 5.000đ = 30.000đ
+      expect(capturedOrderData.discountAmount).toBe(5000);
+      expect(capturedOrderData.totalAmount).toBe(30000);
     });
 
     it('từ chối khi tài khoản không đủ số điểm yêu cầu', async () => {
       prisma.product.findMany.mockResolvedValue([mockProductA]);
-      prisma.user.findUnique.mockResolvedValue({ ...mockUser, loyaltyPoints: 5 });
+      prisma.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        loyaltyPoints: 5,
+      });
 
       const dto = {
         userId: 'user-1',
@@ -285,6 +312,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         id: 'ord-1',
         status: 'PENDING',
         orderItems: [],
+        ingredients: [],
       });
       prisma.order.update.mockResolvedValue({
         id: 'ord-1',
@@ -306,20 +334,21 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         id: 'ord-1',
         status: 'PENDING',
         orderItems: [],
+        ingredients: [],
       });
 
-      await expect(
-        service.updateStatus('ord-1', 'COMPLETED'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateStatus('ord-1', 'COMPLETED')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('khi hủy đơn hàng (CANCELLED): tự động hoàn trả số lượng tồn kho sản phẩm', async () => {
+    it('khi hủy đơn hàng (CANCELLED): tự động hoàn trả số lượng tồn kho nguyên liệu từ snapshot', async () => {
       prisma.order.findUnique.mockResolvedValue({
         id: 'ord-1',
         status: 'PENDING',
-        orderItems: [
-          { productId: 'prod-1', qty: 2 },
-          { productId: 'prod-2', qty: 1 },
+        ingredients: [
+          { ingredientId: 'coffee', quantity: new Prisma.Decimal(20) },
+          { ingredientId: 'milk', quantity: new Prisma.Decimal(50) },
         ],
       });
       prisma.order.update.mockResolvedValue({
@@ -330,20 +359,35 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       await service.updateStatus('ord-1', 'CANCELLED');
 
       // Phải hoàn trả kho cho cả 2 sản phẩm
-      expect(prisma.product.update).toHaveBeenCalledWith({
-        where: { id: 'prod-1' },
+      expect(prisma.ingredient.update).toHaveBeenCalledWith({
+        where: { id: 'coffee' },
         data: {
-          stock: { increment: 2 },
+          stock: { increment: new Prisma.Decimal(20) },
           version: { increment: 1 },
         },
       });
-      expect(prisma.product.update).toHaveBeenCalledWith({
-        where: { id: 'prod-2' },
+      expect(prisma.ingredient.update).toHaveBeenCalledWith({
+        where: { id: 'milk' },
         data: {
-          stock: { increment: 1 },
+          stock: { increment: new Prisma.Decimal(50) },
           version: { increment: 1 },
         },
       });
+    });
+
+    it('không hoàn nguyên liệu nếu yêu cầu khác đã đổi trạng thái', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-1',
+        status: 'PENDING',
+        ingredients: [
+          { ingredientId: 'coffee', quantity: new Prisma.Decimal(20) },
+        ],
+      });
+      prisma.order.updateMany.mockResolvedValue({ count: 0 });
+      await expect(service.updateStatus('ord-1', 'CANCELLED')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.ingredient.update).not.toHaveBeenCalled();
     });
 
     it('khi hủy đơn đã PAID: thu hồi điểm loyalty đã tích', async () => {
@@ -352,7 +396,9 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         status: 'PAID',
         userId: 'user-1',
         pointsEarned: 5,
+        pointsRedeemed: 2,
         orderItems: [{ productId: 'prod-1', qty: 1 }],
+        ingredients: [],
       });
       prisma.order.update.mockResolvedValue({
         id: 'ord-paid',
@@ -364,6 +410,10 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
         data: { loyaltyPoints: { decrement: 5 } },
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { loyaltyPoints: { increment: 2 } },
       });
     });
   });
@@ -388,7 +438,9 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
     });
 
     it('ném lỗi BadRequestException nếu không có userId', async () => {
-      await expect(service.findMyOrders('')).rejects.toThrow(BadRequestException);
+      await expect(service.findMyOrders('')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

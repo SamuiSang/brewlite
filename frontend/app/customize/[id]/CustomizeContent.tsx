@@ -61,7 +61,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   const [selectedMilk, setSelectedMilk] = useState<string>('oat');
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [drinkNote, setDrinkNote] = useState<string>('Ít ngọt, nhiều đá');
-  const [quantity, setQuantity] = useState<number>(1);
+  const [requestedQuantity, setQuantity] = useState<number>(1);
+  const availableStock = product?.stockBySize?.[selectedSize] ?? product?.stock ?? 0;
+  const quantity = Math.min(requestedQuantity, availableStock);
 
   // Nạp thông tin sản phẩm và toppings từ API (Task 4)
   const loadProductData = useCallback(async () => {
@@ -139,12 +141,12 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   };
 
   // Tăng giảm số lượng
-  const handleIncreaseQty = () => setQuantity((q) => q + 1);
-  const handleDecreaseQty = () => setQuantity((q) => (q > 1 ? q - 1 : 1));
+  const handleIncreaseQty = () => setQuantity(Math.min(quantity + 1, availableStock));
+  const handleDecreaseQty = () => setQuantity(Math.max(1, quantity - 1));
 
   // Thêm vào giỏ hàng
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || quantity < 1 || quantity > availableStock) return;
 
     const milkOption = MILK_OPTIONS.find((m) => m.id === selectedMilk);
     const toppingsLabels = selectedToppings
@@ -473,6 +475,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                   type="button"
                   onClick={handleDecreaseQty}
                   disabled={quantity <= 1}
+                  aria-label="Giảm số lượng"
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
@@ -483,7 +486,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                 <button
                   type="button"
                   onClick={handleIncreaseQty}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] transition-colors cursor-pointer"
+                  disabled={quantity >= availableStock}
+                  aria-label="Tăng số lượng"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -493,7 +498,8 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="flex-1 bg-[#163d2c] hover:bg-[#1a4734] text-white py-3.5 px-6 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                disabled={quantity < 1}
+                className="flex-1 bg-[#163d2c] hover:bg-[#1a4734] text-white py-3.5 px-6 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-between cursor-pointer active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <span>
                   {existingCartItem ? 'Cập nhật giỏ hàng' : 'Thêm vào giỏ'}
@@ -503,6 +509,12 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                 </span>
               </button>
             </div>
+
+            <p role="status" className="text-xs text-[#708076] mt-3">
+              {availableStock > 0
+                ? `Nguyên liệu hiện đủ pha ${availableStock} ly size ${selectedSize}. Tồn kho được kiểm tra lại khi đặt hàng.`
+                : `Không đủ nguyên liệu cho size ${selectedSize} hoặc chưa xác nhận được tồn kho.`}
+            </p>
 
             {existingCartItem && (
               <p className="text-[11px] text-[#708076] text-center mt-3">

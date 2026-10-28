@@ -49,16 +49,54 @@ model Product {
   description String?
   basePrice   Decimal  @map("base_price") @db.Decimal(10, 2)
   imageUrl    String?  @map("image_url")
+  // Legacy columns retained for existing data; availability comes from recipes.
   stock       Int      @default(100)
-  version     Int      @default(1) // Phục vụ Optimistic Lock (Task 10 - Sprint 3)
+  version     Int      @default(1)
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
 
   // Relationships
-  category   Category    @relation(fields: [categoryId], references: [id])
-  orderItems OrderItem[]
+  category          Category           @relation(fields: [categoryId], references: [id])
+  orderItems        OrderItem[]
+  recipeIngredients RecipeIngredient[]
 
   @@map("products")
+}
+
+model Ingredient {
+  id           String             @id @default(uuid())
+  name         String             @unique
+  unit         String // g, ml, piece; recipe quantities use this same unit
+  stock        Decimal            @default(0) @db.Decimal(14, 3)
+  version      Int                @default(1)
+  recipes      RecipeIngredient[]
+  consumptions OrderIngredient[]
+
+  @@map("ingredients")
+}
+
+model RecipeIngredient {
+  productId    String     @map("product_id")
+  size         String     @db.VarChar(5)
+  ingredientId String     @map("ingredient_id")
+  quantity     Decimal    @db.Decimal(14, 3)
+  product      Product    @relation(fields: [productId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([productId, size, ingredientId])
+  @@map("recipe_ingredients")
+}
+
+// Snapshot of actual consumption; cancellation must not use an edited recipe.
+model OrderIngredient {
+  orderId      String     @map("order_id")
+  ingredientId String     @map("ingredient_id")
+  quantity     Decimal    @db.Decimal(14, 3)
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([orderId, ingredientId])
+  @@map("order_ingredients")
 }
 
 // 4. Bảng Topping (BFD Cột 1.2.2)
@@ -106,14 +144,16 @@ model Order {
   discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
   totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
   pointsEarned    Int?     @default(0) @map("points_earned")
+  pointsRedeemed  Int      @default(0) @map("points_redeemed")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relationships
-  user       User?       @relation(fields: [userId], references: [id])
-  promotion  Promotion?  @relation(fields: [promotionCode], references: [code])
-  orderItems OrderItem[]
-  payments   Payment[]
+  user        User?             @relation(fields: [userId], references: [id])
+  promotion   Promotion?        @relation(fields: [promotionCode], references: [code])
+  orderItems  OrderItem[]
+  payments    Payment[]
+  ingredients OrderIngredient[]
 
   @@map("orders")
 }

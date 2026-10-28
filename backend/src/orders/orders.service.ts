@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
 import { Prisma } from '@prisma/client';
 import { OrderStateMachine, OrderStatus } from './order-state-machine';
+import { requiredIngredients } from '../products/recipe';
 
 @Injectable()
 export class OrdersService {
@@ -16,7 +17,9 @@ export class OrdersService {
   /**
    * Sinh mã đơn hàng dạng #1042, #1043...
    */
-  private async generateOrderCode(tx?: Prisma.TransactionClient): Promise<string> {
+  private async generateOrderCode(
+    tx?: Prisma.TransactionClient,
+  ): Promise<string> {
     const client = tx || this.prisma;
     const lastOrder = await client.order.findFirst({
       orderBy: { createdAt: 'desc' },
@@ -145,14 +148,7 @@ export class OrdersService {
       throw new BadRequestException('Giỏ hàng không được để trống');
     }
 
-    // 1. Gom số lượng yêu cầu theo từng productId để kiểm tra tổng tồn kho
-    const requiredProductQtyMap = new Map<string, number>();
-    for (const item of dto.items) {
-      const current = requiredProductQtyMap.get(item.productId) || 0;
-      requiredProductQtyMap.set(item.productId, current + item.qty);
-    }
-
-    const productIds = Array.from(requiredProductQtyMap.keys());
+    const productIds = [...new Set(dto.items.map((item) => item.productId))];
     const allToppingIds = Array.from(
       new Set(dto.items.flatMap((i) => i.toppingIds || [])),
     );
@@ -185,7 +181,6 @@ export class OrdersService {
       try {
         return await this.executeCreateOrderTransaction(
           dto,
-          requiredProductQtyMap,
           productIds,
           toppingsMap,
         );
@@ -212,16 +207,16 @@ export class OrdersService {
    */
   private async executeCreateOrderTransaction(
     dto: CreateOrderDto,
-    requiredProductQtyMap: Map<string, number>,
     productIds: string[],
     toppingsMap: Map<string, { id: string; price: Prisma.Decimal }>,
   ) {
-    // Truy vấn dữ liệu sản phẩm mới nhất kèm version
+    // Read recipes and ingredient balances for this attempt.
     const products = await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
         isActive: true,
       },
+      include: { recipeIngredients: { include: { ingredient: true } } },
     });
 
     if (products.length !== productIds.length) {
@@ -232,15 +227,7 @@ export class OrdersService {
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Kiểm tra số lượng tồn kho trước khi vào transaction
-    for (const [pId, reqQty] of requiredProductQtyMap.entries()) {
-      const product = productMap.get(pId)!;
-      if (product.stock < reqQty) {
-        throw new BadRequestException(
-          `Sản phẩm "${product.name}" không đủ số lượng tồn kho (chỉ còn ${product.stock}, yêu cầu ${reqQty})`,
-        );
-      }
-    }
+    const consumption = requiredIngredients(dto.items, productMap);
 
     // Tính toán chi tiết từng món trong đơn
     let calculatedSubtotal = 0;
@@ -301,8 +288,8 @@ export class OrdersService {
     }
 
     // 5. Xử lý Điểm tích lũy thành viên (Loyalty Points)
-    // Quy ước: 1 điểm = 1.000đ giảm giá
-    const POINT_TO_VND_RATE = 1000;
+    // Quy ước: 1 điểm = 500đ giảm giá
+    const POINT_TO_VND_RATE = 500;
     let loyaltyDiscount = 0;
     let pointsToDeduct = 0;
 
@@ -327,7 +314,10 @@ export class OrdersService {
         );
       }
 
-      const maxAllowedDiscount = Math.max(0, calculatedSubtotal - voucherDiscount);
+      const maxAllowedDiscount = Math.max(
+        0,
+        calculatedSubtotal - voucherDiscount,
+      );
       const requestedDiscount = dto.useLoyaltyPoints * POINT_TO_VND_RATE;
 
       loyaltyDiscount = Math.min(requestedDiscount, maxAllowedDiscount);
@@ -342,39 +332,33 @@ export class OrdersService {
 
     // 6. Thực thi Transaction nguyên tử (Atomic Database Transaction)
     return await this.prisma.$transaction(async (tx) => {
-      // 6.1. OPTIMISTIC LOCKING: Khóa tồn kho đồng thời với version check
-      for (const [pId, reqQty] of requiredProductQtyMap.entries()) {
-        const currentProd = productMap.get(pId)!;
-
-        // Chỉ update thành công khi version khớp VÀ stock >= reqQty
-        const updateResult = await tx.product.updateMany({
+      // Stable lock order avoids deadlocks when products share ingredients.
+      for (const [ingredientId, { ingredient, quantity }] of [
+        ...consumption,
+      ].sort(([a], [b]) => a.localeCompare(b))) {
+        const result = await tx.ingredient.updateMany({
           where: {
-            id: pId,
-            version: currentProd.version,
-            stock: { gte: reqQty },
+            id: ingredientId,
+            version: ingredient.version,
+            stock: { gte: quantity },
           },
-          data: {
-            stock: { decrement: reqQty },
-            version: { increment: 1 },
-          },
+          data: { stock: { decrement: quantity }, version: { increment: 1 } },
         });
-
-        if (updateResult.count === 0) {
-          // Xung đột phiên bản do có giao dịch đồng thời vừa sửa bản ghi này
+        if (result.count !== 1) {
           throw new ConflictException(
-            `Xung đột dữ liệu khi khóa tồn kho cho món "${currentProd.name}". Phiên bản đã thay đổi.`,
+            `Tồn kho nguyên liệu "${ingredient.name}" vừa thay đổi. Vui lòng thử lại.`,
           );
         }
       }
 
       // 6.2. Trừ điểm Loyalty đã dùng (nếu có)
       if (pointsToDeduct > 0 && dto.userId) {
-        await tx.user.update({
-          where: { id: dto.userId },
-          data: {
-            loyaltyPoints: { decrement: pointsToDeduct },
-          },
+        const redeemed = await tx.user.updateMany({
+          where: { id: dto.userId, loyaltyPoints: { gte: pointsToDeduct } },
+          data: { loyaltyPoints: { decrement: pointsToDeduct } },
         });
+        if (redeemed.count !== 1)
+          throw new BadRequestException('Điểm thưởng không còn đủ để sử dụng');
       }
 
       // 6.3. Sinh mã đơn hàng
@@ -391,10 +375,17 @@ export class OrdersService {
           notes: dto.notes || null,
           promotionCode: appliedPromotionCode,
           status: 'PENDING',
+          ingredients: {
+            create: [...consumption].map(([ingredientId, { quantity }]) => ({
+              ingredientId,
+              quantity,
+            })),
+          },
           subtotal: calculatedSubtotal,
           discountAmount: totalDiscount,
           totalAmount,
           pointsEarned,
+          pointsRedeemed: pointsToDeduct,
           orderItems: {
             create: preparedItems.map((item) => ({
               productId: item.productId,
@@ -439,7 +430,9 @@ export class OrdersService {
    */
   async findMyOrders(userId: string) {
     if (!userId) {
-      throw new BadRequestException('Không tìm thấy thông tin tài khoản người dùng');
+      throw new BadRequestException(
+        'Không tìm thấy thông tin tài khoản người dùng',
+      );
     }
     return this.prisma.order.findMany({
       where: { userId },
@@ -575,7 +568,9 @@ export class OrdersService {
       throw new BadRequestException(
         `Trạng thái "${status}" không hợp lệ. Phải là một trong: ${OrderStateMachine.getNextAllowedStatuses(
           'PENDING',
-        ).concat(['PENDING', 'COMPLETED', 'CANCELLED']).join(', ')}`,
+        )
+          .concat(['PENDING', 'COMPLETED', 'CANCELLED'])
+          .join(', ')}`,
       );
     }
 
@@ -583,6 +578,7 @@ export class OrdersService {
       where: { id },
       include: {
         orderItems: true,
+        ingredients: true,
       },
     });
 
@@ -602,16 +598,34 @@ export class OrdersService {
 
     // Thực hiện chuyển đổi trạng thái kèm Side-effects trong Transaction (Task 10.1)
     return await this.prisma.$transaction(async (tx) => {
-      // Khi hủy đơn hàng (CANCELLED): Hoàn trả tồn kho cho tất cả các món trong đơn
+      // Claim transition before side effects: concurrent cancellations restore once.
+      const claimed = await tx.order.updateMany({
+        where: { id, status: currentStatus },
+        data: { status: targetStatus },
+      });
+      if (claimed.count !== 1)
+        throw new ConflictException(
+          'Trạng thái đơn vừa thay đổi. Vui lòng tải lại.',
+        );
+
+      // Restore the recorded quantities, not the current recipe.
       if (targetStatus === 'CANCELLED') {
-        // 1. Hoàn trả tồn kho stock và tăng version của từng sản phẩm trong CSDL (Task 10.1 - Chiến)
-        for (const item of order.orderItems) {
-          await tx.product.update({
-            where: { id: item.productId },
+        for (const item of [...order.ingredients].sort((a, b) =>
+          a.ingredientId.localeCompare(b.ingredientId),
+        )) {
+          await tx.ingredient.update({
+            where: { id: item.ingredientId },
             data: {
-              stock: { increment: item.qty },
+              stock: { increment: item.quantity },
               version: { increment: 1 },
             },
+          });
+        }
+
+        if (order.userId && order.pointsRedeemed > 0) {
+          await tx.user.update({
+            where: { id: order.userId },
+            data: { loyaltyPoints: { increment: order.pointsRedeemed } },
           });
         }
 

@@ -37,8 +37,6 @@ export default function RewardsPage() {
   };
 
   const currentPoints = mounted ? profile.points : 131;
-  const nextTier = profile.nextTier || 150;
-  const pointsRemaining = Math.max(0, nextTier - currentPoints);
 
   return (
     <div className="flex-1 py-8 sm:py-12">
@@ -206,27 +204,12 @@ export default function RewardsPage() {
                   </span>
                 </div>
 
-                <p className="text-xs text-[#a3b8ab] mb-6">
-  Tích lũy 1 điểm cho mỗi 10.000₫ chi tiêu.
-</p>
-
-<div className="pt-4 border-t border-[#234d39]">
-  <div className="flex justify-between text-xs text-[#c2d1c7] mb-2 font-medium">
-    <span>Còn {pointsRemaining} điểm để nhận ưu đãi</span>
-  </div>
-
-  {/* Progress bar */}
-  <div className="w-full h-2.5 bg-[#102e21] rounded-full overflow-hidden mb-3">
-    <div
-      className="h-full bg-[#d6955b] rounded-full transition-all duration-500"
-      style={{ width: `${Math.min(100, (currentPoints / nextTier) * 100)}%` }}
-    />
-  </div>
-
-  <p className="text-[11px] text-[#a3b8ab]">
-    Đạt {nextTier} điểm để được giảm 15.000₫ cho đơn hàng tiếp theo.
-  </p>
-</div>
+                <p className="text-xs leading-relaxed text-[#a3b8ab]">
+                  Tích lũy 1 điểm cho mỗi 10.000₫ chi tiêu.
+                </p>
+                <p className="mt-4 text-xs font-medium text-[#d6955b]">
+                  1 điểm thưởng = 500₫ giảm giá
+                </p>
               </div>
             </div>
 

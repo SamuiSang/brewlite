@@ -375,6 +375,14 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       });
     });
 
+    it('khách không được hủy đơn người khác hoặc đơn đã duyệt', async () => {
+      prisma.order.findUnique.mockResolvedValue({ id: 'ord-1', userId: 'other', status: 'PENDING' });
+      await expect(service.updateStatus('ord-1', 'CANCELLED', 'user-1')).rejects.toThrow(BadRequestException);
+      prisma.order.findUnique.mockResolvedValue({ id: 'ord-1', userId: 'user-1', status: 'PREPARING' });
+      await expect(service.updateStatus('ord-1', 'CANCELLED', 'user-1')).rejects.toThrow(/đã được duyệt/);
+      expect(prisma.ingredient.update).not.toHaveBeenCalled();
+    });
+
     it('không hoàn nguyên liệu nếu yêu cầu khác đã đổi trạng thái', async () => {
       prisma.order.findUnique.mockResolvedValue({
         id: 'ord-1',

@@ -11,6 +11,26 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const [mounted, setMounted] = useState(false);
   const getOrderById = useCartStore((state) => state.getOrderById);
   const [apiOrder, setApiOrder] = useState<any | null>(null);
+  const authToken = useCartStore((state) => state.authToken);
+  const authUser = useCartStore((state) => state.authUser);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+
+  const cancelOrder = async () => {
+    if (!apiOrder || cancelling || !window.confirm('Hủy đơn này? Nguyên liệu và điểm đã dùng sẽ được hoàn lại.')) return;
+    setCancelling(true);
+    setCancelError('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/orders/${apiOrder.backendId}/cancel`, {
+        method: 'PATCH', headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Không thể hủy đơn');
+      setApiOrder({ ...apiOrder, status: 'CANCELLED', statusLabel: 'Đã hủy', active: false });
+    } catch (error) {
+      setCancelError(error instanceof Error ? error.message : 'Không thể hủy đơn');
+    } finally { setCancelling(false); }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -25,6 +45,8 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
           if (o && o.id) {
             setApiOrder({
               id: code,
+              backendId: o.id,
+              userId: o.userId,
               orderCode: o.orderCode || `#${code}`,
               status: o.status,
               statusLabel: o.status === 'PAID' ? 'Đã nhận thanh toán' : o.status,
@@ -72,6 +94,13 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   return (
     <div className="flex-1 py-8 sm:py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {apiOrder && authUser?.id === apiOrder.userId && ['PENDING', 'PAYMENT_FAILED', 'PAID'].includes(apiOrder.status) && (
+          <div className="mb-6 rounded-2xl border border-[#e8e2d7] bg-white p-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[#66776c]">Đơn chưa được duyệt pha chế. Bạn vẫn có thể hủy.</p>
+            <button type="button" disabled={cancelling} onClick={cancelOrder} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">{cancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}</button>
+          </div>
+        )}
+        {cancelError && <p role="alert" className="mb-4 text-sm text-red-700">{cancelError}</p>}
         {/* Breadcrumb */}
         <div className="text-xs text-[#738478] mb-4 flex items-center gap-2">
           <Link href="/orders" className="hover:text-[#163d2c]">

@@ -561,7 +561,7 @@ export class OrdersService {
    * số lượng tồn kho stock và tăng version của sản phẩm trong CSDL.
    * Đồng thời thu hồi điểm thưởng loyalty nếu đơn đã thanh toán trước đó.
    */
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, status: string, customerId?: string) {
     const upperStatus = status.toUpperCase();
 
     if (!OrderStateMachine.isValidStatus(upperStatus)) {
@@ -584,6 +584,13 @@ export class OrdersService {
 
     if (!order) {
       throw new NotFoundException(`Không tìm thấy đơn hàng với ID "${id}"`);
+    }
+
+    if (customerId && (order.userId !== customerId || upperStatus !== 'CANCELLED')) {
+      throw new BadRequestException('Chỉ được hủy đơn hàng của chính bạn');
+    }
+    if (customerId && !['PENDING', 'PAYMENT_FAILED', 'PAID', 'CANCELLED'].includes(order.status)) {
+      throw new BadRequestException('Đơn đã được duyệt pha chế, không thể hủy');
     }
 
     const currentStatus = order.status as OrderStatus;

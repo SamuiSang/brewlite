@@ -94,8 +94,16 @@ export class OrdersController {
    * API Cập nhật trạng thái đơn hàng (PENDING, PAID, PREPARING, READY, COMPLETED, CANCELLED)
    * PATCH /orders/:id/status
    */
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/cancel')
+  cancel(@Param('id') id: string, @Req() req: any) {
+    return this.ordersService.updateStatus(id, 'CANCELLED', req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body('status') status: string) {
-    return this.ordersService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Body('status') status: string, @Req() req: any) {
+    const customerId = ['ADMIN', 'BARISTA'].includes(req.user.role) ? undefined : req.user.sub;
+    return this.ordersService.updateStatus(id, status, customerId);
   }
 }

@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { MapPin, ArrowRight, Loader2, Lock } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
+import QRCode from 'qrcode';
 
-interface DbProduct {
+interface QrOrder {
   id: string;
-  name: string;
+  orderCode: string;
+  totalAmount: string | number;
+  pointsRedeemed: number;
+  pointsEarned: number;
 }
 
 export default function CheckoutPage() {
@@ -21,15 +25,14 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('Nguyen Duy');
   const [phoneNumber, setPhoneNumber] = useState('090 123 4567');
   const [orderNote, setOrderNote] = useState('Vui lòng gọi tên tôi khi đơn hàng sẵn sàng.');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet'>('card');
-  const [cardholderName, setCardholderName] = useState('NGUYEN DUY');
-  const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-  const [expiryDate, setExpiryDate] = useState('12 / 28');
-  const [cvv, setCvv] = useState('•••');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
+  const [qrOrder, setQrOrder] = useState<QrOrder | null>(null);
+  const [qrImage, setQrImage] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentKey, setPaymentKey] = useState('');
+  const started = useRef(false);
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, clearCart, appliedVoucher, authToken, authUser, profile, updateProfile } = useCartStore();
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
@@ -60,113 +63,113 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (authUser && authUser.fullName) {
       setCustomerName(authUser.fullName);
-      setCardholderName(authUser.fullName.toUpperCase());
     }
   }, [authUser]);
 
-  const handlePay = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${authToken}`,
+  };
 
-    // Bắt buộc người dùng phải đăng nhập mới được thanh toán
+  const handlePay = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (isProcessing || qrOrder) return;
     if (!authToken || !authUser) {
       router.push('/signin?redirect=/checkout');
       return;
     }
-
-    setIsProcessing(true);
-
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const isSuccess = mockOutcome === 'success' && cvv !== '000';
-
-    // Header xác thực bắt buộc gửi kèm JWT token của tài khoản đang đăng nhập
-    const authHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
-    };
-
-    try {
-      // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế
-      const prodRes = await fetch(`${apiUrl}/products`);
-      const dbProducts: DbProduct[] = await prodRes.json();
-      const defaultProductId = dbProducts[0]?.id;
-
-      let backendOrderId = '';
-
-      if (defaultProductId) {
-        // Tạo đơn hàng trạng thái PENDING trên Backend (gửi kèm JWT và userId)
-        const orderRes = await fetch(`${apiUrl}/orders`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            userId: authUser.id,
-            customerName: customerName || authUser.fullName,
-            phone: phoneNumber,
-            notes: orderNote,
-            useLoyaltyPoints: pointsUsed,
-            items:
-              items.length > 0
-                ? items.map((it) => ({
-                    productId:
-                      dbProducts.find((p) => p.name === it.name)?.id || defaultProductId,
-                    size: it.size,
-                    qty: it.quantity,
-                  }))
-                : [{ productId: defaultProductId, size: 'M', qty: 1 }],
-          }),
-        });
-
-        if (orderRes.status === 401) {
-          setIsProcessing(false);
-          router.push('/signin?redirect=/checkout');
-          return;
-        }
-
-        const createdOrder: { id: string } = await orderRes.json();
-        backendOrderId = createdOrder.id;
-      }
-
-      // 2. Gọi POST /payments để xử lý Mock Payment
-      if (backendOrderId) {
-        await fetch(`${apiUrl}/payments`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            orderId: backendOrderId,
-            method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
-            mockSuccess: isSuccess,
-          }),
-        });
-      }
-    } catch (err) {
-      console.error('Lỗi kết nối API:', err);
-    }
-
-    // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
-    if (!isSuccess) {
-      setIsProcessing(false);
-      router.push('/payment-failed');
+    if (!items.length) {
+      setPaymentError('Giỏ hàng không được để trống');
       return;
     }
-
-    const paymentDesc =
-      paymentMethod === 'card'
-        ? `Bank card · Visa ending in ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
-        : 'E-wallet · MoMo / ZaloPay';
-
-    const newOrderId = createOrder({
-      customerName: customerName || authUser.fullName,
-      phoneNumber,
-      orderNote,
-      paymentMethod: paymentDesc,
-    });
-
-    if (pointsUsed > 0 && updateProfile && profile) {
-      updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
+    setIsProcessing(true);
+    setPaymentError('');
+    try {
+      const response = await fetch(`${apiUrl}/orders`, {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({
+          customerName, phone: phoneNumber, notes: orderNote,
+          promotionCode: appliedVoucher?.code,
+          useLoyaltyPoints: pointsUsed,
+          items: items.map((item) => ({
+            productId: item.drinkId, size: item.size, qty: item.quantity,
+            toppingIds: item.toppings,
+          })),
+        }),
+      });
+      const order = await response.json();
+      if (!response.ok) throw new Error(order.message || 'Không thể tạo đơn hàng');
+      setQrOrder(order);
+      setPaymentKey(crypto.randomUUID());
+      updateProfile({ points: Math.max(0, profile.points - order.pointsRedeemed) });
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Không thể kết nối backend');
+    } finally {
+      setIsProcessing(false);
     }
+  };
 
-    setTimeout(() => {
-      router.push(`/orders/${newOrderId}`);
-    }, 500);
+  useEffect(() => {
+    if (!mounted || !authToken || !authUser || !items.length || started.current) return;
+    started.current = true;
+    void handlePay();
+  }, [mounted, authToken, authUser, items.length]);
+
+  useEffect(() => {
+    if (!qrOrder) return;
+    // Non-bank payload: scanning cannot initiate a real transfer.
+    QRCode.toDataURL(JSON.stringify({
+      type: 'BREWLITE_MOCK_PAYMENT', orderId: qrOrder.id,
+      amount: Number(qrOrder.totalAmount), currency: 'VND',
+    }), { width: 256, margin: 4 }).then(setQrImage).catch(() => {
+      setPaymentError('Không thể tạo ảnh QR. Đơn đã được giữ; vui lòng thử lại hoặc hủy đơn.');
+    });
+  }, [qrOrder]);
+
+  const confirmQr = async (success: boolean) => {
+    if (!qrOrder || isProcessing) return;
+    setIsProcessing(true);
+    setPaymentError('');
+    try {
+      const response = await fetch(`${apiUrl}/payments`, {
+        method: 'POST', headers: authHeaders,
+        body: JSON.stringify({ orderId: qrOrder.id, method: 'BANK_TRANSFER',
+          idempotencyKey: paymentKey, mockSuccess: success }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Không thể xác nhận thanh toán');
+      if (!result.success) {
+        setPaymentKey(crypto.randomUUID());
+        setPaymentError('Giả lập thanh toán thất bại. Có thể quét lại cùng đơn hoặc hủy đơn.');
+        return;
+      }
+      updateProfile({ points: profile.points + qrOrder.pointsEarned });
+      clearCart();
+      router.push(`/orders/${qrOrder.orderCode.replace(/^#/, '')}`);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Không thể kết nối backend');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const cancelQr = async () => {
+    if (!qrOrder || isProcessing) return;
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${apiUrl}/orders/${qrOrder.id}/cancel`, {
+        method: 'PATCH', headers: authHeaders, body: JSON.stringify({ status: 'CANCELLED' }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Không thể hủy đơn');
+      updateProfile({ points: profile.points + qrOrder.pointsRedeemed });
+      router.push('/cart');
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : 'Không thể hủy đơn');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
@@ -297,154 +300,19 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Choose How to Pay Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs flex flex-col gap-5">
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
-                Chọn phương thức thanh toán
-              </h2>
-
-              <div className="space-y-3">
-                {/* E-wallet Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('ewallet')}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                    paymentMethod === 'ewallet'
-                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentMethod === 'ewallet'
-                          ? 'border-[#163d2c] bg-[#163d2c]'
-                          : 'border-[#98a99e] bg-white'
-                      }`}
-                    >
-                      {paymentMethod === 'ewallet' && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">Ví điện tử</span>
-                  </div>
-                  <span className="text-[11px] text-[#708076]">MoMo / ZaloPay</span>
-                </button>
-
-                {/* Bank Card Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                    paymentMethod === 'card'
-                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentMethod === 'card'
-                          ? 'border-[#163d2c] bg-[#163d2c]'
-                          : 'border-[#98a99e] bg-white'
-                      }`}
-                    >
-                      {paymentMethod === 'card' && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">Thẻ ngân hàng</span>
-                  </div>
-                  <span className="text-[11px] text-[#708076]">Visa / Mastercard</span>
-                </button>
-              </div>
-
-              <div className="pt-3 border-t border-[#f0ebe0]">
-                <label className="block text-xs font-bold text-[#163d2c] mb-2">
-                  Chế độ giả lập (Mock Payment)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('success')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'success'
-                        ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ✅ Giả lập Thành công (PAID)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('failed')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'failed'
-                        ? 'bg-[#fce9e5] border-[#b33e2a] text-[#b33e2a]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ❌ Giả lập Thất bại (FAILED)
-                  </button>
-                </div>
-              </div>
-
-              {/* Card Inputs (if Bank card selected) */}
-              {paymentMethod === 'card' && (
-                <div className="space-y-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                      Tên chủ thẻ
-                    </label>
-                    <input
-                      type="text"
-                      value={cardholderName}
-                      onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
-                      className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all uppercase"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                      Số thẻ
-                    </label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all tracking-wider"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                        Ngày hết hạn
-                      </label>
-                      <input
-                        type="text"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                        Mã bảo mật CVV
-                      </label>
-                      <input
-                        type="password"
-                        value={cvv}
-                        onChange={(e) => setCvv(e.target.value)}
-                        className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-[#78887e]">
-                    Thông tin thẻ của bạn được mã hóa. Chúng tôi không lưu mã bảo mật CVV.
-                  </p>
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs space-y-4">
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">Thanh toán QR giả lập</h2>
+              <p className="text-sm text-[#66776c]">Tạo đơn để nhận mã QR, sau đó chọn kết quả quét mô phỏng. Không chuyển tiền thật, không cần thông tin thẻ.</p>
+              {paymentError && <p role="alert" className="text-sm text-red-700">{paymentError}</p>}
+              {qrOrder && (
+                <div className="rounded-2xl bg-[#f4efe7] p-5 text-center space-y-4" aria-live="polite">
+                  <p className="font-bold text-[#163d2c]">Đơn {qrOrder.orderCode}</p>
+                  {qrImage ? <img src={qrImage} width={256} height={256} alt={`Mã QR giả lập cho đơn ${qrOrder.orderCode}`} className="mx-auto rounded-xl" /> : <p>Đang tạo mã QR...</p>}
+                  <p className="text-xl font-bold text-[#163d2c]">{formatVND(Number(qrOrder.totalAmount))}</p>
+                  <p className="text-xs text-[#66776c]">QR chỉ chứa thông tin đơn thử nghiệm, không phải mã chuyển khoản ngân hàng.</p>
+                  <button type="button" disabled={isProcessing} onClick={() => confirmQr(true)} className="w-full rounded-xl bg-[#163d2c] text-white p-3 font-bold disabled:opacity-50">Giả lập quét thành công</button>
+                  <button type="button" disabled={isProcessing} onClick={() => confirmQr(false)} className="w-full rounded-xl border border-[#ded5c7] p-3 text-sm disabled:opacity-50">Giả lập thanh toán thất bại</button>
+                  <button type="button" disabled={isProcessing} onClick={cancelQr} className="text-sm text-red-700 underline disabled:opacity-50">Hủy đơn và hoàn nguyên liệu, điểm thưởng</button>
                 </div>
               )}
             </div>
@@ -534,7 +402,7 @@ export default function CheckoutPage() {
                     <input
                       type="checkbox"
                       checked={useLoyaltyPoints}
-                      disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
+                      disabled={started.current || !!qrOrder || availablePoints <= 0 || (subtotal - discount) <= 0}
                       onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
                       className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
                     />
@@ -585,7 +453,7 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={isProcessing}
+                disabled={isProcessing || !!qrOrder || !items.length}
                 id="pay-button"
                 className="w-full bg-[#d6955b] hover:bg-[#c4844a] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
@@ -596,7 +464,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <span>Thanh toán {formatVND(finalTotal)}</span>
+                    <span>{qrOrder ? 'Đang chờ quét QR' : 'Thử lại thanh toán'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

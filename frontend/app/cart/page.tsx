@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle } from 'lucide-react';
-import { useCartStore } from '@/lib/store';
+import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket, Loader2 } from 'lucide-react';
+import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
 export default function CartPage() {
   const router = useRouter();
   const [inputCode, setInputCode] = useState('');
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const {
     items,
@@ -28,14 +30,17 @@ export default function CartPage() {
     authUser,
   } = useCartStore();
 
-  const [hasHydrated, setHasHydrated] = useState(false);
-  useEffect(() => { setHasHydrated(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isLoggedIn = Boolean(mounted && authToken && authUser);
   const totalItems = mounted ? getTotalItems() : 0;
   const subtotal = mounted ? getSubtotal() : 0;
   const discount = mounted ? getDiscount() : 0;
   const total = mounted ? getTotal() : 0;
+
+  const isVoucherEligible = !appliedVoucher?.minOrderAmount || subtotal >= appliedVoucher.minOrderAmount;
 
   const handleCheckout = () => {
     if (!authToken || !authUser) {
@@ -45,12 +50,16 @@ export default function CartPage() {
     router.push('/checkout');
   };
 
-  const handleApplyVoucher = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputCode.trim()) {
-      if (applyVoucher(inputCode)) {
-        setInputCode('');
-      }
+  const handleApplyVoucher = async (e?: React.FormEvent, codeToApply?: string) => {
+    if (e) e.preventDefault();
+    const code = (codeToApply || inputCode).trim();
+    if (!code) return;
+
+    setIsApplyingVoucher(true);
+    const success = await applyVoucher(code);
+    setIsApplyingVoucher(false);
+    if (success) {
+      setInputCode('');
     }
   };
 
@@ -243,17 +252,18 @@ export default function CartPage() {
                 Tóm tắt đơn hàng
               </h2>
 
-              {/* Voucher Code Input */}
+              {/* Voucher Code Input & Promotions */}
               <div>
-                <label className="block text-xs font-bold text-[#163d2c] mb-2">
-                  Mã khuyến mãi
+                <label className="block text-xs font-bold text-[#163d2c] mb-2 flex items-center justify-between">
+                  <span>Mã khuyến mãi (Voucher)</span>
+                  <span className="text-[10px] text-[#738478] font-normal">Nhập mã hoặc chọn bên dưới</span>
                 </label>
-                <form onSubmit={handleApplyVoucher} className="relative">
+                <form onSubmit={(e) => handleApplyVoucher(e)} className="relative">
                   <input
                     type="text"
                     value={inputCode}
                     onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                    placeholder="Nhập mã khuyến mãi (VD: BREWLITE10)"
+                    placeholder="Nhập mã (VD: WELCOME10, GIAM20K)"
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl pl-4 pr-24 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all uppercase placeholder:normal-case placeholder:font-normal"
                   />
                   {appliedVoucher ? (
@@ -264,31 +274,101 @@ export default function CartPage() {
                   ) : (
                     <button
                       type="submit"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#163d2c] text-white text-[10px] font-bold px-3 py-1.5 rounded-xl hover:bg-[#102f21] transition-all cursor-pointer"
+                      disabled={isApplyingVoucher || !inputCode.trim()}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#163d2c] text-white text-[10px] font-bold px-3 py-1.5 rounded-xl hover:bg-[#102f21] disabled:opacity-50 transition-all cursor-pointer flex items-center gap-1"
                     >
-                      Áp dụng
+                      {isApplyingVoucher ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <span>Áp dụng</span>
+                      )}
                     </button>
                   )}
                 </form>
 
+                {/* Danh sách voucher gợi ý khả dụng */}
+                <div className="mt-3 pt-3 border-t border-[#f0ebe0]">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#55695c] mb-2">
+                    <Ticket className="w-3.5 h-3.5" />
+                    <span>Mã ưu đãi dành cho bạn:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AVAILABLE_VOUCHERS.map((v) => {
+                      const isSelected = appliedVoucher?.code === v.code;
+                      const canUse = subtotal >= (v.minOrderAmount || 0);
+                      return (
+                        <button
+                          key={v.code}
+                          type="button"
+                          disabled={isSelected || isApplyingVoucher}
+                          onClick={() => handleApplyVoucher(undefined, v.code)}
+                          className={`text-[11px] px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#163d2c] text-white border-[#163d2c] font-bold cursor-default'
+                              : canUse
+                              ? 'bg-[#f4efe7] hover:bg-[#eae2d5] text-[#14241b] border-[#e2dacf] font-semibold active:scale-95'
+                              : 'bg-[#faf7f2] text-[#93a499] border-[#ede7dc] hover:border-[#dfd6c8]'
+                          }`}
+                          title={v.description}
+                        >
+                          <span className="font-bold">{v.code}</span>
+                          <span className="text-[10px] opacity-80">
+                            ({v.discountType === 'percentage' ? `-${v.discount}%` : `-${formatVND(v.discount)}`})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Trạng thái voucher đã áp dụng */}
                 {appliedVoucher && (
-                  <p className="text-[11px] text-[#55695c] mt-2 flex items-center justify-between">
-                    <span>{appliedVoucher.description}</span>
-                    <button
-                      type="button"
-                      onClick={removeVoucher}
-                      className="text-red-700 underline text-[10px] ml-2 cursor-pointer"
-                    >
-                      Xóa
-                    </button>
-                  </p>
+                  <div className={`mt-3 p-3 rounded-2xl border text-[11px] ${
+                    isVoucherEligible
+                      ? 'bg-[#f0f6f2] border-[#c3decb] text-[#163d2c]'
+                      : 'bg-[#fff8e7] border-[#f5dc9e] text-[#825c15]'
+                  }`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5">
+                        {isVoucherEligible ? (
+                          <Check className="w-4 h-4 text-[#2e7d32] shrink-0 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-[#d97706] shrink-0 mt-0.5" />
+                        )}
+                        <div>
+                          <p className="font-bold">
+                            Mã: <span className="uppercase">{appliedVoucher.code}</span>
+                            {isVoucherEligible && (
+                              <span className="ml-1.5 font-normal text-[#266345]">
+                                (Tiết kiệm {formatVND(discount)})
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-[11px] opacity-90 mt-0.5">{appliedVoucher.description}</p>
+                          {!isVoucherEligible && appliedVoucher.minOrderAmount && (
+                            <p className="font-medium text-[#b45309] mt-1">
+                              ⚠️ Cần thêm {formatVND(appliedVoucher.minOrderAmount - subtotal)} để hưởng chiết khấu này.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeVoucher}
+                        className="text-red-700 hover:text-red-900 underline text-[11px] shrink-0 font-medium cursor-pointer"
+                      >
+                        Gỡ mã
+                      </button>
+                    </div>
+                  </div>
                 )}
 
+                {/* Thông báo lỗi validation */}
                 {voucherError && (
-                  <p className="text-[11px] text-red-600 mt-2 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
+                  <div className="mt-2.5 p-2.5 bg-[#fef2f2] border border-[#fecaca] rounded-2xl text-[11px] text-red-700 flex items-start gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" />
                     <span>{voucherError}</span>
-                  </p>
+                  </div>
                 )}
               </div>
 
@@ -299,12 +379,17 @@ export default function CartPage() {
                   <span className="font-semibold text-[#14241b]">{formatVND(subtotal)}</span>
                 </div>
 
-                {discount > 0 && (
+                {discount > 0 ? (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Khuyến mãi</span>
+                    <span>Khuyến mãi {appliedVoucher ? `(${appliedVoucher.code})` : ''}</span>
                     <span className="font-semibold">-{formatVND(discount)}</span>
                   </div>
-                )}
+                ) : appliedVoucher && !isVoucherEligible ? (
+                  <div className="flex justify-between text-[#b45309] text-[11px]">
+                    <span>Khuyến mãi ({appliedVoucher.code})</span>
+                    <span className="font-medium italic">Chưa đủ điều kiện đơn</span>
+                  </div>
+                ) : null}
 
                 <div className="pt-4 border-t border-[#f0ebe0] flex items-baseline justify-between">
                   <span className="text-xs text-[#6e8074] font-medium">Tổng cộng</span>

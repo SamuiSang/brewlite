@@ -29,7 +29,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile, appliedVoucher } = useCartStore();
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
@@ -102,6 +102,7 @@ export default function CheckoutPage() {
             customerName: customerName || authUser.fullName,
             phone: phoneNumber,
             notes: orderNote,
+            promotionCode: appliedVoucher?.code || undefined,
             useLoyaltyPoints: pointsUsed,
             items:
               items.length > 0
@@ -551,7 +552,7 @@ export default function CheckoutPage() {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Ưu đãi thành viên</span>
+                    <span>Khuyến mãi {appliedVoucher ? `(${appliedVoucher.code})` : ''}</span>
                     <span className="font-semibold">-{formatVND(discount)}</span>
                   </div>
                 )}

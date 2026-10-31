@@ -23,9 +23,46 @@ export interface CartItem {
 export interface Voucher {
   code: string;
   discount: number;
-  discountType: 'fixed' | 'percentage';
+  discountType: 'fixed' | 'percentage' | 'FIXED_AMOUNT' | 'PERCENTAGE';
   description: string;
+  minOrderAmount?: number;
+  maxDiscountAmount?: number;
 }
+
+export const AVAILABLE_VOUCHERS: Voucher[] = [
+  {
+    code: 'WELCOME10',
+    discount: 10,
+    discountType: 'percentage',
+    minOrderAmount: 40000,
+    maxDiscountAmount: 20000,
+    description: 'Giảm 10% (tối đa 20.000đ) cho đơn từ 40.000đ',
+  },
+  {
+    code: 'GIAM20K',
+    discount: 20000,
+    discountType: 'fixed',
+    minOrderAmount: 60000,
+    maxDiscountAmount: 20000,
+    description: 'Giảm 20.000đ trực tiếp cho đơn từ 60.000đ',
+  },
+  {
+    code: 'BREWLITE',
+    discount: 15,
+    discountType: 'percentage',
+    minOrderAmount: 100000,
+    maxDiscountAmount: 50000,
+    description: 'Giảm 15% (tối đa 50.000đ) cho đơn từ 100.000đ',
+  },
+  {
+    code: 'BREW5',
+    discount: 5000,
+    discountType: 'fixed',
+    minOrderAmount: 0,
+    maxDiscountAmount: 5000,
+    description: 'Ưu đãi thành viên giảm 5.000đ trực tiếp',
+  },
+];
 
 export interface OrderItem {
   name: string;
@@ -89,7 +126,7 @@ interface CartStore {
   updateQuantity: (id: string, delta: number) => void;
   setQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
-  applyVoucher: (code: string) => boolean;
+  applyVoucher: (code: string) => Promise<boolean>;
   removeVoucher: () => void;
 
   // Checkout & Orders
@@ -157,7 +194,9 @@ const DEFAULT_VOUCHER: Voucher = {
   code: 'BREW5',
   discount: 5000,
   discountType: 'fixed',
-  description: '₫5.000 member discount applied. Not combined with other offers.',
+  minOrderAmount: 0,
+  maxDiscountAmount: 5000,
+  description: 'Ưu đãi thành viên giảm 5.000đ trực tiếp',
 };
 
 export const useCartStore = create<CartStore>()(
@@ -242,40 +281,77 @@ export const useCartStore = create<CartStore>()(
         set({ items: [], appliedVoucher: null, voucherCode: '', voucherError: null });
       },
 
-      applyVoucher: (code: string) => {
+      applyVoucher: async (code: string) => {
         const trimmed = code.trim().toUpperCase();
         if (!trimmed) {
-          set({ voucherError: 'Vui lòng nhập mã giảm giá' });
+          set({ voucherError: 'Vui lòng nhập mã giảm giá.' });
           return false;
         }
 
-        if (trimmed === 'BREW5' || trimmed === 'BREWS') {
+        const subtotal = get().getSubtotal();
+
+        // 1. Thử gọi API Backend POST /orders/validate-voucher nếu server backend đang mở
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+          const res = await fetch(`${apiUrl}/orders/validate-voucher`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: trimmed, subtotal }),
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            const isPercent =
+              data.discountType === 'PERCENTAGE' || data.discountType === 'percentage';
+            const desc = isPercent
+              ? `Giảm ${data.discountValue}% (tối đa ${Number(data.maxDiscountAmount || 0).toLocaleString('vi-VN')}đ)`
+              : `Giảm ${Number(data.discountValue).toLocaleString('vi-VN')}đ trực tiếp`;
+
+            set({
+              voucherCode: data.code,
+              appliedVoucher: {
+                code: data.code,
+                discount: Number(data.discountValue),
+                discountType: isPercent ? 'percentage' : 'fixed',
+                minOrderAmount: data.minOrderAmount ? Number(data.minOrderAmount) : 0,
+                maxDiscountAmount: data.maxDiscountAmount ? Number(data.maxDiscountAmount) : undefined,
+                description: desc,
+              },
+              voucherError: null,
+            });
+            return true;
+          } else {
+            const errData = await res.json().catch(() => null);
+            const errMsg = errData?.message || `Mã khuyến mãi "${trimmed}" không hợp lệ.`;
+            set({ voucherError: errMsg });
+            return false;
+          }
+        } catch {
+          // 2. Fallback sang kiểm tra cục bộ (Local validation) khi backend offline hoặc lỗi mạng
+          const found = AVAILABLE_VOUCHERS.find((v) => v.code.toUpperCase() === trimmed);
+          if (!found) {
+            set({ voucherError: `Mã khuyến mãi "${trimmed}" không hợp lệ hoặc đã hết hạn.` });
+            return false;
+          }
+
+          if (found.minOrderAmount && subtotal < found.minOrderAmount) {
+            set({
+              voucherError: `Đơn hàng cần tối thiểu ${found.minOrderAmount.toLocaleString('vi-VN')}đ để áp dụng mã "${found.code}".`,
+            });
+            return false;
+          }
+
           set({
-            voucherCode: trimmed,
-            appliedVoucher: {
-              code: trimmed,
-              discount: 5000,
-              discountType: 'fixed',
-              description: '₫5.000 member discount applied. Not combined with other offers.',
-            },
+            voucherCode: found.code,
+            appliedVoucher: found,
             voucherError: null,
           });
           return true;
-        } else if (trimmed === 'BREWLITE10' || trimmed === 'BREW10') {
-          set({
-            voucherCode: trimmed,
-            appliedVoucher: {
-              code: trimmed,
-              discount: 10,
-              discountType: 'percentage',
-              description: '10% member discount applied. Maximum ₫30.000.',
-            },
-            voucherError: null,
-          });
-          return true;
-        } else {
-          set({ voucherError: 'Mã giảm giá không hợp lệ hoặc đã hết hạn.' });
-          return false;
         }
       },
 
@@ -371,11 +447,22 @@ export const useCartStore = create<CartStore>()(
         const { appliedVoucher, getSubtotal } = get();
         if (!appliedVoucher) return 0;
         const subtotal = getSubtotal();
-        if (appliedVoucher.discountType === 'fixed') {
-          return Math.min(appliedVoucher.discount, subtotal);
+
+        // Kiểm tra điều kiện đơn hàng tối thiểu
+        if (appliedVoucher.minOrderAmount && subtotal < appliedVoucher.minOrderAmount) {
+          return 0;
+        }
+
+        const isPercentage =
+          appliedVoucher.discountType === 'percentage' ||
+          appliedVoucher.discountType === 'PERCENTAGE';
+
+        if (isPercentage) {
+          const rawDiscount = Math.round((subtotal * appliedVoucher.discount) / 100);
+          const maxDiscount = appliedVoucher.maxDiscountAmount || rawDiscount;
+          return Math.min(rawDiscount, maxDiscount, subtotal);
         } else {
-          const discountVal = Math.round((subtotal * appliedVoucher.discount) / 100);
-          return Math.min(discountVal, 30000);
+          return Math.min(appliedVoucher.discount, subtotal);
         }
       },
 

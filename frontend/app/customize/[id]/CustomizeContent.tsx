@@ -108,6 +108,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   // TÍNH TOÁN GIÁ TIỀN THỜI GIAN THỰC (Realtime Pricing Calculation)
   const basePrice = product ? product.basePrice : 0;
 
+  // Chốt chặn tồn kho: Kiểm tra món hết hàng khi stock <= 0
+  const isOutOfStock = Boolean(product && (product.stock ?? 0) <= 0);
+
   // Phụ thu Size
   const sizeOption = SIZES.find((s) => s.size === selectedSize) || SIZES[0];
   const sizeExtra = sizeOption.extra;
@@ -145,6 +148,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   // Thêm vào giỏ hàng
   const handleAddToCart = () => {
     if (!product) return;
+
+    // Không cho thêm vào giỏ nếu món đã hết hàng
+    if (isOutOfStock) return;
 
     const milkOption = MILK_OPTIONS.find((m) => m.id === selectedMilk);
     const toppingsLabels = selectedToppings
@@ -263,11 +269,16 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
 
               <div className="p-6 sm:p-7">
                 <div className="flex items-center gap-2 mb-3">
-                  {product.bestseller && (
+                  {/* Nhãn trạng thái khi hết hàng */}
+                  {isOutOfStock ? (
+                    <span className="text-[10px] font-bold text-rose-200 bg-rose-950/60 border border-rose-500/40 px-2.5 py-1 rounded-full shadow-xs">
+                      Tạm hết hàng
+                    </span>
+                  ) : product.bestseller ? (
                     <span className="bg-[#f8f5ee] text-[#163d2c] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
                       BÁN CHẠY
                     </span>
-                  )}
+                  ) : null}
                   <span className="bg-[#24523c] text-[#d6ede0] text-[10px] font-medium px-2.5 py-1 rounded-full">
                     {product.category}
                   </span>
@@ -276,6 +287,19 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                 <h2 className="font-serif text-2xl sm:text-3xl font-bold text-white mb-3">
                   {product.name}
                 </h2>
+
+                {/* Khung cảnh báo khi hết hàng hoặc thiếu nguyên liệu */}
+                {isOutOfStock && (
+                  <div className="bg-[#261514] border border-rose-500/50 rounded-2xl p-4 flex items-start gap-3 text-xs text-rose-200 mb-5 shadow-sm">
+                    <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-sm text-rose-300">Món này hiện đang tạm hết hàng</p>
+                      <p className="text-[11px] text-rose-200/85 mt-1 leading-relaxed">
+                        Quán hiện tại đã hết nguyên liệu pha chế cho món này. Quý khách vui lòng chọn món khác trong thực đơn nhé!
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-xs sm:text-sm text-[#c2d1c7] leading-relaxed mb-6">
                   {product.description}
@@ -311,7 +335,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 1. CHỌN SIZE (S, M, L) - Task 4 */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-3">
-                Kích cỡ ly (Size)
+                Kích cỡ ly (Size) {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {SIZES.map((s) => {
@@ -321,20 +345,23 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                     <button
                       key={s.size}
                       type="button"
-                      onClick={() => setSelectedSize(s.size)}
-                      className={`p-3.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between ${
-                        isSelected
-                          ? 'bg-[#163d2c] text-white border-[#163d2c] shadow-sm scale-[1.02]'
-                          : 'bg-[#faf8f4] hover:bg-[#f0ebe1] text-[#33443a] border-[#e8e2d7]'
+                      disabled={isOutOfStock}
+                      onClick={() => !isOutOfStock && setSelectedSize(s.size)}
+                      className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-between ${
+                        isOutOfStock
+                          ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-[#163d2c] text-white border-[#163d2c] shadow-sm scale-[1.02] cursor-pointer'
+                          : 'bg-[#faf8f4] hover:bg-[#f0ebe1] text-[#33443a] border-[#e8e2d7] cursor-pointer'
                       }`}
                     >
                       <span className="font-serif text-xl font-bold block mb-1">
                         {s.size}
                       </span>
-                      <span className={`text-[11px] font-medium block ${isSelected ? 'text-[#c2d1c7]' : 'text-[#708076]'}`}>
+                      <span className={`text-[11px] font-medium block ${isOutOfStock ? 'text-gray-400' : isSelected ? 'text-[#c2d1c7]' : 'text-[#708076]'}`}>
                         {s.label}
                       </span>
-                      <span className={`text-xs font-semibold mt-2 block ${isSelected ? 'text-[#d6955b]' : 'text-[#163d2c]'}`}>
+                      <span className={`text-xs font-semibold mt-2 block ${isOutOfStock ? 'text-gray-400' : isSelected ? 'text-[#d6955b]' : 'text-[#163d2c]'}`}>
                         {formatVND(itemPrice)}
                       </span>
                     </button>
@@ -346,7 +373,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 2. TÙY CHỌN SỮA (Milk Preference) */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-3">
-                Loại sữa pha chế
+                Loại sữa pha chế {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
               </label>
               <div className="space-y-2.5">
                 {MILK_OPTIONS.map((m) => {
@@ -354,24 +381,28 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                   return (
                     <div
                       key={m.id}
-                      onClick={() => setSelectedMilk(m.id)}
-                      className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                        isSelected
-                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c]'
-                          : 'bg-[#faf8f4] border-[#e8e2d7] text-[#55695c] hover:bg-[#f3eee5]'
+                      onClick={() => !isOutOfStock && setSelectedMilk(m.id)}
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                        isOutOfStock
+                          ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c] cursor-pointer'
+                          : 'bg-[#faf8f4] border-[#e8e2d7] text-[#55695c] hover:bg-[#f3eee5] cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                            isSelected
+                            isOutOfStock
+                              ? 'border-gray-300 bg-gray-200'
+                              : isSelected
                               ? 'border-[#163d2c] bg-[#163d2c]'
                               : 'border-[#94a399] bg-white'
                           }`}
                         >
                           {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                         </div>
-                        <span className="text-xs font-semibold">{m.label}</span>
+                        <span className={`text-xs font-semibold ${isOutOfStock ? 'text-gray-400' : ''}`}>{m.label}</span>
                       </div>
                       <span className="text-[11px] text-[#708076] font-medium">Bao gồm</span>
                     </div>
@@ -392,28 +423,46 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {availableToppings.map((t) => {
                   const isSelected = selectedToppings.includes(t.id);
+                  // Kiểm tra tồn kho topping
+                  const isToppingOutOfStock =
+                    t.isAvailable === false || (t.stock !== undefined && t.stock !== null && t.stock <= 0);
+                  const isToppingDisabled = isOutOfStock || isToppingOutOfStock;
                   const priceNum = typeof t.price === 'number' ? t.price : parseFloat(String(t.price)) || 0;
+
                   return (
                     <div
                       key={t.id}
-                      onClick={() => handleToggleTopping(t.id)}
-                      className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                        isSelected
-                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c]'
-                          : 'bg-[#faf8f4] border-[#e8e2d7] text-[#44554b] hover:bg-[#f3eee5]'
+                      onClick={() => {
+                        if (!isToppingDisabled) {
+                          handleToggleTopping(t.id);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                        isToppingDisabled
+                          ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-60 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c] cursor-pointer'
+                          : 'bg-[#faf8f4] border-[#e8e2d7] text-[#44554b] hover:bg-[#f3eee5] cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                            isSelected
+                            isToppingDisabled
+                              ? 'border-gray-300 bg-gray-200'
+                              : isSelected
                               ? 'border-[#163d2c] bg-[#163d2c] text-white'
                               : 'border-[#94a399] bg-white'
                           }`}
                         >
                           {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                         </div>
-                        <span className="text-xs font-medium">{t.name}</span>
+                        <span className="text-xs font-medium">
+                          {t.name}{' '}
+                          {isToppingOutOfStock && (
+                            <span className="text-[10px] text-rose-600 font-semibold">(Hết)</span>
+                          )}
+                        </span>
                       </div>
                       <span className="text-xs font-semibold text-[#163d2c]">
                         +{formatVND(priceNum)}
@@ -427,19 +476,22 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 4. GHI CHÚ ĐỒ UỐNG (Drink note) */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-2">
-                Ghi chú cho Barista (Tùy chọn)
+                Ghi chú cho Barista (Tùy chọn) {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
               </label>
               <input
                 type="text"
+                disabled={isOutOfStock}
                 value={drinkNote}
                 onChange={(e) => setDrinkNote(e.target.value)}
-                placeholder="VD: Ít đá, 50% đường, mang đi..."
-                className="w-full text-xs px-4 py-3 rounded-xl border border-[#e8e2d7] bg-[#faf8f4] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163d2c] text-[#163d2c]"
+                placeholder={isOutOfStock ? "Món này hiện đang tạm hết hàng..." : "VD: Ít đá, 50% đường, mang đi..."}
+                className="w-full text-xs px-4 py-3 rounded-xl border border-[#e8e2d7] bg-[#faf8f4] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163d2c] text-[#163d2c] disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
             {/* 5. BẢNG TÍNH GIÁ CHI TIẾT (Price Breakdown) - Đúng chuẩn wireframe & Figma */}
-            <div className="bg-[#faf8f4] p-4 rounded-2xl border border-[#e8e2d7] space-y-2 mb-6 text-xs">
+            <div className={`bg-[#faf8f4] p-4 rounded-2xl border border-[#e8e2d7] space-y-2 mb-6 text-xs ${
+              isOutOfStock ? 'opacity-60' : ''
+            }`}>
               <div className="flex justify-between text-[#6e7d73]">
                 <span>Giá gốc sản phẩm:</span>
                 <span className="font-semibold text-[#14241b]">{formatVND(basePrice)}</span>
@@ -467,40 +519,57 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
 
             {/* 6. ĐIỀU CHỈNH SỐ LƯỢNG VÀ TỔNG TIỀN */}
             <div className="flex items-center justify-between gap-4 pt-2">
-              {/* Bộ đếm số lượng */}
-              <div className="flex items-center border border-[#d2ded1] rounded-2xl bg-[#faf8f4] p-1 shadow-xs">
+              {/* Bộ đếm số lượng (khóa khi món hết hàng) */}
+              <div
+                className={`flex items-center border border-[#d2ded1] rounded-2xl bg-[#faf8f4] p-1 shadow-xs ${
+                  isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
                 <button
                   type="button"
                   onClick={handleDecreaseQty}
-                  disabled={quantity <= 1}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  disabled={isOutOfStock || quantity <= 1}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
                 </button>
                 <span className="w-10 text-center font-bold text-sm text-[#163d2c]">
-                  {quantity}
+                  {isOutOfStock ? 0 : quantity}
                 </span>
                 <button
                   type="button"
                   onClick={handleIncreaseQty}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] transition-colors cursor-pointer"
+                  disabled={isOutOfStock}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-[#163d2c] hover:bg-[#e4ede3] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
               </div>
 
-              {/* Nút Thêm vào giỏ hàng */}
+              {/* Nút Thêm vào giỏ hàng (căn giữa chữ và ẩn 0đ khi hết hàng) */}
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="flex-1 bg-[#163d2c] hover:bg-[#1a4734] text-white py-3.5 px-6 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                disabled={isOutOfStock}
+                className={`flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center ${
+                  isOutOfStock
+                    ? 'bg-neutral-400 text-neutral-100 cursor-not-allowed justify-center shadow-none'
+                    : 'bg-[#163d2c] hover:bg-[#1a4734] text-white cursor-pointer justify-between active:scale-[0.99]'
+                }`}
               >
                 <span>
-                  {existingCartItem ? 'Cập nhật giỏ hàng' : 'Thêm vào giỏ'}
+                  {isOutOfStock
+                    ? 'Món này tạm hết hàng'
+                    : existingCartItem
+                    ? 'Cập nhật giỏ hàng'
+                    : 'Thêm vào giỏ'}
                 </span>
-                <span className="font-serif font-bold text-base text-[#d6955b]">
-                  {formatVND(totalPrice)}
-                </span>
+                {/* Chỉ hiện giá tiền khi món CÒN HÀNG */}
+                {!isOutOfStock && (
+                  <span className="font-serif font-bold text-base text-[#d6955b]">
+                    {formatVND(totalPrice)}
+                  </span>
+                )}
               </button>
             </div>
 

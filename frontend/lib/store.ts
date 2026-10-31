@@ -112,6 +112,7 @@ interface CartStore {
   voucherCode: string;
   appliedVoucher: Voucher | null;
   voucherError: string | null;
+  useLoyaltyPoints: boolean;
   orders: Order[];
   profile: UserProfileState;
 
@@ -128,6 +129,7 @@ interface CartStore {
   clearCart: () => void;
   applyVoucher: (code: string) => Promise<boolean>;
   removeVoucher: () => void;
+  setUseLoyaltyPoints: (use: boolean) => void;
 
   // Checkout & Orders
   createOrder: (paymentInfo: {
@@ -206,6 +208,7 @@ export const useCartStore = create<CartStore>()(
       voucherCode: 'BREW5',
       appliedVoucher: DEFAULT_VOUCHER,
       voucherError: null,
+      useLoyaltyPoints: false,
       orders: INITIAL_ORDERS as Order[],
       profile: USER_PROFILE,
       authToken: null,
@@ -278,7 +281,7 @@ export const useCartStore = create<CartStore>()(
       },
 
       clearCart: () => {
-        set({ items: [], appliedVoucher: null, voucherCode: '', voucherError: null });
+        set({ items: [], appliedVoucher: null, voucherCode: '', voucherError: null, useLoyaltyPoints: false });
       },
 
       applyVoucher: async (code: string) => {
@@ -359,6 +362,10 @@ export const useCartStore = create<CartStore>()(
         set({ appliedVoucher: null, voucherCode: '', voucherError: null });
       },
 
+      setUseLoyaltyPoints: (use: boolean) => {
+        set({ useLoyaltyPoints: use });
+      },
+
       createOrder: ({ customerName, phoneNumber, orderNote, paymentMethod }) => {
         const { items, getSubtotal, getDiscount, getTotal, orders, profile } = get();
         const subtotal = getSubtotal();
@@ -414,6 +421,7 @@ export const useCartStore = create<CartStore>()(
           items: [],
           appliedVoucher: null,
           voucherCode: '',
+          useLoyaltyPoints: false,
         });
 
         return nextId;
@@ -484,6 +492,7 @@ export const useCartStore = create<CartStore>()(
         items: state.items,
         voucherCode: state.voucherCode,
         appliedVoucher: state.appliedVoucher,
+        useLoyaltyPoints: state.useLoyaltyPoints,
         orders: state.orders,
         profile: state.profile,
         authToken: state.authToken,

@@ -29,9 +29,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile, appliedVoucher } = useCartStore();
-
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile, appliedVoucher, useLoyaltyPoints, setUseLoyaltyPoints } = useCartStore();
 
   useEffect(() => {
     setMounted(true);

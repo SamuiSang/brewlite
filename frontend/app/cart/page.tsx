@@ -18,6 +18,9 @@ export default function CartPage() {
     items,
     appliedVoucher,
     voucherError,
+    useLoyaltyPoints,
+    setUseLoyaltyPoints,
+    profile,
     updateQuantity,
     removeItem,
     applyVoucher,
@@ -38,7 +41,14 @@ export default function CartPage() {
   const totalItems = mounted ? getTotalItems() : 0;
   const subtotal = mounted ? getSubtotal() : 0;
   const discount = mounted ? getDiscount() : 0;
-  const total = mounted ? getTotal() : 0;
+  const baseTotal = mounted ? getTotal() : 0;
+
+  // Tính điểm thưởng tích lũy (Loyalty Points)
+  const availablePoints = mounted ? (profile?.points ?? 129) : 129;
+  const maxPointsDiscount = Math.min(availablePoints * 1000, Math.max(0, subtotal - discount));
+  const pointsUsed = useLoyaltyPoints ? Math.ceil(maxPointsDiscount / 1000) : 0;
+  const pointsDiscount = useLoyaltyPoints ? pointsUsed * 1000 : 0;
+  const finalTotal = Math.max(0, baseTotal - pointsDiscount);
 
   const isVoucherEligible = !appliedVoucher?.minOrderAmount || subtotal >= appliedVoucher.minOrderAmount;
 
@@ -370,6 +380,35 @@ export default function CartPage() {
                     <span>{voucherError}</span>
                   </div>
                 )}
+
+                {/* Dùng điểm tích lũy (Loyalty Points) */}
+                <div className="mt-3.5 pt-3.5 border-t border-[#f0ebe0]">
+                  <div className="p-3.5 bg-[#f4f7f5] rounded-2xl border border-[#d8e5dd] flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-xs text-[#14241b]">
+                          Dùng điểm tích lũy
+                        </p>
+                        <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
+                          1 điểm = 1.000đ
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#6e8074] mt-0.5">
+                        Điểm hiện có: <strong className="text-[#24523c] font-bold">{availablePoints}</strong>
+                        {availablePoints > 0 && ` (giảm tối đa ${formatVND(maxPointsDiscount)})`}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useLoyaltyPoints}
+                        disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
+                        onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                        className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Price Calculations */}
@@ -391,10 +430,17 @@ export default function CartPage() {
                   </div>
                 ) : null}
 
+                {pointsDiscount > 0 && (
+                  <div className="flex justify-between text-[#266345]">
+                    <span>Đổi điểm thưởng ({pointsUsed} điểm)</span>
+                    <span className="font-semibold">-{formatVND(pointsDiscount)}</span>
+                  </div>
+                )}
+
                 <div className="pt-4 border-t border-[#f0ebe0] flex items-baseline justify-between">
                   <span className="text-xs text-[#6e8074] font-medium">Tổng cộng</span>
                   <span className="font-serif text-2xl sm:text-3xl font-bold text-[#14241b]">
-                    {formatVND(total)}
+                    {formatVND(finalTotal)}
                   </span>
                 </div>
               </div>

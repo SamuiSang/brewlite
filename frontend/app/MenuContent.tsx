@@ -90,6 +90,13 @@ export default function MenuContent() {
     e.preventDefault();
     e.stopPropagation();
 
+    // Chốt chặn tồn kho: Không cho thêm món khi hết hàng (stock <= 0)
+    if ((product.stock ?? 0) <= 0) {
+      setToastMessage(`Món "${product.name}" hiện đã hết hàng`);
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
     addItem({
       drinkId: product.id,
       name: product.name,
@@ -339,79 +346,103 @@ export default function MenuContent() {
         {/* 3. Trạng thái Hiển thị danh sách sản phẩm (Success State) */}
         {!isLoading && products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-2xl overflow-hidden border border-[#e8e2d7] shadow-xs hover:shadow-md transition-all duration-200 flex flex-col group"
-              >
-                {/* Ảnh món */}
-                <Link
-                  href={`/customize/${product.id}`}
-                  className="relative w-full aspect-[16/10] overflow-hidden bg-[#e8e2d8] block"
+            {products.map((product) => {
+              // Kiểm tra món hết hàng khi stock <= 0
+              const isOutOfStock = (product.stock ?? 0) <= 0;
+
+              return (
+                <div
+                  key={product.id}
+                  className={`bg-white rounded-2xl overflow-hidden border border-[#e8e2d7] shadow-xs hover:shadow-md transition-all duration-200 flex flex-col group ${
+                    isOutOfStock ? 'opacity-65 grayscale-[25%]' : ''
+                  }`}
                 >
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  {product.bestseller && (
-                    <span className="absolute top-3 left-3 bg-[#163d2c] text-[#f7f4ee] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-sm">
-                      BÁN CHẠY
-                    </span>
-                  )}
-                </Link>
+                  {/* Ảnh món */}
+                  <Link
+                    href={`/customize/${product.id}`}
+                    className="relative w-full aspect-[16/10] overflow-hidden bg-[#e8e2d8] block"
+                  >
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {/* Huy hiệu Bán chạy (chỉ hiện khi còn hàng) */}
+                    {!isOutOfStock && product.bestseller && (
+                      <span className="absolute top-3 left-3 bg-[#163d2c] text-[#f7f4ee] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full shadow-sm">
+                        BÁN CHẠY
+                      </span>
+                    )}
+                  </Link>
 
-                {/* Thông tin món */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="text-[11px] font-medium text-[#7a8a7f] uppercase tracking-wider mb-1">
-                      {product.category}
-                    </div>
-                    <Link href={`/customize/${product.id}`}>
-                      <h3 className="font-serif text-lg font-bold text-[#14241b] hover:text-[#163d2c] transition-colors leading-snug">
-                        {product.name}
-                      </h3>
-                    </Link>
-                    <p className="text-xs text-[#708076] mt-1.5 mb-4 line-clamp-2">
-                      {product.subtitle || product.description}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-[#f2eee7]">
-                    <span className="font-serif text-base font-bold text-[#14241b]">
-                      {formatVND(product.basePrice)}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/customize/${product.id}`}
-                        className="text-xs font-semibold text-[#546b5a] hover:text-[#163d2c] bg-[#f4f1ea] hover:bg-[#ece6db] px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Tùy chỉnh
-                      </Link>
-
-                      <button
-                        onClick={(e) => handleQuickAdd(product, e)}
-                        title="Thêm nhanh vào giỏ hàng (Size S)"
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-xs cursor-pointer ${
-                          addedId === product.id
-                            ? 'bg-emerald-600 text-white scale-110'
-                            : 'bg-[#d6955b] hover:bg-[#c4844a] text-white active:scale-95'
-                        }`}
-                      >
-                        {addedId === product.id ? (
-                          <Check className="w-4 h-4 stroke-[3]" />
-                        ) : (
-                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                  {/* Thông tin món */}
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[11px] font-medium text-[#7a8a7f] uppercase tracking-wider">
+                          {product.category}
+                        </span>
+                        {/* Nhãn báo tạm hết hàng */}
+                        {isOutOfStock && (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                            Tạm hết hàng
+                          </span>
                         )}
-                      </button>
+                      </div>
+                      <Link href={`/customize/${product.id}`}>
+                        <h3 className="font-serif text-lg font-bold text-[#14241b] hover:text-[#163d2c] transition-colors leading-snug">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      <p className="text-xs text-[#708076] mt-1.5 mb-4 line-clamp-2">
+                        {product.subtitle || product.description}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-[#f2eee7]">
+                      <span className="font-serif text-base font-bold text-[#14241b]">
+                        {formatVND(product.basePrice)}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/customize/${product.id}`}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                            isOutOfStock
+                              ? 'text-[#7e8b83] bg-[#ece8df] hover:bg-[#e2ded5]'
+                              : 'text-[#546b5a] hover:text-[#163d2c] bg-[#f4f1ea] hover:bg-[#ece6db]'
+                          }`}
+                        >
+                          {isOutOfStock ? 'Xem chi tiết' : 'Tùy chỉnh'}
+                        </Link>
+
+                        {/* Vô hiệu hóa nút Thêm nhanh khi món hết hàng */}
+                        <button
+                          onClick={(e) => handleQuickAdd(product, e)}
+                          disabled={isOutOfStock}
+                          title={isOutOfStock ? 'Món này tạm hết hàng' : 'Thêm nhanh vào giỏ hàng (Size S)'}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-xs ${
+                            isOutOfStock
+                              ? 'bg-[#d8d3c8] text-[#938d82] cursor-not-allowed opacity-70'
+                              : addedId === product.id
+                              ? 'bg-emerald-600 text-white scale-110 cursor-pointer'
+                              : 'bg-[#d6955b] hover:bg-[#c4844a] text-white active:scale-95 cursor-pointer'
+                          }`}
+                        >
+                          {addedId === product.id ? (
+                            <Check className="w-4 h-4 stroke-[3]" />
+                          ) : (
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

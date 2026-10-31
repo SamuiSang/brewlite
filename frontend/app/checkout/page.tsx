@@ -512,35 +512,6 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Dùng điểm thưởng */}
-              <div className="pt-4 border-t border-[#f0ebe0]">
-                <div className="p-3.5 bg-[#f4f7f5] rounded-2xl border border-[#d8e5dd] flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-xs text-[#14241b]">
-                        Dùng điểm tích lũy
-                      </p>
-                      <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
-                        1 điểm = 1.000đ
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#6e8074] mt-0.5">
-                      Điểm hiện có: <strong className="text-[#24523c] font-bold">{availablePoints}</strong>
-                      {availablePoints > 0 && ` (giảm tối đa ${formatVND(maxPointsDiscount)})`}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useLoyaltyPoints}
-                      disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
-                      onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                      className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
-                    />
-                  </label>
-                </div>
-              </div>
-
               {/* Subtotal, discount & total */}
               <div className="pt-4 border-t border-[#f0ebe0] space-y-2 text-xs text-[#6e8074]">
                 <div className="flex justify-between">

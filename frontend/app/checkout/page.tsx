@@ -29,9 +29,7 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
-
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile, appliedVoucher, useLoyaltyPoints, setUseLoyaltyPoints } = useCartStore();
 
   useEffect(() => {
     setMounted(true);
@@ -102,6 +100,7 @@ export default function CheckoutPage() {
             customerName: customerName || authUser.fullName,
             phone: phoneNumber,
             notes: orderNote,
+            promotionCode: appliedVoucher?.code || undefined,
             useLoyaltyPoints: pointsUsed,
             items:
               items.length > 0
@@ -513,35 +512,6 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              {/* Dùng điểm thưởng */}
-              <div className="pt-4 border-t border-[#f0ebe0]">
-                <div className="p-3.5 bg-[#f4f7f5] rounded-2xl border border-[#d8e5dd] flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-xs text-[#14241b]">
-                        Dùng điểm tích lũy
-                      </p>
-                      <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
-                        1 điểm = 1.000đ
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#6e8074] mt-0.5">
-                      Điểm hiện có: <strong className="text-[#24523c] font-bold">{availablePoints}</strong>
-                      {availablePoints > 0 && ` (giảm tối đa ${formatVND(maxPointsDiscount)})`}
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={useLoyaltyPoints}
-                      disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
-                      onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                      className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
-                    />
-                  </label>
-                </div>
-              </div>
-
               {/* Subtotal, discount & total */}
               <div className="pt-4 border-t border-[#f0ebe0] space-y-2 text-xs text-[#6e8074]">
                 <div className="flex justify-between">
@@ -551,7 +521,7 @@ export default function CheckoutPage() {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Ưu đãi thành viên</span>
+                    <span>Khuyến mãi {appliedVoucher ? `(${appliedVoucher.code})` : ''}</span>
                     <span className="font-semibold">-{formatVND(discount)}</span>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -29,10 +29,18 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
+  // Task 10.2 — Idempotency key
+  // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
+  // Idempotency-Key để backend nhận biết request trùng (double-click / retry)
+  // và chỉ xử lý đúng 1 lần. Reset UUID mới sau khi thanh toán thất bại.
+  const idempotencyKeyRef = useRef<string>('');
+
   const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile, appliedVoucher, useLoyaltyPoints, setUseLoyaltyPoints } = useCartStore();
 
   useEffect(() => {
     setMounted(true);
+    // Task 10.2: sinh UUID phía client, an toàn với SSR/prerender
+    idempotencyKeyRef.current = crypto.randomUUID();
   }, []);
 
   // Kiểm tra đăng nhập: nếu chưa đăng nhập thì tự động chuyển hướng đến /signin
@@ -81,6 +89,8 @@ export default function CheckoutPage() {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
     };
+    // Task 10.2: Gắn idempotency-key vào mọi request thanh toán
+    authHeaders['Idempotency-Key'] = idempotencyKeyRef.current;
 
     try {
       // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế
@@ -142,6 +152,8 @@ export default function CheckoutPage() {
 
     // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
     if (!isSuccess) {
+      // Task 10.2: Reset idempotency-key để lần thử lại là request hoàn toàn mới
+      idempotencyKeyRef.current = crypto.randomUUID();
       setIsProcessing(false);
       router.push('/payment-failed');
       return;
@@ -510,6 +522,35 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+
+              {/* Dùng điểm thưởng */}
+              <div className="pt-4 border-t border-[#f0ebe0]">
+                <div className="p-3.5 bg-[#f4f7f5] rounded-2xl border border-[#d8e5dd] flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-xs text-[#14241b]">
+                        Dùng điểm tích lũy
+                      </p>
+                      <span className="text-[10px] bg-[#d6ede0] text-[#1e583d] font-bold px-1.5 py-0.5 rounded-full">
+                        1 điểm = 1.000đ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#6e8074] mt-0.5">
+                      Điểm hiện có: <strong className="text-[#24523c] font-bold">{availablePoints}</strong>
+                      {availablePoints > 0 && ` (giảm tối đa ${formatVND(maxPointsDiscount)})`}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useLoyaltyPoints}
+                      disabled={availablePoints <= 0 || (subtotal - discount) <= 0}
+                      onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                      className="w-4 h-4 accent-[#24523c] rounded cursor-pointer disabled:opacity-50"
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Subtotal, discount & total */}

@@ -19,4 +19,29 @@ export class CreatePaymentDto {
   @IsBoolean()
   @IsOptional()
   mockSuccess?: boolean;
+
+  // Cờ thanh toán 2 bước (Khởi tạo PENDING + trả về QR -> Webhook callback xác nhận)
+  @IsBoolean()
+  @IsOptional()
+  twoStep?: boolean;
+}
+
+export class PaymentWebhookDto {
+  @IsString()
+  @IsNotEmpty({ message: 'paymentId không được để trống' })
+  paymentId: string;
+
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
+
+  @IsString()
+  @IsIn(['SUCCESS', 'FAILED'], {
+    message: 'outcome phải là SUCCESS hoặc FAILED',
+  })
+  outcome: 'SUCCESS' | 'FAILED';
+
+  @IsString()
+  @IsOptional()
+  transactionRef?: string;
 }

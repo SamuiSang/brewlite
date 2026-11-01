@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PaymentsService } from './payments.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { jest } from '@jest/globals';
 
-describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán)', () => {
+describe('PaymentsService (Task 8 BE & Task 10 Core - Idempotency & Webhook 2 bước)', () => {
   let service: PaymentsService;
   let prisma: any;
 
@@ -23,6 +23,7 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
       payment: {
         findUnique: jest.fn<any>(),
         create: jest.fn<any>(),
+        update: jest.fn<any>(),
       },
       order: {
         findFirst: jest.fn<any>(),
@@ -48,7 +49,7 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
     service = module.get<PaymentsService>(PaymentsService);
   });
 
-  describe('Chống trừ tiền 2 lần (Idempotency-Key)', () => {
+  describe('Chống trừ tiền 2 lần (Idempotency-Key) - 1 bước truyền thống', () => {
     it('thanh toán lần đầu thành công: tạo bản ghi Payment, cập nhật Order sang PAID và cộng điểm Loyalty', async () => {
       prisma.payment.findUnique.mockResolvedValue(null); // Chưa tồn tại key
       prisma.order.findFirst.mockResolvedValue(mockOrder);
@@ -142,6 +143,7 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
         orderId: 'ord-100',
         idempotencyKey: 'idem-race-key',
         status: 'SUCCESS',
+        amount: new Prisma.Decimal(70000),
       };
       // Khi catch lỗi P2002, query lại thì thấy bản ghi đã được tạo bởi request 1
       prisma.payment.findUnique.mockResolvedValueOnce(existingPayment);
@@ -233,6 +235,236 @@ describe('PaymentsService (Task 10 - Idempotency-Key & Chặn trùng thanh toán
         }),
       );
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Thanh toán 2 bước & Webhook Callback (Task 8 & Task 10)', () => {
+    it('Bước 1 (twoStep: true): tạo Payment PENDING, giữ nguyên Order = PENDING, trả về mã QR Sandbox', async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+      prisma.order.findFirst.mockResolvedValue(mockOrder);
+
+      const mockPendingPayment = {
+        id: 'pay-twostep-1',
+        orderId: 'ord-100',
+        idempotencyKey: 'idem-twostep-1',
+        method: 'VNPAY',
+        status: 'PENDING',
+        amount: new Prisma.Decimal(70000),
+      };
+      prisma.payment.create.mockResolvedValue(mockPendingPayment);
+
+      const dto = {
+        orderId: 'ord-100',
+        method: 'VNPAY',
+        idempotencyKey: 'idem-twostep-1',
+        twoStep: true,
+      };
+
+      const result = await service.processMockPayment(dto);
+
+      expect(result.twoStep).toBe(true);
+      expect(result.paymentId).toBe('pay-twostep-1');
+      expect(result.qrPayload).toBeDefined();
+      expect(result.qrCodeUrl).toBeDefined();
+      expect(result.qrPayload).toContain('pay-twostep-1');
+      // Tạo Payment với status = PENDING
+      expect(prisma.payment.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          orderId: 'ord-100',
+          idempotencyKey: 'idem-twostep-1',
+          status: 'PENDING',
+        }),
+      });
+      // KHÔNG tự động cập nhật Order thành PAID (Order vẫn giữ nguyên PENDING)
+      expect(prisma.order.update).not.toHaveBeenCalled();
+      // KHÔNG cộng điểm loyalty ở bước 1
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('Bước 1 (twoStep: true): nếu gửi trùng idempotencyKey, trả về giao dịch cũ không tạo mới', async () => {
+      const existingPendingPayment = {
+        id: 'pay-twostep-1',
+        orderId: 'ord-100',
+        idempotencyKey: 'idem-twostep-1',
+        method: 'VNPAY',
+        status: 'PENDING',
+        amount: new Prisma.Decimal(70000),
+      };
+      prisma.payment.findUnique.mockResolvedValue(existingPendingPayment);
+      prisma.order.findUnique.mockResolvedValue(mockOrder);
+
+      const dto = {
+        orderId: 'ord-100',
+        method: 'VNPAY',
+        idempotencyKey: 'idem-twostep-1',
+        twoStep: true,
+      };
+
+      const result = await service.processMockPayment(dto);
+
+      expect(result.isIdempotent).toBe(true);
+      expect(result.paymentId).toBe('pay-twostep-1');
+      expect(prisma.payment.create).not.toHaveBeenCalled();
+    });
+
+    it('Bước 2 (handlePaymentWebhook với outcome = SUCCESS): cập nhật Payment = SUCCESS, Order = PAID và cộng điểm Loyalty', async () => {
+      const pendingPayment = {
+        id: 'pay-twostep-1',
+        orderId: 'ord-100',
+        status: 'PENDING',
+        amount: new Prisma.Decimal(70000),
+        order: {
+          ...mockOrder,
+          status: 'PENDING',
+        },
+      };
+
+      prisma.payment.findUnique.mockResolvedValue(pendingPayment);
+      prisma.payment.update.mockResolvedValue({
+        ...pendingPayment,
+        status: 'SUCCESS',
+      });
+      prisma.order.update.mockResolvedValue({
+        ...mockOrder,
+        status: 'PAID',
+      });
+
+      const webhookDto = {
+        paymentId: 'pay-twostep-1',
+        outcome: 'SUCCESS' as const,
+        transactionRef: 'SANDBOX_TXN_999',
+      };
+
+      const result = await service.handlePaymentWebhook(webhookDto);
+
+      expect(result.success).toBe(true);
+      expect(result.isIdempotent).toBe(false);
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pay-twostep-1' },
+        data: { status: 'SUCCESS' },
+      });
+      expect(prisma.order.update).toHaveBeenCalledWith({
+        where: { id: 'ord-100' },
+        data: { status: 'PAID' },
+        include: expect.any(Object),
+      });
+      // Cộng điểm thưởng Loyalty cho người dùng
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { loyaltyPoints: { increment: 7 } },
+      });
+    });
+
+    it('Bước 2 (handlePaymentWebhook với outcome = FAILED): cập nhật Payment = FAILED, Order = PAYMENT_FAILED, không cộng điểm', async () => {
+      const pendingPayment = {
+        id: 'pay-twostep-1',
+        orderId: 'ord-100',
+        status: 'PENDING',
+        amount: new Prisma.Decimal(70000),
+        order: {
+          ...mockOrder,
+          status: 'PENDING',
+        },
+      };
+
+      prisma.payment.findUnique.mockResolvedValue(pendingPayment);
+      prisma.payment.update.mockResolvedValue({
+        ...pendingPayment,
+        status: 'FAILED',
+      });
+      prisma.order.update.mockResolvedValue({
+        ...mockOrder,
+        status: 'PAYMENT_FAILED',
+      });
+
+      const webhookDto = {
+        paymentId: 'pay-twostep-1',
+        outcome: 'FAILED' as const,
+        transactionRef: 'SANDBOX_TXN_FAIL',
+      };
+
+      const result = await service.handlePaymentWebhook(webhookDto);
+
+      expect(result.success).toBe(false);
+      expect(prisma.payment.update).toHaveBeenCalledWith({
+        where: { id: 'pay-twostep-1' },
+        data: { status: 'FAILED' },
+      });
+      expect(prisma.order.update).toHaveBeenCalledWith({
+        where: { id: 'ord-100' },
+        data: { status: 'PAYMENT_FAILED' },
+        include: expect.any(Object),
+      });
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('Bước 2 (Idempotency): nếu Webhook gửi lại cho Payment đã SUCCESS, trả về idempotent response và KHÔNG cộng điểm hay cập nhật lần 2', async () => {
+      const alreadySuccessPayment = {
+        id: 'pay-twostep-1',
+        orderId: 'ord-100',
+        status: 'SUCCESS',
+        amount: new Prisma.Decimal(70000),
+        order: {
+          ...mockOrder,
+          status: 'PAID',
+        },
+      };
+
+      prisma.payment.findUnique.mockResolvedValue(alreadySuccessPayment);
+
+      const webhookDto = {
+        paymentId: 'pay-twostep-1',
+        outcome: 'SUCCESS' as const,
+        transactionRef: 'SANDBOX_TXN_999',
+      };
+
+      const result = await service.handlePaymentWebhook(webhookDto);
+
+      expect(result.isIdempotent).toBe(true);
+      expect(result.success).toBe(true);
+      // KHÔNG gọi update Payment, Order hay User
+      expect(prisma.payment.update).not.toHaveBeenCalled();
+      expect(prisma.order.update).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('Bước 2: ném NotFoundException khi paymentId không tồn tại', async () => {
+      prisma.payment.findUnique.mockResolvedValue(null);
+
+      const webhookDto = {
+        paymentId: 'pay-nonexistent',
+        outcome: 'SUCCESS' as const,
+      };
+
+      await expect(service.handlePaymentWebhook(webhookDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('Bước 2: ném BadRequestException nếu đơn hàng gắn liền đã bị CANCELLED', async () => {
+      const cancelledPayment = {
+        id: 'pay-twostep-cancelled',
+        orderId: 'ord-100',
+        status: 'PENDING',
+        order: {
+          ...mockOrder,
+          status: 'CANCELLED',
+        },
+      };
+
+      prisma.payment.findUnique.mockResolvedValue(cancelledPayment);
+
+      const webhookDto = {
+        paymentId: 'pay-twostep-cancelled',
+        outcome: 'SUCCESS' as const,
+      };
+
+      await expect(service.handlePaymentWebhook(webhookDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.handlePaymentWebhook(webhookDto)).rejects.toThrow(
+        /đã bị hủy/,
+      );
     });
   });
 });

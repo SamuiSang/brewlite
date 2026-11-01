@@ -55,8 +55,9 @@ model Product {
   createdAt   DateTime @default(now()) @map("created_at")
 
   // Relationships
-  category   Category    @relation(fields: [categoryId], references: [id])
-  orderItems OrderItem[]
+  category    Category     @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  recipeItems RecipeItem[]
 
   @@map("products")
 }
@@ -164,4 +165,35 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
+}
+
+// 10. Bảng Tồn kho Nguyên vật liệu thô (Task 2, 6, 10.1 - Chiến)
+model Ingredient {
+  id        String   @id @default(uuid())
+  name      String
+  unit      String   // g, ml, cái...
+  stock     Int      @default(0)
+  version   Int      @default(1) // Phục vụ Optimistic Lock khi đặt đơn
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  recipeItems RecipeItem[]
+
+  @@map("ingredients")
+}
+
+// 11. Bảng Định mức công thức pha chế 1 ly (Task 2, 6, 10.1 - Chiến)
+model RecipeItem {
+  id           String @id @default(uuid())
+  productId    String @map("product_id")
+  ingredientId String @map("ingredient_id")
+  amount       Int    // Định mức cho 1 ly theo đơn vị của Ingredient
+
+  // Relationships
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, ingredientId])
+  @@map("recipe_items")
 }

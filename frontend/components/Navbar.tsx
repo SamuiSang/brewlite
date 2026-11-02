@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, ShoppingBag, LogOut, User, ChevronDown } from 'lucide-react';
+import { Search, ShoppingBag, LogOut, User, ChevronDown, Coffee } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 
 export default function Navbar() {
@@ -54,7 +54,7 @@ export default function Navbar() {
   // Lấy tên hiển thị ngắn gọn (tên cuối)
   const displayName = hasHydrated && authUser
     ? authUser.fullName.split(' ').pop() || authUser.fullName
-    : 'Duy';
+    : 'Tài khoản';
 
   const isLoggedIn = hasHydrated && !!authUser;
 
@@ -151,6 +151,14 @@ export default function Navbar() {
                   >
                     <User className="w-3.5 h-3.5" />
                     <span>Tài khoản & Điểm thưởng</span>
+                  </Link>
+                  <Link
+                    href="/admin/recipes"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#c2d1c7] hover:bg-[#1d4e38] hover:text-white transition-colors border-t border-[#234d39]"
+                  >
+                    <Coffee className="w-3.5 h-3.5 text-[#d6955b]" />
+                    <span>Quản lý Định lượng (BOM)</span>
                   </Link>
                   <div className="border-t border-[#234d39]" />
                   <button

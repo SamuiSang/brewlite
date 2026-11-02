@@ -533,9 +533,23 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
                 </button>
-                <span className="w-10 text-center font-bold text-sm text-[#163d2c]">
-                  {isOutOfStock ? 0 : quantity}
-                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  disabled={isOutOfStock}
+                  value={isOutOfStock ? 0 : quantity}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      setQuantity(Math.min(parsed, 9999));
+                    } else if (raw === '') {
+                      setQuantity(1);
+                    }
+                  }}
+                  className="w-12 text-center font-bold text-sm text-[#163d2c] bg-white border border-[#d2ded1] rounded-lg py-1 px-1 focus:outline-none focus:ring-1 focus:ring-[#163d2c] shadow-2xs mx-1"
+                  aria-label="Số lượng ly"
+                />
                 <button
                   type="button"
                   onClick={handleIncreaseQty}

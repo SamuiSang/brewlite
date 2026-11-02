@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { INITIAL_ORDERS, USER_PROFILE } from './data';
 
 export interface CartItem {
   id: string;
@@ -74,9 +73,10 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderCode?: string;
   date: string;
   title: string;
-  status: 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
   statusLabel: string;
   total: number;
   subtotal: number;
@@ -105,7 +105,19 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  phone?: string;
+  loyaltyPoints?: number;
 }
+
+const EMPTY_PROFILE: UserProfileState = {
+  name: '',
+  email: '',
+  phone: '',
+  memberSince: 'Thành viên mới',
+  points: 0,
+  nextTier: 150,
+  verified: true,
+};
 
 interface CartStore {
   items: CartItem[];
@@ -140,8 +152,10 @@ interface CartStore {
   }) => string;
 
   // Auth actions
-  setAuth: (token: string, user: AuthUser) => void;
+  setAuth: (token: string, user: AuthUser) => Promise<void>;
   clearAuth: () => void;
+  fetchProfile: () => Promise<void>;
+  fetchMyOrders: () => Promise<void>;
 
   // Profile actions
   updateProfile: (updated: Partial<UserProfileState>) => void;
@@ -154,63 +168,41 @@ interface CartStore {
   getOrderById: (id: string) => Order | undefined;
 }
 
-// Initial mock cart items matching the screenshots
-const INITIAL_CART_ITEMS: CartItem[] = [
-  {
-    id: 'cart-1',
-    drinkId: 'brown-sugar-latte',
-    name: 'Brown Sugar Latte',
-    subtitle: 'Espresso · oat milk option',
-    image: '/images/brown-sugar-latte.png',
-    size: 'L',
-    sizeLabel: 'Large',
-    milk: 'oat',
-    milkLabel: 'Oat milk',
-    toppings: [],
-    toppingsLabels: [],
-    note: 'Less sweet, please.',
-    unitPrice: 65000,
-    quantity: 1,
-    optionsLabel: 'Large · Oat milk',
-  },
-  {
-    id: 'cart-2',
-    drinkId: 'flat-white',
-    name: 'Flat White',
-    subtitle: 'Double shot · silky milk',
-    image: '/images/flat-white.png',
-    size: 'S',
-    sizeLabel: 'Regular',
-    milk: 'dairy',
-    milkLabel: 'Dairy milk',
-    toppings: ['extra-shot'],
-    toppingsLabels: ['Extra shot'],
-    note: '',
-    unitPrice: 59000,
-    quantity: 1,
-    optionsLabel: 'Regular · Extra shot',
-  },
-];
+function getStoredCartForUser(userId?: string): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const key = `brewlite_cart_${userId || 'guest'}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error('Lỗi đọc giỏ hàng từ localStorage:', e);
+  }
+  return [];
+}
 
-const DEFAULT_VOUCHER: Voucher = {
-  code: 'BREW5',
-  discount: 5000,
-  discountType: 'fixed',
-  minOrderAmount: 0,
-  maxDiscountAmount: 5000,
-  description: 'Ưu đãi thành viên giảm 5.000đ trực tiếp',
-};
+function saveCartForUser(userId: string | undefined, items: CartItem[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = `brewlite_cart_${userId || 'guest'}`;
+    localStorage.setItem(key, JSON.stringify(items));
+  } catch (e) {
+    console.error('Lỗi ghi giỏ hàng vào localStorage:', e);
+  }
+}
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
-      items: INITIAL_CART_ITEMS,
-      voucherCode: 'BREW5',
-      appliedVoucher: DEFAULT_VOUCHER,
+      items: [],
+      voucherCode: '',
+      appliedVoucher: null,
       voucherError: null,
       useLoyaltyPoints: false,
-      orders: INITIAL_ORDERS as Order[],
-      profile: USER_PROFILE,
+      orders: [],
+      profile: EMPTY_PROFILE,
       authToken: null,
       authUser: null,
 
@@ -221,37 +213,42 @@ export const useCartStore = create<CartStore>()(
             `${newItem.drinkId}-${newItem.size}-${newItem.milk}-${newItem.toppings.sort().join('-')}-${newItem.note || ''}`;
 
           const existingIndex = state.items.findIndex((it) => it.id === generatedId);
+          let updated: CartItem[];
           if (existingIndex > -1) {
-            const updated = [...state.items];
+            updated = [...state.items];
             updated[existingIndex] = {
               ...updated[existingIndex],
               quantity: updated[existingIndex].quantity + newItem.quantity,
             };
-            return { items: updated };
-          }
-
-          return {
-            items: [
+          } else {
+            updated = [
               ...state.items,
               {
                 ...newItem,
                 id: generatedId,
               },
-            ],
-          };
+            ];
+          }
+
+          saveCartForUser(state.authUser?.id, updated);
+          return { items: updated };
         });
       },
 
       updateItem: (id, updated) => {
-        set((state) => ({
-          items: state.items.map((it) => (it.id === id ? { ...it, ...updated } : it)),
-        }));
+        set((state) => {
+          const newItems = state.items.map((it) => (it.id === id ? { ...it, ...updated } : it));
+          saveCartForUser(state.authUser?.id, newItems);
+          return { items: newItems };
+        });
       },
 
       removeItem: (id) => {
-        set((state) => ({
-          items: state.items.filter((it) => it.id !== id),
-        }));
+        set((state) => {
+          const newItems = state.items.filter((it) => it.id !== id);
+          saveCartForUser(state.authUser?.id, newItems);
+          return { items: newItems };
+        });
       },
 
       updateQuantity: (id, delta) => {
@@ -265,23 +262,32 @@ export const useCartStore = create<CartStore>()(
               return it;
             })
             .filter((it): it is CartItem => it !== null);
+          saveCartForUser(state.authUser?.id, updated);
           return { items: updated };
         });
       },
 
       setQuantity: (id, quantity) => {
         set((state) => {
-          if (quantity <= 0) {
-            return { items: state.items.filter((it) => it.id !== id) };
-          }
-          return {
-            items: state.items.map((it) => (it.id === id ? { ...it, quantity } : it)),
-          };
+          const validQty = Math.max(1, Math.min(9999, Math.floor(quantity)));
+          const updated = state.items.map((it) =>
+            it.id === id ? { ...it, quantity: validQty } : it,
+          );
+          saveCartForUser(state.authUser?.id, updated);
+          return { items: updated };
         });
       },
 
       clearCart: () => {
-        set({ items: [], appliedVoucher: null, voucherCode: '', voucherError: null, useLoyaltyPoints: false });
+        const { authUser } = get();
+        saveCartForUser(authUser?.id, []);
+        set({
+          items: [],
+          appliedVoucher: null,
+          voucherCode: '',
+          voucherError: null,
+          useLoyaltyPoints: false,
+        });
       },
 
       applyVoucher: async (code: string) => {
@@ -293,7 +299,7 @@ export const useCartStore = create<CartStore>()(
 
         const subtotal = get().getSubtotal();
 
-        // 1. Thử gọi API Backend POST /orders/validate-voucher nếu server backend đang mở
+        // 1. Thử gọi API Backend POST /orders/validate-voucher
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
           const controller = new AbortController();
@@ -335,7 +341,7 @@ export const useCartStore = create<CartStore>()(
             return false;
           }
         } catch {
-          // 2. Fallback sang kiểm tra cục bộ (Local validation) khi backend offline hoặc lỗi mạng
+          // Fallback sang danh sách mã tĩnh
           const found = AVAILABLE_VOUCHERS.find((v) => v.code.toUpperCase() === trimmed);
           if (!found) {
             set({ voucherError: `Mã khuyến mãi "${trimmed}" không hợp lệ hoặc đã hết hạn.` });
@@ -367,72 +373,219 @@ export const useCartStore = create<CartStore>()(
       },
 
       createOrder: ({ customerName, phoneNumber, orderNote, paymentMethod }) => {
-        const { items, getSubtotal, getDiscount, getTotal, orders, profile } = get();
-        const subtotal = getSubtotal();
-        const discount = getDiscount();
-        const total = getTotal();
-        const pointsEarned = Math.floor(total / 10000);
-
-        // Generate next order ID
-        const existingIds = orders.map((o) => parseInt(o.id)).filter((n) => !isNaN(n));
-        const nextId = existingIds.length > 0 ? (Math.max(...existingIds) + 1).toString() : '1043';
-
-        const orderTitle =
-          items.length === 1
-            ? `${items[0].name} · 1 drink`
-            : `${items[0]?.name || 'Coffee'} + ${items[1]?.name || 'Drink'}`;
-
-        const newOrder: Order = {
-          id: nextId,
-          date: `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`,
-          title: orderTitle,
-          status: 'PAID',
-          statusLabel: 'Payment received · Pickup in 8–12 min',
-          total,
-          subtotal,
-          discount,
-          paymentMethod,
-          customerName,
-          phoneNumber,
-          orderNote,
-          items: items.map((it) => ({
-            name: it.name,
-            details: it.optionsLabel,
-            qty: it.quantity,
-            price: it.unitPrice * it.quantity,
-            image: it.image,
-          })),
-          pointsEarned,
-          active: true,
-        };
-
-        // Mark previous active orders as false
-        const updatedOrders = [
-          newOrder,
-          ...orders.map((o) => ({ ...o, active: false })),
-        ];
+        const { authUser } = get();
+        saveCartForUser(authUser?.id, []);
 
         set({
-          orders: updatedOrders,
-          profile: {
-            ...profile,
-            points: profile.points + pointsEarned,
-          },
           items: [],
           appliedVoucher: null,
           voucherCode: '',
+          voucherError: null,
           useLoyaltyPoints: false,
         });
 
-        return nextId;
+        // Tự động đồng bộ lịch sử đơn hàng và điểm Loyalty thực tế từ Backend
+        get().fetchMyOrders();
+        get().fetchProfile();
+
+        return '';
       },
 
-      setAuth: (token, user) => {
-        set({ authToken: token, authUser: user });
+      setAuth: async (token, user) => {
+        // Tải giỏ hàng riêng của user hiện tại
+        const userCart = getStoredCartForUser(user.id);
+
+        set({
+          authToken: token,
+          authUser: user,
+          items: userCart,
+          orders: [], // Reset danh sách đơn để fetch mới theo user
+          voucherCode: '',
+          appliedVoucher: null,
+          voucherError: null,
+          useLoyaltyPoints: false,
+          profile: {
+            name: user.fullName || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            memberSince: 'Tháng 11, 2026',
+            points: user.loyaltyPoints || 0,
+            nextTier: (user.loyaltyPoints || 0) < 150 ? 150 : (user.loyaltyPoints || 0) + 100,
+            verified: true,
+          },
+        });
+
+        // Tải dữ liệu cá nhân & lịch sử đơn hàng thực tế từ backend
+        try {
+          await get().fetchProfile();
+          await get().fetchMyOrders();
+        } catch (e) {
+          console.error('Lỗi tải dữ liệu sau đăng nhập:', e);
+        }
       },
 
       clearAuth: () => {
-        set({ authToken: null, authUser: null });
+        const currentUserId = get().authUser?.id;
+        const currentItems = get().items;
+        // Lưu giỏ hàng của user trước khi logout nếu có
+        if (currentUserId && currentItems.length > 0) {
+          saveCartForUser(currentUserId, currentItems);
+        }
+
+        // Dọn dẹp cache storage cũ nếu còn sót lại
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('brewlite-auth-storage');
+            localStorage.removeItem('brewlite-cart-storage');
+          } catch {}
+        }
+
+        // RESET TOÀN BỘ VỀ 0: Cart items = [], Cart badge = 0, Orders = [], Profile = EMPTY
+        set({
+          authToken: null,
+          authUser: null,
+          profile: EMPTY_PROFILE,
+          orders: [],
+          items: [], // Reset Cart badge về 0 tuyệt đối khi logout
+          voucherCode: '',
+          appliedVoucher: null,
+          voucherError: null,
+          useLoyaltyPoints: false,
+        });
+      },
+
+      fetchProfile: async () => {
+        const { authToken } = get();
+        if (!authToken) return;
+
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const res = await fetch(`${apiUrl}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const memberDate = data.createdAt
+              ? new Date(data.createdAt).toLocaleDateString('vi-VN', {
+                  month: 'long',
+                  year: 'numeric',
+                })
+              : 'Gần đây';
+
+            const pts = Number(data.loyaltyPoints || 0);
+            const nextTier = pts < 150 ? 150 : pts + 100;
+
+            set((state) => ({
+              authUser: state.authUser
+                ? {
+                    ...state.authUser,
+                    fullName: data.fullName,
+                    phone: data.phone,
+                    loyaltyPoints: pts,
+                  }
+                : null,
+              profile: {
+                name: data.fullName || '',
+                email: data.email || '',
+                phone: data.phone || '',
+                memberSince: memberDate,
+                points: pts,
+                nextTier,
+                verified: true,
+              },
+            }));
+          } else if (res.status === 401) {
+            // Token hết hạn hoặc không hợp lệ -> Đăng xuất
+            get().clearAuth();
+          }
+        } catch (e) {
+          console.error('Lỗi gọi /auth/me:', e);
+        }
+      },
+
+      fetchMyOrders: async () => {
+        const { authToken } = get();
+        if (!authToken) {
+          set({ orders: [] });
+          return;
+        }
+
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const res = await fetch(`${apiUrl}/orders/me`, {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (res.ok) {
+            const backendOrders = await res.json();
+            const mappedOrders: Order[] = backendOrders.map((bo: any) => {
+              const formattedDate = new Date(bo.createdAt).toLocaleDateString(
+                'vi-VN',
+                {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                },
+              );
+              const formattedTime = new Date(bo.createdAt).toLocaleTimeString(
+                'vi-VN',
+                {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                },
+              );
+
+              const itemsList: OrderItem[] = (bo.orderItems || []).map((oi: any) => ({
+                name: oi.product?.name || 'Đồ uống',
+                details: `Size ${oi.size || 'M'}`,
+                qty: oi.qty,
+                price: Number(oi.lineTotal || 0),
+                image: oi.product?.imageUrl || '/images/drinks/default.png',
+              }));
+
+              const title =
+                itemsList.length === 1
+                  ? `${itemsList[0].name} · 1 ly`
+                  : itemsList.length > 1
+                    ? `${itemsList[0].name} + ${itemsList.length - 1} món khác`
+                    : 'Đơn hàng BrewLite';
+
+              let statusLabel = 'Đang xử lý';
+              if (bo.status === 'PAID') statusLabel = 'Đã thanh toán · Chờ pha chế';
+              else if (bo.status === 'PREPARING') statusLabel = 'Đang pha chế';
+              else if (bo.status === 'READY') statusLabel = 'Đã sẵn sàng lấy';
+              else if (bo.status === 'COMPLETED') statusLabel = 'Đã hoàn thành';
+              else if (bo.status === 'CANCELLED') statusLabel = 'Đã hủy đơn';
+
+              return {
+                id: bo.id,
+                orderCode: bo.orderCode,
+                date: `${formattedDate} · ${formattedTime}`,
+                title,
+                status: bo.status,
+                statusLabel,
+                total: Number(bo.totalAmount || 0),
+                subtotal: Number(bo.subtotal || 0),
+                discount: Number(bo.discountAmount || 0),
+                paymentMethod: bo.payments?.[0]?.method || 'Tại quầy',
+                customerName: bo.customerName,
+                phoneNumber: bo.phone,
+                orderNote: bo.notes || '',
+                items: itemsList,
+                pointsEarned: bo.pointsEarned || 0,
+                active: bo.status === 'PAID' || bo.status === 'PREPARING',
+              };
+            });
+
+            set({ orders: mappedOrders });
+          }
+        } catch (e) {
+          console.error('Lỗi gọi /orders/me:', e);
+        }
       },
 
       updateProfile: (updated) => {
@@ -456,7 +609,6 @@ export const useCartStore = create<CartStore>()(
         if (!appliedVoucher) return 0;
         const subtotal = getSubtotal();
 
-        // Kiểm tra điều kiện đơn hàng tối thiểu
         if (appliedVoucher.minOrderAmount && subtotal < appliedVoucher.minOrderAmount) {
           return 0;
         }
@@ -482,22 +634,34 @@ export const useCartStore = create<CartStore>()(
 
       getOrderById: (id: string) => {
         const { orders } = get();
-        return orders.find((o) => o.id === id);
+        return orders.find((o) => o.id === id || o.orderCode === id);
       },
     }),
     {
-      name: 'brewlite-cart-storage',
+      name: 'brewlite-auth-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        items: state.items,
-        voucherCode: state.voucherCode,
-        appliedVoucher: state.appliedVoucher,
-        useLoyaltyPoints: state.useLoyaltyPoints,
-        orders: state.orders,
-        profile: state.profile,
         authToken: state.authToken,
         authUser: state.authUser,
+        profile: state.profile,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const userId = state.authUser?.id;
+          state.items = getStoredCartForUser(userId);
+          if (state.authToken) {
+            state.fetchProfile();
+            state.fetchMyOrders();
+          }
+        }
+      },
     }
   )
 );
+
+// Tự động dọn dẹp bộ nhớ cache phiên bản cũ
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('brewlite-cart-storage');
+  } catch {}
+}

@@ -32,13 +32,13 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('Nguyen Duy');
   const [phoneNumber, setPhoneNumber] = useState('090 123 4567');
   const [orderNote, setOrderNote] = useState('Vui lòng gọi tên tôi khi đơn hàng sẵn sàng.');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet' | 'vnpay'>('vnpay');
-  const [cardholderName, setCardholderName] = useState('NGUYEN DUY');
-  const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-  const [expiryDate, setExpiryDate] = useState('12 / 28');
-  const [cvv, setCvv] = useState('•••');
+  const [paymentMethod] = useState<'vnpay'>('vnpay');
+
+
+
+
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
+
 
   // QR Modal states (Task 8 & Task 10 - Webhook 2 bước)
   const [qrModal, setQrModal] = useState<{
@@ -48,13 +48,13 @@ export default function CheckoutPage() {
     qrPayload: string;
     qrCodeUrl: string;
     qrDataUrl: string;
-    vietQrUrl: string;
+
     vnpayUrl: string;
     orderCode?: string;
   } | null>(null);
   const [isSimulatingWebhook, setIsSimulatingWebhook] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
-  const [qrTab, setQrTab] = useState<'vietqr' | 'vnpay'>('vietqr');
+
 
   // Task 10.2 — Idempotency key
   // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
@@ -93,7 +93,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (authUser && authUser.fullName) {
       setCustomerName(authUser.fullName);
-      setCardholderName(authUser.fullName.toUpperCase());
+
     }
   }, [authUser]);
 
@@ -130,7 +130,7 @@ export default function CheckoutPage() {
           customerName: customerName || authUser?.fullName || 'Khách hàng',
           phoneNumber,
           orderNote,
-          paymentMethod: 'VNPAY Sandbox · VietQR Pay (2-Step Webhook)',
+          paymentMethod: 'Cổng thanh toán VNPAY Sandbox (2-Step Webhook)',
         });
 
         if (pointsUsed > 0 && updateProfile && profile) {
@@ -168,7 +168,6 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const isSuccess = mockOutcome === 'success' && cvv !== '000';
 
     // Header xác thực bắt buộc gửi kèm JWT token của tài khoản đang đăng nhập
     const authHeaders: Record<string, string> = {
@@ -221,7 +220,7 @@ export default function CheckoutPage() {
       }
 
       // 2. Gọi POST /payments để xử lý Mock Payment
-      if (backendOrderId && paymentMethod === 'vnpay') {
+      if (backendOrderId) {
         const payRes = await fetch(`${apiUrl}/payments`, {
           method: 'POST',
           headers: authHeaders,
@@ -240,55 +239,16 @@ export default function CheckoutPage() {
           qrPayload: payData.qrPayload || payData.vnpayUrl || '',
           qrCodeUrl: payData.qrCodeUrl || '',
           qrDataUrl: payData.qrDataUrl || '',
-          vietQrUrl: payData.vietQrUrl || '',
           vnpayUrl: payData.vnpayUrl || '',
-          orderCode: payData.orderCode || `#${backendOrderId.slice(-4)}`,
+          orderCode: payData.orderCode || ('#' + backendOrderId.slice(-4)),
         });
         return;
       }
-      if (backendOrderId) {
-        await fetch(`${apiUrl}/payments`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            orderId: backendOrderId,
-            method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
-            mockSuccess: isSuccess,
-          }),
-        });
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi kết nối API:', err);
-    }
-
-    // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
-    if (!isSuccess) {
-      // Task 10.2: Reset idempotency-key để lần thử lại là request hoàn toàn mới
-      idempotencyKeyRef.current = crypto.randomUUID();
       setIsProcessing(false);
-      router.push('/payment-failed');
-      return;
+      alert('Lỗi thanh toán: ' + (err?.message || 'Không thể kết nối máy chủ'));
     }
-
-    const paymentDesc =
-      paymentMethod === 'card'
-        ? `Bank card · Visa ending in ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
-        : 'E-wallet · MoMo / ZaloPay';
-
-    const newOrderId = createOrder({
-      customerName: customerName || authUser.fullName,
-      phoneNumber,
-      orderNote,
-      paymentMethod: paymentDesc,
-    });
-
-    if (pointsUsed > 0 && updateProfile && profile) {
-      updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
-    }
-
-    setTimeout(() => {
-      router.push(`/orders/${newOrderId}`);
-    }, 500);
   };
 
   // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
@@ -419,213 +379,69 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Choose How to Pay Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs flex flex-col gap-5">
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
-                Chọn phương thức thanh toán
-              </h2>
-
-              <div className="space-y-3">
-                {/* VNPAY & VietQR Option (Task 8 & 10) */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('vnpay')}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                    paymentMethod === 'vnpay'
-                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentMethod === 'vnpay'
-                          ? 'border-[#163d2c] bg-[#163d2c]'
-                          : 'border-[#98a99e] bg-white'
-                      }`}
-                    >
-                      {paymentMethod === 'vnpay' && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold">VNPAY-QR / VietQR Napas</span>
-                        <span className="bg-[#163d2c] text-[#e3ede1] text-[9px] font-bold px-2 py-0.5 rounded-md">
-                          Sandbox 2 bước
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-[#55695c] mt-0.5">
-                        Quét mã VietQR (Ngân hàng NCB) hoặc thanh toán qua Cổng VNPAY Sandbox
-                      </p>
-                    </div>
-                  </div>
-                  <QrCode className="w-5 h-5 text-[#2f664a] shrink-0" />
-                </button>
-
-                {/* E-wallet Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('ewallet')}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                    paymentMethod === 'ewallet'
-                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentMethod === 'ewallet'
-                          ? 'border-[#163d2c] bg-[#163d2c]'
-                          : 'border-[#98a99e] bg-white'
-                      }`}
-                    >
-                      {paymentMethod === 'ewallet' && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">Ví điện tử</span>
-                  </div>
-                  <span className="text-[11px] text-[#708076]">MoMo / ZaloPay</span>
-                </button>
-
-                {/* Bank Card Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
-                    paymentMethod === 'card'
-                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                        paymentMethod === 'card'
-                          ? 'border-[#163d2c] bg-[#163d2c]'
-                          : 'border-[#98a99e] bg-white'
-                      }`}
-                    >
-                      {paymentMethod === 'card' && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-xs font-bold">Thẻ ngân hàng</span>
-                  </div>
-                  <span className="text-[11px] text-[#708076]">Visa / Mastercard</span>
-                </button>
+            {/* Payment Method Card - VNPAY Sandbox */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
+                  Phương thức thanh toán
+                </h2>
+                <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#c5dec3]">
+                  VNPAY Sandbox
+                </span>
               </div>
 
-              {paymentMethod === 'vnpay' && (
-                <div className="bg-[#f0f6ee] border border-[#cbe0ce] rounded-2xl p-4 text-xs text-[#204a35] space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-[#163d2c]">
-                    <ShieldCheck className="w-4 h-4 text-[#266345]" />
-                    <span>Thanh toán 2 bước & Webhook (Chống lỗi tự gán PAID)</span>
+              {/* Selected VNPAY Gateway Option */}
+              <div className="p-4 rounded-2xl border border-[#2f664a] bg-[#e3ede1] text-[#163d2c] flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border border-[#163d2c] bg-[#163d2c] flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
-                  <p className="text-[11px] text-[#4b6b58] leading-relaxed">
-                    Đơn hàng sẽ được tạo ở trạng thái <strong>PENDING</strong> kèm mã QR. Trạng thái chỉ chuyển sang <strong>PAID</strong> khi Cổng Sandbox gửi Webhook Callback xác nhận.
-                  </p>
-                  <div className="bg-white/90 rounded-xl p-2.5 border border-[#d6e5d8] text-[10px] space-y-0.5">
-                    <div><strong>Website ID (vnp_TmnCode):</strong> <code>8VXIB1MM</code></div>
-                    <div><strong>Ngân hàng Sandbox:</strong> <code>NCB (BIN 970419)</code></div>
-                    <div><strong>Thẻ test:</strong> <code>9704 1985 2619 1432 198</code> · NGUYEN VAN A · 07/15 · OTP: 123456</div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-bold text-[#14241b]">
+                        Cổng thanh toán VNPAY Sandbox
+                      </span>
+                      <span className="bg-[#163d2c] text-[#e3ede1] text-[9px] font-bold px-2 py-0.5 rounded-md">
+                        2 bước qua Webhook
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#42614e] mt-0.5">
+                      Thanh toán qua quét mã VNPAY-QR hoặc thẻ ATM / tài khoản ngân hàng NCB Sandbox
+                    </p>
                   </div>
                 </div>
-              )}
-
-              {paymentMethod !== 'vnpay' && (
-                <div className="pt-3 border-t border-[#f0ebe0]">
-                <label className="block text-xs font-bold text-[#163d2c] mb-2">
-                  Chế độ giả lập (Mock Payment)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('success')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'success'
-                        ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ✅ Giả lập Thành công (PAID)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('failed')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'failed'
-                        ? 'bg-[#fce9e5] border-[#b33e2a] text-[#b33e2a]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ❌ Giả lập Thất bại (FAILED)
-                  </button>
-                </div>
+                <QrCode className="w-6 h-6 text-[#163d2c] shrink-0" />
               </div>
 
-              )}
-
-              {/* Card Inputs (if Bank card selected) */}
-              {paymentMethod === 'card' && (
-                <div className="space-y-4 pt-2">
-                  <div>
-                    <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                      Tên chủ thẻ
-                    </label>
-                    <input
-                      type="text"
-                      value={cardholderName}
-                      onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
-                      className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all uppercase"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                      Số thẻ
-                    </label>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all tracking-wider"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                        Ngày hết hạn
-                      </label>
-                      <input
-                        type="text"
-                        value={expiryDate}
-                        onChange={(e) => setExpiryDate(e.target.value)}
-                        className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-[#163d2c] mb-1.5">
-                        Mã bảo mật CVV
-                      </label>
-                      <input
-                        type="password"
-                        value={cvv}
-                        onChange={(e) => setCvv(e.target.value)}
-                        className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-[#78887e]">
-                    Thông tin thẻ của bạn được mã hóa. Chúng tôi không lưu mã bảo mật CVV.
-                  </p>
+              {/* Sandbox info callout */}
+              <div className="bg-[#f7f5f0] border border-[#e4ded4] rounded-2xl p-4 text-xs text-[#204a35] space-y-2">
+                <div className="flex items-center gap-2 font-bold text-[#163d2c]">
+                  <ShieldCheck className="w-4 h-4 text-[#266345]" />
+                  <span>Cơ chế Thanh toán 2 bước (Chống lỗi tự gán PAID)</span>
                 </div>
-              )}
+                <p className="text-[11px] text-[#4b6b58] leading-relaxed">
+                  Đơn hàng được khởi tạo ở trạng thái <strong>PENDING</strong> kèm mã VNPAY-QR. Chỉ khi Cổng VNPAY Sandbox gửi Webhook Callback (IPN) xác nhận, đơn hàng mới chuyển sang <strong>PAID</strong> và cộng điểm thưởng Loyalty.
+                </p>
+                <div className="bg-white rounded-xl p-3 border border-[#ded7cb] text-[11px] space-y-1 text-[#2d4034]">
+                  <div className="flex justify-between">
+                    <span className="text-[#687a6f]">Mã Website (vnp_TmnCode):</span>
+                    <code className="font-bold text-[#163d2c]">8VXIB1MM</code>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#687a6f]">Ngân hàng Sandbox:</span>
+                    <strong className="text-[#14241b]">NCB (Ngân hàng Quốc Dân)</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#687a6f]">Thẻ test VNPAY:</span>
+                    <span className="font-mono font-bold text-[#163d2c]">9704 1985 2619 1432 198</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#708076] pt-1 border-t border-[#f0ebe0]">
+                    <span>Tên: <strong>NGUYEN VAN A</strong></span>
+                    <span>Hạn: <strong>07/15</strong></span>
+                    <span>OTP: <strong>123456</strong></span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -794,7 +610,7 @@ export default function CheckoutPage() {
               Điểm thưởng sẽ được cộng sau khi thanh toán thành công, không phải khi đơn hàng còn đang chờ xử lý.
             </p>
           </div>
-          {/* QR Payment Modal (Task 8 & 10 - Webhook 2 bước Sandbox) */}
+          {/* VNPAY Sandbox QR Payment Modal (2-Step Webhook) */}
           {qrModal && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
               <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e8e2d7] relative animate-in fade-in zoom-in-95 duration-200">
@@ -812,87 +628,51 @@ export default function CheckoutPage() {
                 {/* Modal Header */}
                 <div className="text-center pb-3 border-b border-[#f0ebe0]">
                   <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-2">
-                    Trạng thái: PENDING (Chờ Webhook)
+                    Trạng thái: PENDING (Chờ Webhook VNPAY)
                   </span>
                   <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
-                    Quét mã QR để thanh toán
+                    Thanh toán VNPAY Sandbox
                   </h3>
                   <p className="text-xs text-[#708076] mt-1">
-                    Số tiền: <strong className="text-[#163d2c] font-bold">{formatVND(qrModal.amount)}</strong> · Mã: {qrModal.orderCode}
+                    Số tiền: <strong className="text-[#163d2c] font-bold">{formatVND(qrModal.amount)}</strong> · Mã đơn: {qrModal.orderCode}
                   </p>
                 </div>
 
-                {/* Tabs for VietQR vs VNPAY-QR */}
-                <div className="flex bg-[#f4efe7] p-1 rounded-2xl my-3 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setQrTab('vietqr')}
-                    className={`flex-1 py-1.5 rounded-xl text-center transition-all cursor-pointer ${
-                      qrTab === 'vietqr'
-                        ? 'bg-white text-[#163d2c] shadow-xs'
-                        : 'text-[#708076] hover:text-[#14241b]'
-                    }`}
-                  >
-                    VietQR (Napas NCB)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQrTab('vnpay')}
-                    className={`flex-1 py-1.5 rounded-xl text-center transition-all cursor-pointer ${
-                      qrTab === 'vnpay'
-                        ? 'bg-white text-[#163d2c] shadow-xs'
-                        : 'text-[#708076] hover:text-[#14241b]'
-                    }`}
-                  >
-                    Mã QR VNPAY (Data URL)
-                  </button>
-                </div>
-
-                {/* QR Code Image Display */}
-                <div className="bg-[#fcfbf9] border border-[#e8e2d7] rounded-2xl p-4 flex flex-col items-center justify-center mb-3">
-                  {qrTab === 'vietqr' ? (
-                    <div className="text-center">
-                      <img
-                        src={qrModal.vietQrUrl}
-                        alt="VietQR Napas"
-                        className="w-56 h-auto max-h-64 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto"
-                      />
-                      <p className="text-[10px] text-[#708076] mt-1.5">
-                        Mở app ngân hàng (VietQR / Napas) để quét mã
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <img
-                        src={qrModal.qrDataUrl || qrModal.qrCodeUrl}
-                        alt="VNPAY QR Data URL"
-                        className="w-52 h-52 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto p-2 bg-white"
-                      />
-                      <p className="text-[10px] text-[#708076] mt-1.5">
-                        Mã QR base64 offline tích hợp HMAC-SHA512 VNPAY
-                      </p>
-                    </div>
-                  )}
+                {/* VNPAY QR Code Display */}
+                <div className="bg-[#fcfbf9] border border-[#e8e2d7] rounded-2xl p-4 flex flex-col items-center justify-center my-3">
+                  <div className="text-center">
+                    <img
+                      src={qrModal.qrDataUrl || qrModal.qrCodeUrl}
+                      alt="VNPAY Sandbox QR Code"
+                      className="w-56 h-56 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto p-2 bg-white"
+                    />
+                    <p className="text-[11px] text-[#2d4034] font-semibold mt-2.5">
+                      Mã VNPAY-QR Sandbox (Ký số HMAC-SHA512)
+                    </p>
+                    <p className="text-[10px] text-[#708076] mt-0.5">
+                      Quét mã bằng Camera / Ứng dụng VNPAY hoặc bấm nút bên dưới để mở cổng test
+                    </p>
+                  </div>
                 </div>
 
                 {/* Test credentials info */}
                 <div className="bg-[#f4efe7] rounded-2xl p-2.5 text-[10px] text-[#4d5e53] mb-3 space-y-1">
                   <div className="flex justify-between">
-                    <span>Ngân hàng Sandbox:</span>
-                    <strong className="text-[#14241b]">NCB (Quốc Dân - 970419)</strong>
+                    <span>Cổng thanh toán:</span>
+                    <strong className="text-[#14241b]">VNPAY Sandbox (Test)</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span>STK thụ hưởng:</span>
+                    <span>Mã Website (vnp_TmnCode):</span>
                     <strong className="text-[#14241b]">8VXIB1MM</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span>Thẻ test VNPAY:</span>
+                    <span>Thẻ test NCB:</span>
                     <span className="font-mono text-[#163d2c] font-bold">9704 1985 2619 1432 198</span>
                   </div>
-                  <div className="flex justify-between text-[#708076]">
-                    <span>Tên: NGUYEN VAN A</span>
-                    <span>Hạn: 07/15</span>
-                    <span>OTP: 123456</span>
+                  <div className="flex justify-between text-[#708076] pt-0.5 border-t border-[#e2dacf]">
+                    <span>Tên: <strong>NGUYEN VAN A</strong></span>
+                    <span>Hạn: <strong>07/15</strong></span>
+                    <span>OTP: <strong>123456</strong></span>
                   </div>
                 </div>
 
@@ -900,7 +680,7 @@ export default function CheckoutPage() {
                 {webhookStatus === 'success' && (
                   <div className="bg-[#e4ede3] border border-[#b8d4bb] text-[#163d2c] p-2.5 rounded-xl mb-3 flex items-center gap-2 text-xs font-bold animate-in fade-in">
                     <CheckCircle2 className="w-4 h-4 text-[#24523c] shrink-0" />
-                    <span>Cổng Sandbox đã gửi Webhook: Payment = SUCCESS, Order = PAID!</span>
+                    <span>Webhook VNPAY xác nhận thành công: Payment = SUCCESS, Order = PAID!</span>
                   </div>
                 )}
                 {webhookStatus === 'failed' && (
@@ -933,7 +713,7 @@ export default function CheckoutPage() {
                     ) : (
                       <CheckCircle2 className="w-4 h-4" />
                     )}
-                    <span>Mô phỏng Webhook Sandbox thành công (PAID)</span>
+                    <span>Mô phỏng Webhook VNPAY thành công (PAID)</span>
                   </button>
 
                   <button
@@ -943,7 +723,7 @@ export default function CheckoutPage() {
                     className="w-full bg-[#f4efe7] hover:bg-[#ebdccf] text-[#853434] text-xs font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <XCircle className="w-3.5 h-3.5" />
-                    <span>Mô phỏng Webhook thất bại</span>
+                    <span>Mô phỏng Webhook VNPAY thất bại</span>
                   </button>
                 </div>
               </div>

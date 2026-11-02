@@ -4,7 +4,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MapPin, ArrowRight, Loader2, Lock } from 'lucide-react';
+import {
+  MapPin,
+  ArrowRight,
+  Loader2,
+  Lock,
+  QrCode,
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
@@ -21,13 +32,29 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('Nguyen Duy');
   const [phoneNumber, setPhoneNumber] = useState('090 123 4567');
   const [orderNote, setOrderNote] = useState('Vui lòng gọi tên tôi khi đơn hàng sẵn sàng.');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet' | 'vnpay'>('vnpay');
   const [cardholderName, setCardholderName] = useState('NGUYEN DUY');
   const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
   const [expiryDate, setExpiryDate] = useState('12 / 28');
   const [cvv, setCvv] = useState('•••');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
+
+  // QR Modal states (Task 8 & Task 10 - Webhook 2 bước)
+  const [qrModal, setQrModal] = useState<{
+    paymentId: string;
+    orderId: string;
+    amount: number;
+    qrPayload: string;
+    qrCodeUrl: string;
+    qrDataUrl: string;
+    vietQrUrl: string;
+    vnpayUrl: string;
+    orderCode?: string;
+  } | null>(null);
+  const [isSimulatingWebhook, setIsSimulatingWebhook] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
+  const [qrTab, setQrTab] = useState<'vietqr' | 'vnpay'>('vietqr');
 
   // Task 10.2 — Idempotency key
   // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
@@ -69,6 +96,65 @@ export default function CheckoutPage() {
       setCardholderName(authUser.fullName.toUpperCase());
     }
   }, [authUser]);
+
+  const handleSimulateWebhook = async (outcome: 'SUCCESS' | 'FAILED') => {
+    if (!qrModal) return;
+    setIsSimulatingWebhook(true);
+    setWebhookStatus(null);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      const res = await fetch(`${apiUrl}/payments/webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          'Idempotency-Key': crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          paymentId: qrModal.paymentId,
+          outcome,
+          transactionRef: `VNPAY-SIM-${Date.now()}`,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Lỗi gọi Webhook');
+      }
+
+      if (outcome === 'SUCCESS') {
+        setWebhookStatus('success');
+        const newOrderId = createOrder({
+          customerName: customerName || authUser?.fullName || 'Khách hàng',
+          phoneNumber,
+          orderNote,
+          paymentMethod: 'VNPAY Sandbox · VietQR Pay (2-Step Webhook)',
+        });
+
+        if (pointsUsed > 0 && updateProfile && profile) {
+          updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
+        }
+
+        setTimeout(() => {
+          setQrModal(null);
+          router.push(`/orders/${newOrderId}`);
+        }, 1400);
+      } else {
+        setWebhookStatus('failed');
+        setTimeout(() => {
+          setQrModal(null);
+          router.push('/payment-failed');
+        }, 1200);
+      }
+    } catch (err: any) {
+      console.error('Webhook simulation failed:', err);
+      alert(`Lỗi Webhook: ${err.message || 'Không thể kết nối Backend'}`);
+    } finally {
+      setIsSimulatingWebhook(false);
+    }
+  };
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +221,31 @@ export default function CheckoutPage() {
       }
 
       // 2. Gọi POST /payments để xử lý Mock Payment
+      if (backendOrderId && paymentMethod === 'vnpay') {
+        const payRes = await fetch(`${apiUrl}/payments`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            orderId: backendOrderId,
+            method: 'VNPAY',
+            twoStep: true,
+          }),
+        });
+        const payData = await payRes.json();
+        setIsProcessing(false);
+        setQrModal({
+          paymentId: payData.paymentId,
+          orderId: backendOrderId,
+          amount: finalTotal,
+          qrPayload: payData.qrPayload || payData.vnpayUrl || '',
+          qrCodeUrl: payData.qrCodeUrl || '',
+          qrDataUrl: payData.qrDataUrl || '',
+          vietQrUrl: payData.vietQrUrl || '',
+          vnpayUrl: payData.vnpayUrl || '',
+          orderCode: payData.orderCode || `#${backendOrderId.slice(-4)}`,
+        });
+        return;
+      }
       if (backendOrderId) {
         await fetch(`${apiUrl}/payments`, {
           method: 'POST',
@@ -315,6 +426,43 @@ export default function CheckoutPage() {
               </h2>
 
               <div className="space-y-3">
+                {/* VNPAY & VietQR Option (Task 8 & 10) */}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('vnpay')}
+                  className={`w-full p-4 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer border ${
+                    paymentMethod === 'vnpay'
+                      ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
+                      : 'bg-[#f4efe7] border-transparent hover:border-[#ded5c7] text-[#14241b]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        paymentMethod === 'vnpay'
+                          ? 'border-[#163d2c] bg-[#163d2c]'
+                          : 'border-[#98a99e] bg-white'
+                      }`}
+                    >
+                      {paymentMethod === 'vnpay' && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold">VNPAY-QR / VietQR Napas</span>
+                        <span className="bg-[#163d2c] text-[#e3ede1] text-[9px] font-bold px-2 py-0.5 rounded-md">
+                          Sandbox 2 bước
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#55695c] mt-0.5">
+                        Quét mã VietQR (Ngân hàng NCB) hoặc thanh toán qua Cổng VNPAY Sandbox
+                      </p>
+                    </div>
+                  </div>
+                  <QrCode className="w-5 h-5 text-[#2f664a] shrink-0" />
+                </button>
+
                 {/* E-wallet Option */}
                 <button
                   type="button"
@@ -370,7 +518,25 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              <div className="pt-3 border-t border-[#f0ebe0]">
+              {paymentMethod === 'vnpay' && (
+                <div className="bg-[#f0f6ee] border border-[#cbe0ce] rounded-2xl p-4 text-xs text-[#204a35] space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-[#163d2c]">
+                    <ShieldCheck className="w-4 h-4 text-[#266345]" />
+                    <span>Thanh toán 2 bước & Webhook (Chống lỗi tự gán PAID)</span>
+                  </div>
+                  <p className="text-[11px] text-[#4b6b58] leading-relaxed">
+                    Đơn hàng sẽ được tạo ở trạng thái <strong>PENDING</strong> kèm mã QR. Trạng thái chỉ chuyển sang <strong>PAID</strong> khi Cổng Sandbox gửi Webhook Callback xác nhận.
+                  </p>
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-[#d6e5d8] text-[10px] space-y-0.5">
+                    <div><strong>Website ID (vnp_TmnCode):</strong> <code>8VXIB1MM</code></div>
+                    <div><strong>Ngân hàng Sandbox:</strong> <code>NCB (BIN 970419)</code></div>
+                    <div><strong>Thẻ test:</strong> <code>9704 1985 2619 1432 198</code> · NGUYEN VAN A · 07/15 · OTP: 123456</div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod !== 'vnpay' && (
+                <div className="pt-3 border-t border-[#f0ebe0]">
                 <label className="block text-xs font-bold text-[#163d2c] mb-2">
                   Chế độ giả lập (Mock Payment)
                 </label>
@@ -399,6 +565,8 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               </div>
+
+              )}
 
               {/* Card Inputs (if Bank card selected) */}
               {paymentMethod === 'card' && (
@@ -626,6 +794,161 @@ export default function CheckoutPage() {
               Điểm thưởng sẽ được cộng sau khi thanh toán thành công, không phải khi đơn hàng còn đang chờ xử lý.
             </p>
           </div>
+          {/* QR Payment Modal (Task 8 & 10 - Webhook 2 bước Sandbox) */}
+          {qrModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e8e2d7] relative animate-in fade-in zoom-in-95 duration-200">
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isSimulatingWebhook) setQrModal(null);
+                  }}
+                  className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#f4efe7] hover:bg-[#e8e2d7] flex items-center justify-center text-[#14241b] transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {/* Modal Header */}
+                <div className="text-center pb-3 border-b border-[#f0ebe0]">
+                  <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-2">
+                    Trạng thái: PENDING (Chờ Webhook)
+                  </span>
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
+                    Quét mã QR để thanh toán
+                  </h3>
+                  <p className="text-xs text-[#708076] mt-1">
+                    Số tiền: <strong className="text-[#163d2c] font-bold">{formatVND(qrModal.amount)}</strong> · Mã: {qrModal.orderCode}
+                  </p>
+                </div>
+
+                {/* Tabs for VietQR vs VNPAY-QR */}
+                <div className="flex bg-[#f4efe7] p-1 rounded-2xl my-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setQrTab('vietqr')}
+                    className={`flex-1 py-1.5 rounded-xl text-center transition-all cursor-pointer ${
+                      qrTab === 'vietqr'
+                        ? 'bg-white text-[#163d2c] shadow-xs'
+                        : 'text-[#708076] hover:text-[#14241b]'
+                    }`}
+                  >
+                    VietQR (Napas NCB)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrTab('vnpay')}
+                    className={`flex-1 py-1.5 rounded-xl text-center transition-all cursor-pointer ${
+                      qrTab === 'vnpay'
+                        ? 'bg-white text-[#163d2c] shadow-xs'
+                        : 'text-[#708076] hover:text-[#14241b]'
+                    }`}
+                  >
+                    Mã QR VNPAY (Data URL)
+                  </button>
+                </div>
+
+                {/* QR Code Image Display */}
+                <div className="bg-[#fcfbf9] border border-[#e8e2d7] rounded-2xl p-4 flex flex-col items-center justify-center mb-3">
+                  {qrTab === 'vietqr' ? (
+                    <div className="text-center">
+                      <img
+                        src={qrModal.vietQrUrl}
+                        alt="VietQR Napas"
+                        className="w-56 h-auto max-h-64 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto"
+                      />
+                      <p className="text-[10px] text-[#708076] mt-1.5">
+                        Mở app ngân hàng (VietQR / Napas) để quét mã
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <img
+                        src={qrModal.qrDataUrl || qrModal.qrCodeUrl}
+                        alt="VNPAY QR Data URL"
+                        className="w-52 h-52 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto p-2 bg-white"
+                      />
+                      <p className="text-[10px] text-[#708076] mt-1.5">
+                        Mã QR base64 offline tích hợp HMAC-SHA512 VNPAY
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Test credentials info */}
+                <div className="bg-[#f4efe7] rounded-2xl p-2.5 text-[10px] text-[#4d5e53] mb-3 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Ngân hàng Sandbox:</span>
+                    <strong className="text-[#14241b]">NCB (Quốc Dân - 970419)</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>STK thụ hưởng:</span>
+                    <strong className="text-[#14241b]">8VXIB1MM</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Thẻ test VNPAY:</span>
+                    <span className="font-mono text-[#163d2c] font-bold">9704 1985 2619 1432 198</span>
+                  </div>
+                  <div className="flex justify-between text-[#708076]">
+                    <span>Tên: NGUYEN VAN A</span>
+                    <span>Hạn: 07/15</span>
+                    <span>OTP: 123456</span>
+                  </div>
+                </div>
+
+                {/* Webhook Feedback Message */}
+                {webhookStatus === 'success' && (
+                  <div className="bg-[#e4ede3] border border-[#b8d4bb] text-[#163d2c] p-2.5 rounded-xl mb-3 flex items-center gap-2 text-xs font-bold animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-[#24523c] shrink-0" />
+                    <span>Cổng Sandbox đã gửi Webhook: Payment = SUCCESS, Order = PAID!</span>
+                  </div>
+                )}
+                {webhookStatus === 'failed' && (
+                  <div className="bg-[#faebeb] border border-[#f0c2c2] text-[#932727] p-2.5 rounded-xl mb-3 flex items-center gap-2 text-xs font-bold animate-in fade-in">
+                    <XCircle className="w-4 h-4 text-[#b32b2b] shrink-0" />
+                    <span>Giao dịch bị từ chối / hủy bỏ qua Webhook.</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <a
+                    href={qrModal.vnpayUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  >
+                    <span>Mở Cổng VNPAY Sandbox thật</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <button
+                    type="button"
+                    disabled={isSimulatingWebhook}
+                    onClick={() => handleSimulateWebhook('SUCCESS')}
+                    className="w-full bg-[#24523c] hover:bg-[#1a3d2c] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSimulatingWebhook ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                    <span>Mô phỏng Webhook Sandbox thành công (PAID)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSimulatingWebhook}
+                    onClick={() => handleSimulateWebhook('FAILED')}
+                    className="w-full bg-[#f4efe7] hover:bg-[#ebdccf] text-[#853434] text-xs font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Mô phỏng Webhook thất bại</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>

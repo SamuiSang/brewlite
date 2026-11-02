@@ -23,7 +23,7 @@ export class PaymentsService {
   /**
    * Xử lý thanh toán đơn hàng:
    * - Bước 1 (twoStep: true): Tạo bản ghi Payment ở trạng thái PENDING, giữ nguyên Order = PENDING,
-   *   trả về mã giao dịch và mã QR Sandbox / VNPAY URL để khách quét mã hoặc thanh toán.
+   *   trả về mã giao dịch, mã QR Pay (offline base64 + VietQR) và VNPAY URL để khách quét mã hoặc thanh toán.
    * - 1-step (twoStep: false/undefined): Xử lý thanh toán trực tiếp (giả lập / mock) và cập nhật Order.
    */
   async processMockPayment(dto: CreatePaymentDto) {
@@ -57,6 +57,11 @@ export class PaymentsService {
         existingVnpayUrl ||
         `brewlite://sandbox-pay?paymentId=${existingPayment.id}&amount=${existingPayment.amount.toString()}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}`;
+      const qrDataUrl = await this.vnpayService.generateQrDataUrl(qrPayload);
+      const vietQrUrl = this.vnpayService.generateVietQrUrl({
+        amount: Number(existingPayment.amount),
+        orderCode: order?.orderCode || 'BrewLite',
+      });
 
       return {
         message: 'Giao dịch đã được xử lý trước đó (Idempotent response)',
@@ -68,6 +73,8 @@ export class PaymentsService {
         vnpayUrl: existingVnpayUrl,
         qrPayload,
         qrCodeUrl,
+        qrDataUrl,
+        vietQrUrl,
         payment: existingPayment,
         order,
       };
@@ -132,12 +139,17 @@ export class PaymentsService {
           vnpayUrl ||
           `brewlite://sandbox-pay?paymentId=${payment.id}&orderCode=${encodeURIComponent(order.orderCode)}&amount=${order.totalAmount.toString()}`;
         const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}`;
+        const qrDataUrl = await this.vnpayService.generateQrDataUrl(qrPayload);
+        const vietQrUrl = this.vnpayService.generateVietQrUrl({
+          amount: Number(order.totalAmount),
+          orderCode: order.orderCode,
+        });
 
         return {
           message:
             dto.method === 'VNPAY'
-              ? 'Khởi tạo giao dịch VNPAY Sandbox thành công (Truy cập vnpayUrl hoặc quét mã QR để thanh toán).'
-              : 'Khởi tạo giao dịch thanh toán thành công (Bước 1: Chờ quét mã QR / Webhook callback từ cổng Sandbox).',
+              ? 'Khởi tạo giao dịch VNPAY Sandbox thành công (Truy cập vnpayUrl hoặc quét mã QR Pay để thanh toán).'
+              : 'Khởi tạo giao dịch thanh toán thành công (Bước 1: Chờ quét mã QR Pay / Webhook callback từ cổng Sandbox).',
           success: true,
           twoStep: true,
           isIdempotent: false,
@@ -149,6 +161,8 @@ export class PaymentsService {
           vnpayUrl,
           qrPayload,
           qrCodeUrl,
+          qrDataUrl,
+          vietQrUrl,
           payment,
           order,
         };
@@ -188,6 +202,11 @@ export class PaymentsService {
               existingVnpayUrl ||
               `brewlite://sandbox-pay?paymentId=${existing.id}&amount=${existing.amount.toString()}`;
             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}`;
+            const qrDataUrl = await this.vnpayService.generateQrDataUrl(qrPayload);
+            const vietQrUrl = this.vnpayService.generateVietQrUrl({
+              amount: Number(existing.amount),
+              orderCode: freshOrder?.orderCode || 'BrewLite',
+            });
 
             return {
               message: 'Giao dịch đã được xử lý đồng thời trước đó (Idempotent response)',
@@ -199,6 +218,8 @@ export class PaymentsService {
               vnpayUrl: existingVnpayUrl,
               qrPayload,
               qrCodeUrl,
+              qrDataUrl,
+              vietQrUrl,
               payment: existing,
               order: freshOrder,
             };
@@ -363,6 +384,11 @@ export class PaymentsService {
     });
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(vnpayUrl)}`;
+    const qrDataUrl = await this.vnpayService.generateQrDataUrl(vnpayUrl);
+    const vietQrUrl = this.vnpayService.generateVietQrUrl({
+      amount: Number(order.totalAmount),
+      orderCode: order.orderCode,
+    });
 
     return {
       message: 'Tạo URL thanh toán VNPAY Sandbox thành công.',
@@ -371,7 +397,67 @@ export class PaymentsService {
       orderCode: order.orderCode,
       amount: Number(order.totalAmount),
       vnpayUrl,
+      qrPayload: vnpayUrl,
       qrCodeUrl,
+      qrDataUrl,
+      vietQrUrl,
+      config: this.vnpayService.getPublicConfig(),
+    };
+  }
+
+  /**
+   * Lấy chi tiết thông tin mã QR Pay (cả offline base64 và VietQR) cho giao dịch hoặc mã đơn hàng
+   */
+  async getPaymentQr(paymentId: string) {
+    let payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { order: true },
+    });
+
+    // Hỗ trợ tra cứu bằng orderId nếu không tìm thấy paymentId trực tiếp
+    if (!payment) {
+      payment = await this.prisma.payment.findFirst({
+        where: { orderId: paymentId },
+        include: { order: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!payment) {
+      throw new NotFoundException(`Không tìm thấy giao dịch thanh toán hoặc đơn hàng "${paymentId}"`);
+    }
+
+    let vnpayUrl: string | undefined;
+    if (payment.method === 'VNPAY' && payment.order) {
+      vnpayUrl = this.vnpayService.buildPaymentUrl({
+        orderId: payment.id,
+        orderCode: payment.order.orderCode,
+        amount: Number(payment.amount),
+      });
+    }
+
+    const qrPayload =
+      vnpayUrl ||
+      `brewlite://sandbox-pay?paymentId=${payment.id}&orderCode=${encodeURIComponent(payment.order?.orderCode || '')}&amount=${payment.amount.toString()}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrPayload)}`;
+    const qrDataUrl = await this.vnpayService.generateQrDataUrl(qrPayload);
+    const vietQrUrl = this.vnpayService.generateVietQrUrl({
+      amount: Number(payment.amount),
+      orderCode: payment.order?.orderCode || 'BrewLite',
+    });
+
+    return {
+      paymentId: payment.id,
+      orderId: payment.orderId,
+      orderCode: payment.order?.orderCode,
+      status: payment.status,
+      amount: Number(payment.amount),
+      method: payment.method,
+      vnpayUrl,
+      qrPayload,
+      qrCodeUrl,
+      qrDataUrl,
+      vietQrUrl,
       config: this.vnpayService.getPublicConfig(),
     };
   }

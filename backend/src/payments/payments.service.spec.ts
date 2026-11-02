@@ -25,6 +25,7 @@ describe('PaymentsService (Task 8 BE & Task 10 Core - Idempotency & Webhook 2 b�
     prisma = {
       payment: {
         findUnique: jest.fn<any>(),
+        findFirst: jest.fn<any>(),
         create: jest.fn<any>(),
         update: jest.fn<any>(),
       },
@@ -694,6 +695,78 @@ describe('PaymentsService (Task 8 BE & Task 10 Core - Idempotency & Webhook 2 b�
       expect(result.success).toBe(true);
       expect(result.message).toContain('thành công');
       expect(result.orderId).toBe('ord-100');
+    });
+
+    describe('QR Pay: sinh mã QR offline, VietQR Napas và tra cứu thông tin QR', () => {
+      it('VnpayService.generateQrDataUrl sinh mã QR base64 offline data:image/png', async () => {
+        const qrDataUrl = await vnpayService.generateQrDataUrl('https://example.com/test-qr');
+        expect(qrDataUrl).toMatch(/^data:image\/png;base64,/);
+      });
+
+      it('VnpayService.generateVietQrUrl sinh URL chuẩn VietQR Napas ngân hàng NCB (970419)', () => {
+        const vietQrUrl = vnpayService.generateVietQrUrl({
+          amount: 85000,
+          orderCode: '#1055',
+        });
+        expect(vietQrUrl).toContain('https://img.vietqr.io/image/970419-8VXIB1MM-compact2.jpg');
+        expect(vietQrUrl).toContain('amount=85000');
+        expect(vietQrUrl).toContain('Thanh%20toan%20%231055');
+      });
+
+      it('getPaymentQr: lấy đầy đủ dữ liệu QR khi tìm thấy bằng paymentId', async () => {
+        const paymentRecord = {
+          id: 'pay-qr-test-1',
+          orderId: 'ord-100',
+          method: 'VNPAY',
+          status: 'PENDING',
+          amount: new Prisma.Decimal(70000),
+          order: mockOrder,
+        };
+        prisma.payment.findUnique.mockResolvedValue(paymentRecord);
+
+        const qrInfo = await service.getPaymentQr('pay-qr-test-1');
+
+        expect(qrInfo.paymentId).toBe('pay-qr-test-1');
+        expect(qrInfo.orderCode).toBe('#1042');
+        expect(qrInfo.amount).toBe(70000);
+        expect(qrInfo.vnpayUrl).toBeDefined();
+        expect(qrInfo.qrCodeUrl).toBeDefined();
+        expect(qrInfo.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+        expect(qrInfo.vietQrUrl).toContain('970419');
+        expect(qrInfo.config.tmnCode).toBe('8VXIB1MM');
+      });
+
+      it('getPaymentQr: hỗ trợ fallback tìm kiếm theo orderId', async () => {
+        prisma.payment.findUnique.mockResolvedValue(null);
+        const paymentRecord = {
+          id: 'pay-qr-test-2',
+          orderId: 'ord-fallback-999',
+          method: 'VNPAY',
+          status: 'PENDING',
+          amount: new Prisma.Decimal(120000),
+          order: mockOrder,
+        };
+        prisma.payment.findFirst.mockResolvedValue(paymentRecord);
+
+        const qrInfo = await service.getPaymentQr('ord-fallback-999');
+
+        expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+          where: { orderId: 'ord-fallback-999' },
+          include: { order: true },
+          orderBy: { createdAt: 'desc' },
+        });
+        expect(qrInfo.paymentId).toBe('pay-qr-test-2');
+        expect(qrInfo.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+      });
+
+      it('getPaymentQr: quăng NotFoundException khi không tìm thấy cả paymentId lẫn orderId', async () => {
+        prisma.payment.findUnique.mockResolvedValue(null);
+        prisma.payment.findFirst.mockResolvedValue(null);
+
+        await expect(service.getPaymentQr('non-existent-id')).rejects.toThrow(
+          NotFoundException,
+        );
+      });
     });
   });
 });

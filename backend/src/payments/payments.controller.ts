@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Param,
   Body,
   Headers,
   Query,
@@ -118,5 +119,22 @@ export class PaymentsController {
   @Get('vnpay/config')
   getVnpayConfig() {
     return this.paymentsService.getVnpayConfig();
+  }
+
+  /**
+   * API Lấy chi tiết thông tin mã QR Pay (cả offline base64 và VietQR) cho giao dịch hoặc đơn hàng
+   * GET /payments/:paymentId/qr
+   */
+  @Get(':paymentId/qr')
+  getPaymentQr(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.getPaymentQr(paymentId);
+  }
+
+  /**
+   * Alias: GET /payments/qr/:paymentId
+   */
+  @Get('qr/:paymentId')
+  getPaymentQrAlias(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.getPaymentQr(paymentId);
   }
 }

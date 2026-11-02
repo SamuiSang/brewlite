@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as QRCode from 'qrcode';
 
 export interface VnpayPaymentUrlParams {
   orderId: string;
@@ -9,6 +10,14 @@ export interface VnpayPaymentUrlParams {
   bankCode?: string;
   language?: string;
   returnUrl?: string;
+}
+
+export interface VietQrParams {
+  bankBin?: string;
+  accountNumber?: string;
+  amount: number;
+  orderCode: string;
+  accountName?: string;
 }
 
 @Injectable()
@@ -88,6 +97,38 @@ export class VnpayService {
   }
 
   /**
+   * Sinh mã QR offline dạng Data URL (base64 image/png) trực tiếp trong server
+   */
+  async generateQrDataUrl(text: string): Promise<string> {
+    try {
+      return await QRCode.toDataURL(text, {
+        width: 320,
+        margin: 2,
+        color: {
+          dark: '#14241b',
+          light: '#ffffff',
+        },
+      });
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Sinh URL chuẩn VietQR (Napas) chuyển khoản nhanh với logo ngân hàng
+   * Mặc định ngân hàng test: NCB (BIN: 970419)
+   */
+  generateVietQrUrl(params: VietQrParams): string {
+    const bankBin = params.bankBin || '970419'; // NCB - Ngân hàng Quốc Dân
+    const accountNumber = params.accountNumber || this.tmnCode;
+    const accountName = params.accountName || 'BREWLITE COFFEE';
+    const amount = Math.round(params.amount);
+    const addInfo = encodeURIComponent(`Thanh toan ${params.orderCode}`);
+
+    return `https://img.vietqr.io/image/${bankBin}-${accountNumber}-compact2.jpg?amount=${amount}&addInfo=${addInfo}&accountName=${encodeURIComponent(accountName)}`;
+  }
+
+  /**
    * Xác thực chữ ký số HMAC-SHA512 từ callback của VNPAY (IPN hoặc Return URL)
    */
   verifyChecksum(query: Record<string, any>): boolean {
@@ -132,6 +173,7 @@ export class VnpayService {
         issueDate: '07/15',
         otp: '123456',
       },
+      vietQrDefaultBin: '970419',
     };
   }
 }

@@ -328,6 +328,136 @@ async function main() {
   }
   console.log(`[Seed] Da tao ${users.length} tai khoan nguoi dung mau`);
 
+    // 6. Danh muc Nguyen vat lieu tho (Task 2, 6, 10.1 - Chien)
+  const ingredients = [
+    { id: 'i1111111-1111-1111-1111-111111111111', name: 'Hạt cà phê Robusta', unit: 'g', stock: 10000, version: 1 },
+    { id: 'i2222222-2222-2222-2222-222222222222', name: 'Hạt Arabica', unit: 'g', stock: 10000, version: 1 },
+    { id: 'i3333333-3333-3333-3333-333333333333', name: 'Sữa đặc', unit: 'ml', stock: 8000, version: 1 },
+    { id: 'i4444444-4444-4444-4444-444444444444', name: 'Sữa tươi', unit: 'ml', stock: 15000, version: 1 },
+    { id: 'i5555555-5555-5555-5555-555555555555', name: 'Cốt trà', unit: 'ml', stock: 20000, version: 1 },
+    { id: 'i6666666-6666-6666-6666-666666666666', name: 'Bột/Kem', unit: 'g', stock: 5000, version: 1 },
+    { id: 'i7777777-7777-7777-7777-777777777777', name: 'Ly nhựa', unit: 'cái', stock: 1000, version: 1 },
+  ];
+
+  for (const ing of ingredients) {
+    await prisma.ingredient.upsert({
+      where: { id: ing.id },
+      update: ing,
+      create: ing,
+    });
+  }
+  console.log(`[Seed] Da tao ${ingredients.length} loai nguyen vat lieu tho`);
+
+  // 7. Dinh muc cong thuc pha che cho 16 mon (RecipeItem)
+  const cupId = 'i7777777-7777-7777-7777-777777777777';
+  const robustaId = 'i1111111-1111-1111-1111-111111111111';
+  const arabicaId = 'i2222222-2222-2222-2222-222222222222';
+  const condensedMilkId = 'i3333333-3333-3333-3333-333333333333';
+  const freshMilkId = 'i4444444-4444-4444-4444-444444444444';
+  const teaId = 'i5555555-5555-5555-5555-555555555555';
+  const creamPowderId = 'i6666666-6666-6666-6666-666666666666';
+
+  const recipes = [
+    // 1. Cà phê đen đá
+    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: robustaId, amount: 20 },
+    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: cupId, amount: 1 },
+
+    // 2. Cà phê sữa đá
+    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: robustaId, amount: 20 },
+    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: condensedMilkId, amount: 30 },
+    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: cupId, amount: 1 },
+
+    // 3. Bạc xỉu
+    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: robustaId, amount: 10 },
+    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: condensedMilkId, amount: 40 },
+    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: freshMilkId, amount: 50 },
+    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: cupId, amount: 1 },
+
+    // 4. Cà phê muối
+    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: robustaId, amount: 20 },
+    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: condensedMilkId, amount: 20 },
+    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: creamPowderId, amount: 30 },
+    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: cupId, amount: 1 },
+
+    // 5. Americano
+    { productId: 'p2222222-2222-2222-2222-111111111111', ingredientId: arabicaId, amount: 18 },
+    { productId: 'p2222222-2222-2222-2222-111111111111', ingredientId: cupId, amount: 1 },
+
+    // 6. Latte
+    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: arabicaId, amount: 18 },
+    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: freshMilkId, amount: 150 },
+    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: cupId, amount: 1 },
+
+    // 7. Cappuccino
+    { productId: 'p2222222-2222-2222-2222-333333333333', ingredientId: arabicaId, amount: 18 },
+    { productId: 'p2222222-2222-2222-2222-333333333333', ingredientId: freshMilkId, amount: 120 },
+    { productId: 'p2222222-2222-2222-2222-333333333333', ingredientId: creamPowderId, amount: 10 },
+    { productId: 'p2222222-2222-2222-2222-333333333333', ingredientId: cupId, amount: 1 },
+
+    // 8. Caramel Macchiato
+    { productId: 'p2222222-2222-2222-2222-444444444444', ingredientId: arabicaId, amount: 18 },
+    { productId: 'p2222222-2222-2222-2222-444444444444', ingredientId: freshMilkId, amount: 120 },
+    { productId: 'p2222222-2222-2222-2222-444444444444', ingredientId: condensedMilkId, amount: 15 },
+    { productId: 'p2222222-2222-2222-2222-444444444444', ingredientId: creamPowderId, amount: 15 },
+    { productId: 'p2222222-2222-2222-2222-444444444444', ingredientId: cupId, amount: 1 },
+
+    // 9. Trà đào cam sả
+    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: teaId, amount: 120 },
+    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: cupId, amount: 1 },
+
+    // 10. Trà vải lài
+    { productId: 'p3333333-3333-3333-3333-222222222222', ingredientId: teaId, amount: 120 },
+    { productId: 'p3333333-3333-3333-3333-222222222222', ingredientId: cupId, amount: 1 },
+
+    // 11. Trà thanh đào
+    { productId: 'p3333333-3333-3333-3333-333333333333', ingredientId: teaId, amount: 120 },
+    { productId: 'p3333333-3333-3333-3333-333333333333', ingredientId: cupId, amount: 1 },
+
+    // 12. Trà dâu tằm tuyết
+    { productId: 'p3333333-3333-3333-3333-444444444444', ingredientId: teaId, amount: 100 },
+    { productId: 'p3333333-3333-3333-3333-444444444444', ingredientId: creamPowderId, amount: 20 },
+    { productId: 'p3333333-3333-3333-3333-444444444444', ingredientId: cupId, amount: 1 },
+
+    // 13. Trà sữa Ô Long nướng
+    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: teaId, amount: 100 },
+    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: condensedMilkId, amount: 20 },
+    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: freshMilkId, amount: 80 },
+    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: cupId, amount: 1 },
+
+    // 14. Trà sữa lài
+    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: teaId, amount: 100 },
+    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: condensedMilkId, amount: 20 },
+    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: freshMilkId, amount: 80 },
+    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: cupId, amount: 1 },
+
+    // 15. Matcha Freeze
+    { productId: 'p5555555-5555-5555-5555-111111111111', ingredientId: creamPowderId, amount: 40 },
+    { productId: 'p5555555-5555-5555-5555-111111111111', ingredientId: freshMilkId, amount: 100 },
+    { productId: 'p5555555-5555-5555-5555-111111111111', ingredientId: condensedMilkId, amount: 20 },
+    { productId: 'p5555555-5555-5555-5555-111111111111', ingredientId: cupId, amount: 1 },
+
+    // 16. Caramel Freeze
+    { productId: 'p5555555-5555-5555-5555-222222222222', ingredientId: arabicaId, amount: 18 },
+    { productId: 'p5555555-5555-5555-5555-222222222222', ingredientId: creamPowderId, amount: 40 },
+    { productId: 'p5555555-5555-5555-5555-222222222222', ingredientId: freshMilkId, amount: 80 },
+    { productId: 'p5555555-5555-5555-5555-222222222222', ingredientId: condensedMilkId, amount: 20 },
+    { productId: 'p5555555-5555-5555-5555-222222222222', ingredientId: cupId, amount: 1 },
+  ];
+
+  for (const r of recipes) {
+    await prisma.recipeItem.upsert({
+      where: {
+        productId_ingredientId: {
+          productId: r.productId,
+          ingredientId: r.ingredientId,
+        },
+      },
+      update: { amount: r.amount },
+      create: r,
+    });
+  }
+  console.log(`[Seed] Da tao ${recipes.length} dinh muc cong thuc (RecipeItem) cho 16 mon`);
+
   console.log('[Seed] Hoan tat nap du lieu mau thanh cong 100%.');
 }
 

@@ -24,6 +24,11 @@ export class CreatePaymentDto {
   @IsBoolean()
   @IsOptional()
   twoStep?: boolean;
+
+  // Mã ngân hàng tùy chọn cho VNPAY (ví dụ: NCB, VNPAYQR, VISA)
+  @IsString()
+  @IsOptional()
+  bankCode?: string;
 }
 
 export class PaymentWebhookDto {
@@ -44,4 +49,22 @@ export class PaymentWebhookDto {
   @IsString()
   @IsOptional()
   transactionRef?: string;
+}
+
+export class CreateVnpayUrlDto {
+  @IsString()
+  @IsNotEmpty({ message: 'orderId không được để trống' })
+  orderId: string;
+
+  @IsString()
+  @IsOptional()
+  bankCode?: string;
+
+  @IsString()
+  @IsOptional()
+  language?: 'vn' | 'en';
+
+  @IsString()
+  @IsOptional()
+  idempotencyKey?: string;
 }

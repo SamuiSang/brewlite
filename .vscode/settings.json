@@ -1,0 +1,8 @@
+{
+  "typescript.tsdk": "backend/node_modules/typescript/lib",
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+  "eslint.workingDirectories": [
+    { "pattern": "./backend" },
+    { "pattern": "./frontend" }
+  ]
+}

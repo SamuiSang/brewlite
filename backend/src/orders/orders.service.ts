@@ -911,7 +911,9 @@ export class OrdersService {
     const sortedIds = [...ingredientIds].sort();
 
     // 4. Khóa độc quyền (Exclusive Pessimistic Lock - SELECT FOR UPDATE)
-    const lockedIngredients: Array<{ id: string; current_stock: any; name: string }> = await tx.$queryRaw`
+    const lockedIngredients = await tx.$queryRaw<
+      Array<{ id: string; current_stock: any; name: string }>
+    >`
       SELECT id, current_stock, name
       FROM ingredients
       WHERE id IN (${Prisma.join(sortedIds)})

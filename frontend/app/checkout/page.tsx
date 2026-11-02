@@ -97,64 +97,70 @@ export default function CheckoutPage() {
     }
   }, [authUser]);
 
-  const handleSimulateWebhook = async (outcome: 'SUCCESS' | 'FAILED') => {
+  // Hủy giao dịch khi người dùng đóng modal (bấm X) hoặc hủy thanh toán
+  const handleCancelPayment = async () => {
     if (!qrModal) return;
-    setIsSimulatingWebhook(true);
-    setWebhookStatus(null);
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
+    const paymentId = qrModal.paymentId;
+    setQrModal(null);
     try {
-      const res = await fetch(`${apiUrl}/payments/webhook`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      await fetch(`${apiUrl}/payments/webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
-          'Idempotency-Key': crypto.randomUUID(),
         },
         body: JSON.stringify({
-          paymentId: qrModal.paymentId,
-          outcome,
-          transactionRef: `VNPAY-SIM-${Date.now()}`,
+          paymentId,
+          outcome: 'FAILED',
+          transactionRef: 'USER_CANCELLED',
         }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Lỗi gọi Webhook');
-      }
-
-      if (outcome === 'SUCCESS') {
-        setWebhookStatus('success');
-        const newOrderId = createOrder({
-          customerName: customerName || authUser?.fullName || 'Khách hàng',
-          phoneNumber,
-          orderNote,
-          paymentMethod: 'Cổng thanh toán VNPAY Sandbox (2-Step Webhook)',
-        });
-
-        if (pointsUsed > 0 && updateProfile && profile) {
-          updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
-        }
-
-        setTimeout(() => {
-          setQrModal(null);
-          router.push(`/orders/${newOrderId}`);
-        }, 1400);
-      } else {
-        setWebhookStatus('failed');
-        setTimeout(() => {
-          setQrModal(null);
-          router.push('/payment-failed');
-        }, 1200);
-      }
-    } catch (err: any) {
-      console.error('Webhook simulation failed:', err);
-      alert(`Lỗi Webhook: ${err.message || 'Không thể kết nối Backend'}`);
-    } finally {
-      setIsSimulatingWebhook(false);
+    } catch (err) {
+      console.error('Lỗi khi hủy giao dịch:', err);
     }
+    router.push('/payment-failed');
   };
+
+  // Tự động kiểm tra trạng thái thanh toán VNPAY (polling mỗi 2 giây khi modal đang mở)
+  useEffect(() => {
+    if (!qrModal) return;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${apiUrl}/payments/${qrModal.paymentId}/qr`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'SUCCESS') {
+            clearInterval(interval);
+            setWebhookStatus('success');
+            createOrder({
+              customerName: customerName || authUser?.fullName || 'Khách hàng',
+              phoneNumber,
+              orderNote,
+              paymentMethod: 'Cổng thanh toán VNPAY Sandbox',
+            });
+            if (pointsUsed > 0 && updateProfile && profile) {
+              updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
+            }
+            setTimeout(() => {
+              setQrModal(null);
+              router.push(`/order-success?orderId=${qrModal.orderId}`);
+            }, 800);
+          } else if (data.status === 'FAILED') {
+            clearInterval(interval);
+            setQrModal(null);
+            router.push('/payment-failed');
+          }
+        }
+      } catch (err) {
+        console.error('Polling payment status error:', err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [qrModal, customerName, authUser, phoneNumber, orderNote, createOrder, pointsUsed, updateProfile, profile, router]);
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -614,13 +620,12 @@ export default function CheckoutPage() {
           {qrModal && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
               <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-[#e8e2d7] relative animate-in fade-in zoom-in-95 duration-200">
-                {/* Close Button */}
+                {/* Close Button X: Bấm X thoát khỏi chỗ quét mã là thất bại */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!isSimulatingWebhook) setQrModal(null);
-                  }}
-                  className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#f4efe7] hover:bg-[#e8e2d7] flex items-center justify-center text-[#14241b] transition-all cursor-pointer"
+                  onClick={handleCancelPayment}
+                  title="Hủy thanh toán và thoát"
+                  className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#f4efe7] hover:bg-[#ebdccf] text-[#853434] flex items-center justify-center transition-all cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -628,7 +633,7 @@ export default function CheckoutPage() {
                 {/* Modal Header */}
                 <div className="text-center pb-3 border-b border-[#f0ebe0]">
                   <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-2">
-                    Trạng thái: PENDING (Chờ Webhook VNPAY)
+                    Trạng thái: PENDING (Chờ xác nhận VNPAY)
                   </span>
                   <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
                     Thanh toán VNPAY Sandbox
@@ -650,13 +655,13 @@ export default function CheckoutPage() {
                       Mã VNPAY-QR Sandbox (Ký số HMAC-SHA512)
                     </p>
                     <p className="text-[10px] text-[#708076] mt-0.5">
-                      Quét mã bằng Camera / Ứng dụng VNPAY hoặc bấm nút bên dưới để mở cổng test
+                      Quét mã bằng Camera / Ứng dụng VNPAY hoặc bấm nút bên dưới để thanh toán
                     </p>
                   </div>
                 </div>
 
                 {/* Test credentials info */}
-                <div className="bg-[#f4efe7] rounded-2xl p-2.5 text-[10px] text-[#4d5e53] mb-3 space-y-1">
+                <div className="bg-[#f4efe7] rounded-2xl p-2.5 text-[10px] text-[#4d5e53] mb-4 space-y-1">
                   <div className="flex justify-between">
                     <span>Cổng thanh toán:</span>
                     <strong className="text-[#14241b]">VNPAY Sandbox (Test)</strong>
@@ -676,54 +681,31 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Webhook Feedback Message */}
+                {/* Status notice */}
                 {webhookStatus === 'success' && (
                   <div className="bg-[#e4ede3] border border-[#b8d4bb] text-[#163d2c] p-2.5 rounded-xl mb-3 flex items-center gap-2 text-xs font-bold animate-in fade-in">
                     <CheckCircle2 className="w-4 h-4 text-[#24523c] shrink-0" />
-                    <span>Webhook VNPAY xác nhận thành công: Payment = SUCCESS, Order = PAID!</span>
-                  </div>
-                )}
-                {webhookStatus === 'failed' && (
-                  <div className="bg-[#faebeb] border border-[#f0c2c2] text-[#932727] p-2.5 rounded-xl mb-3 flex items-center gap-2 text-xs font-bold animate-in fade-in">
-                    <XCircle className="w-4 h-4 text-[#b32b2b] shrink-0" />
-                    <span>Giao dịch bị từ chối / hủy bỏ qua Webhook.</span>
+                    <span>Thanh toán VNPAY thành công! Đang chuyển hướng...</span>
                   </div>
                 )}
 
-                {/* Action Buttons */}
+                {/* Action Buttons: Chỉ giữ nút mở VNPAY và nút Hủy thoát */}
                 <div className="space-y-2">
                   <a
                     href={qrModal.vnpayUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                    className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm text-center"
                   >
-                    <span>Mở Cổng VNPAY Sandbox thật</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Mở Cổng VNPAY Sandbox để thanh toán</span>
+                    <ExternalLink className="w-4 h-4" />
                   </a>
 
                   <button
                     type="button"
-                    disabled={isSimulatingWebhook}
-                    onClick={() => handleSimulateWebhook('SUCCESS')}
-                    className="w-full bg-[#24523c] hover:bg-[#1a3d2c] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {isSimulatingWebhook ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-4 h-4" />
-                    )}
-                    <span>Mô phỏng Webhook VNPAY thành công (PAID)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isSimulatingWebhook}
-                    onClick={() => handleSimulateWebhook('FAILED')}
-                    className="w-full bg-[#f4efe7] hover:bg-[#ebdccf] text-[#853434] text-xs font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    onClick={handleCancelPayment}
+                    className="w-full bg-[#f4efe7] hover:bg-[#e8decb] text-[#853434] text-xs font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <XCircle className="w-3.5 h-3.5" />
-                    <span>Mô phỏng Webhook VNPAY thất bại</span>
+                    <span>Hủy giao dịch (Thoát)</span>
                   </button>
                 </div>
               </div>

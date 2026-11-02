@@ -1,10 +1,28 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { MapPin, ArrowRight, Loader2, Lock } from 'lucide-react';
+import {
+  MapPin,
+  ArrowRight,
+  Loader2,
+  Lock,
+  QrCode,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Copy,
+  Check,
+  ShieldCheck,
+  X,
+  Smartphone,
+  CreditCard,
+  Building2,
+  RefreshCw,
+  ExternalLink,
+} from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
@@ -21,7 +39,7 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('Nguyen Duy');
   const [phoneNumber, setPhoneNumber] = useState('090 123 4567');
   const [orderNote, setOrderNote] = useState('Vui lòng gọi tên tôi khi đơn hàng sẵn sàng.');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet'>('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'ewallet'>('ewallet');
   const [cardholderName, setCardholderName] = useState('NGUYEN DUY');
   const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
   const [expiryDate, setExpiryDate] = useState('12 / 28');
@@ -29,12 +47,40 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
-  const { items, getTotalItems, getSubtotal, getDiscount, getTotal, createOrder, authToken, authUser, profile, updateProfile } = useCartStore();
+  // Task 10.2 — Idempotency key
+  // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
+  // Idempotency-Key để backend nhận biết request trùng (double-click / retry)
+  // và chỉ xử lý đúng 1 lần. Reset UUID mới sau khi thanh toán thất bại.
+  const idempotencyKeyRef = useRef<string>('');
+
+  // Task 8 (FE) & Task 10.2: Modal Cổng Thanh Toán QR Sandbox 2 bước
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrGateway, setQrGateway] = useState<'VIETQR' | 'MOMO' | 'VNPAY'>('VIETQR');
+  const [currentBackendOrderId, setCurrentBackendOrderId] = useState<string>('');
+  const [currentOrderCode, setCurrentOrderCode] = useState<string>('');
+  const [isSendingWebhook, setIsSendingWebhook] = useState<'success' | 'failed' | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(900); // Đếm ngược 15:00 phút
+
+  const {
+    items,
+    getTotalItems,
+    getSubtotal,
+    getDiscount,
+    getTotal,
+    createOrder,
+    authToken,
+    authUser,
+    profile,
+    updateProfile,
+  } = useCartStore();
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Task 10.2: Sinh UUID phía client khi mount
+    idempotencyKeyRef.current = crypto.randomUUID();
   }, []);
 
   // Kiểm tra đăng nhập: nếu chưa đăng nhập thì tự động chuyển hướng đến /signin
@@ -43,6 +89,24 @@ export default function CheckoutPage() {
       router.push('/signin?redirect=/checkout');
     }
   }, [mounted, authToken, authUser, router]);
+
+  // Bộ đếm ngược thời gian cho mã QR Sandbox
+  useEffect(() => {
+    if (!isQrModalOpen) {
+      setTimeLeft(900);
+      return;
+    }
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isQrModalOpen]);
 
   const totalItems = mounted ? getTotalItems() : 2;
   const subtotal = mounted ? getSubtotal() : 124000;
@@ -64,6 +128,26 @@ export default function CheckoutPage() {
     }
   }, [authUser]);
 
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleCopy = (text: string, field: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
+  };
+
+  /**
+   * BƯỚC 1: Xử lý khi bấm nút "Thanh toán" tại trang /checkout
+   * - Tạo đơn hàng PENDING qua POST /orders
+   * - Gọi POST /payments với { twoStep: true } và header Idempotency-Key
+   * - Mở Modal Cổng Thanh Toán QR Sandbox (VietQR / MoMo / VNPay)
+   */
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,21 +160,22 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const isSuccess = mockOutcome === 'success' && cvv !== '000';
 
-    // Header xác thực bắt buộc gửi kèm JWT token của tài khoản đang đăng nhập
+    // Header xác thực bắt buộc gửi kèm JWT token và Idempotency-Key
     const authHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
+      Authorization: `Bearer ${authToken}`,
+      'Idempotency-Key': idempotencyKeyRef.current,
     };
+
+    let backendOrderId = '';
+    let orderCode = '';
 
     try {
       // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế
       const prodRes = await fetch(`${apiUrl}/products`);
       const dbProducts: DbProduct[] = await prodRes.json();
       const defaultProductId = dbProducts[0]?.id;
-
-      let backendOrderId = '';
 
       if (defaultProductId) {
         // Tạo đơn hàng trạng thái PENDING trên Backend (gửi kèm JWT và userId)
@@ -121,11 +206,12 @@ export default function CheckoutPage() {
           return;
         }
 
-        const createdOrder: { id: string } = await orderRes.json();
-        backendOrderId = createdOrder.id;
+        const createdOrder = await orderRes.json();
+        backendOrderId = createdOrder.id || '';
+        orderCode = createdOrder.orderCode || createdOrder.id || '';
       }
 
-      // 2. Gọi POST /payments để xử lý Mock Payment
+      // 2. Gọi POST /payments với twoStep: true và header Idempotency-Key để khởi tạo cổng QR Sandbox
       if (backendOrderId) {
         await fetch(`${apiUrl}/payments`, {
           method: 'POST',
@@ -133,40 +219,89 @@ export default function CheckoutPage() {
           body: JSON.stringify({
             orderId: backendOrderId,
             method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
-            mockSuccess: isSuccess,
+            twoStep: true,
+            idempotencyKey: idempotencyKeyRef.current,
           }),
-        });
+        }).catch((err) => console.warn('POST /payments init:', err));
       }
     } catch (err) {
-      console.error('Lỗi kết nối API:', err);
+      console.error('Lỗi kết nối API khởi tạo thanh toán:', err);
     }
 
-    // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
-    if (!isSuccess) {
-      setIsProcessing(false);
-      router.push('/payment-failed');
-      return;
+    const fallbackCode = orderCode || `BW${Date.now().toString().slice(-6)}`;
+    setCurrentBackendOrderId(backendOrderId || fallbackCode);
+    setCurrentOrderCode(fallbackCode);
+    setIsProcessing(false);
+
+    // Mở Modal Cổng Thanh Toán QR Sandbox (Bước 2)
+    setIsQrModalOpen(true);
+  };
+
+  /**
+   * BƯỚC 2: Xử lý nút giả lập Webhook của Bên thứ 3 trên Modal Sandbox
+   * - "Xác nhận đã quét QR (Gửi Webhook SUCCESS)" -> gọi POST /payments/webhook với status SUCCESS
+   * - "Giả lập lỗi/Hủy giao dịch (Gửi Webhook FAILED)" -> gọi POST /payments/webhook với status FAILED
+   * Sau đó chuyển trang phù hợp (/orders/[id] hoặc /payment-failed)
+   */
+  const handleConfirmWebhook = async (status: 'SUCCESS' | 'FAILED') => {
+    setIsSendingWebhook(status === 'SUCCESS' ? 'success' : 'failed');
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      // Gọi webhook backend mô phỏng thông báo kết quả từ ngân hàng/ví điện tử
+      await fetch(`${apiUrl}/payments/webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({
+          orderId: currentBackendOrderId,
+          orderCode: currentOrderCode,
+          status,
+          method: qrGateway,
+          amount: finalTotal,
+          event: status === 'SUCCESS' ? 'PAYMENT_SUCCESS' : 'PAYMENT_FAILED',
+          reason: status === 'FAILED' ? 'SIMULATED_FAILURE_OR_USER_CANCEL' : undefined,
+        }),
+      }).catch((err) => console.warn('Webhook call warning:', err));
+    } catch (err) {
+      console.warn('Lỗi gửi Webhook:', err);
     }
 
-    const paymentDesc =
-      paymentMethod === 'card'
-        ? `Bank card · Visa ending in ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
-        : 'E-wallet · MoMo / ZaloPay';
+    if (status === 'SUCCESS') {
+      const paymentDesc =
+        paymentMethod === 'card'
+          ? `Bank card · Visa ending in ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
+          : `${qrGateway} · QR Sandbox`;
 
-    const newOrderId = createOrder({
-      customerName: customerName || authUser.fullName,
-      phoneNumber,
-      orderNote,
-      paymentMethod: paymentDesc,
-    });
+      const newOrderId = createOrder({
+        customerName: customerName || authUser?.fullName || 'Khách hàng',
+        phoneNumber,
+        orderNote,
+        paymentMethod: paymentDesc,
+      });
 
-    if (pointsUsed > 0 && updateProfile && profile) {
-      updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
-    }
+      if (pointsUsed > 0 && updateProfile && profile) {
+        updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
+      }
 
-    setTimeout(() => {
+      setIsSendingWebhook(null);
+      setIsQrModalOpen(false);
       router.push(`/orders/${newOrderId}`);
-    }, 500);
+    } else {
+      // Task 10.2: Reset idempotency-key khi thanh toán thất bại để lần thanh toán tiếp theo có key mới
+      idempotencyKeyRef.current = crypto.randomUUID();
+      setIsSendingWebhook(null);
+      setIsQrModalOpen(false);
+      router.push('/payment-failed');
+    }
+  };
+
+  const handleCloseModal = () => {
+    // Reset key và đóng modal nếu người dùng chủ động tắt
+    idempotencyKeyRef.current = crypto.randomUUID();
+    setIsQrModalOpen(false);
   };
 
   // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
@@ -201,6 +336,9 @@ export default function CheckoutPage() {
     );
   }
 
+  // URL QR VietQR động
+  const vietQrUrl = `https://api.vietqr.io/image/970422-0901234567-compact2.png?amount=${finalTotal}&addInfo=BREWLITE%20${currentOrderCode || '1043'}&accountName=BREWLITE%20COFFEE`;
+
   return (
     <div className="flex-1 py-8 sm:py-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -219,7 +357,7 @@ export default function CheckoutPage() {
             Chỉ còn một bước nữa để thưởng thức cà phê ngon!
           </h1>
           <p className="text-xs sm:text-sm text-[#66776c] mt-2">
-            Thanh toán an toàn và nhận đơn hàng tại quầy.
+            Thanh toán an toàn qua Cổng QR Sandbox 2 bước (Task 8 & 10.2).
           </p>
         </div>
 
@@ -299,12 +437,17 @@ export default function CheckoutPage() {
 
             {/* Choose How to Pay Card */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs flex flex-col gap-5">
-              <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
-                Chọn phương thức thanh toán
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
+                  Chọn phương thức thanh toán
+                </h2>
+                <span className="text-[11px] font-semibold text-[#24523c] bg-[#e4ede3] px-2.5 py-0.5 rounded-full">
+                  Cổng QR Sandbox 2 bước
+                </span>
+              </div>
 
               <div className="space-y-3">
-                {/* E-wallet Option */}
+                {/* E-wallet / QR Option */}
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('ewallet')}
@@ -326,9 +469,12 @@ export default function CheckoutPage() {
                         <div className="w-1.5 h-1.5 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="text-xs font-bold">Ví điện tử</span>
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-[#163d2c]" />
+                      <span className="text-xs font-bold">Cổng QR Sandbox (VietQR / MoMo / VNPay)</span>
+                    </div>
                   </div>
-                  <span className="text-[11px] text-[#708076]">MoMo / ZaloPay</span>
+                  <span className="text-[11px] text-[#708076]">Quét mã QR 2 bước</span>
                 </button>
 
                 {/* Bank Card Option */}
@@ -353,40 +499,13 @@ export default function CheckoutPage() {
                         <div className="w-1.5 h-1.5 rounded-full bg-white" />
                       )}
                     </div>
-                    <span className="text-xs font-bold">Thẻ ngân hàng</span>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-[#163d2c]" />
+                      <span className="text-xs font-bold">Thẻ ngân hàng & Cổng Sandbox</span>
+                    </div>
                   </div>
                   <span className="text-[11px] text-[#708076]">Visa / Mastercard</span>
                 </button>
-              </div>
-
-              <div className="pt-3 border-t border-[#f0ebe0]">
-                <label className="block text-xs font-bold text-[#163d2c] mb-2">
-                  Chế độ giả lập (Mock Payment)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('success')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'success'
-                        ? 'bg-[#e3ede1] border-[#2f664a] text-[#163d2c]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ✅ Giả lập Thành công (PAID)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMockOutcome('failed')}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
-                      mockOutcome === 'failed'
-                        ? 'bg-[#fce9e5] border-[#b33e2a] text-[#b33e2a]'
-                        : 'bg-[#f4efe7] border-transparent text-[#708076]'
-                    }`}
-                  >
-                    ❌ Giả lập Thất bại (FAILED)
-                  </button>
-                </div>
               </div>
 
               {/* Card Inputs (if Bank card selected) */}
@@ -576,10 +695,10 @@ export default function CheckoutPage() {
             <div className="bg-[#163d2c] text-white rounded-3xl p-6 sm:p-7 border border-[#234d39] shadow-sm flex flex-col gap-4">
               <div>
                 <span className="bg-[#24523c] text-[#d6ede0] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full inline-block mb-3">
-                  CHỜ THANH TOÁN
+                  BƯỚC 1: KHỞI TẠO ĐƠN & THANH TOÁN
                 </span>
                 <p className="text-xs text-[#c2d1c7] leading-relaxed">
-                  Đã bao gồm ưu đãi thành viên . Chúng tôi sẽ bắt đầu pha chế sau khi thanh toán được xác nhận.
+                  Bấm &quot;Thanh toán&quot; để tạo đơn hàng PENDING và mở Cổng Thanh Toán QR Sandbox 2 bước (MoMo / VNPay / VietQR).
                 </p>
               </div>
 
@@ -587,12 +706,12 @@ export default function CheckoutPage() {
                 type="submit"
                 disabled={isProcessing}
                 id="pay-button"
-                className="w-full bg-[#d6955b] hover:bg-[#c4844a] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
+                className="w-full bg-[#d6955b] hover:bg-[#c4844a] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Đang xử lý thanh toán...</span>
+                    <span>Đang khởi tạo cổng thanh toán...</span>
                   </>
                 ) : (
                   <>
@@ -607,15 +726,269 @@ export default function CheckoutPage() {
               </div>
 
               <p className="text-[10px] text-[#8ca094] leading-relaxed text-center">
-                Khi thanh toán, bạn đồng ý với các điều khoản đặt hàng của chúng tôi. Chỉ hỗ trợ thanh toán không tiền mặt và nhận hàng tại quầy.
+                Cơ chế Idempotency-Key kích hoạt chống trùng lặp giao dịch (Task 10.2).
               </p>
             </div>
-
-            <p className="text-[11px] text-[#78887e] px-2 leading-relaxed">
-              Điểm thưởng sẽ được cộng sau khi thanh toán thành công, không phải khi đơn hàng còn đang chờ xử lý.
-            </p>
           </div>
         </form>
+
+        {/* MODAL CỔNG THANH TOÁN QR SANDBOX (BƯỚC 2) */}
+        {isQrModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-lg w-full border border-[#e8e2d7] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* Modal Header */}
+              <div className="bg-[#163d2c] text-white p-5 sm:p-6 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="bg-[#d6955b] text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      SANDBOX MODE
+                    </span>
+                    <span className="text-[11px] text-[#c2d1c7] flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Hết hạn sau {formatTime(timeLeft)}
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold">
+                    Cổng Thanh Toán QR Sandbox
+                  </h3>
+                  <p className="text-xs text-[#a2b7aa] mt-0.5">
+                    Bước 2: Quét mã QR hoặc giả lập Webhook từ bên thứ 3
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
+                  title="Đóng"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
+                {/* Gateway Selector Tabs */}
+                <div>
+                  <label className="block text-xs font-bold text-[#14241b] mb-2">
+                    Chọn cổng thanh toán QR:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setQrGateway('VIETQR')}
+                      className={`py-2.5 px-3 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                        qrGateway === 'VIETQR'
+                          ? 'bg-[#e4ede3] border-[#163d2c] text-[#163d2c] shadow-xs'
+                          : 'bg-[#f4efe7] border-transparent text-[#708076] hover:bg-[#eae3d7]'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>VietQR</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQrGateway('MOMO')}
+                      className={`py-2.5 px-3 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                        qrGateway === 'MOMO'
+                          ? 'bg-[#fce9f2] border-[#a50064] text-[#a50064] shadow-xs'
+                          : 'bg-[#f4efe7] border-transparent text-[#708076] hover:bg-[#eae3d7]'
+                      }`}
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      <span>MoMo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setQrGateway('VNPAY')}
+                      className={`py-2.5 px-3 rounded-2xl text-xs font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                        qrGateway === 'VNPAY'
+                          ? 'bg-[#e5f1fc] border-[#005baa] text-[#005baa] shadow-xs'
+                          : 'bg-[#f4efe7] border-transparent text-[#708076] hover:bg-[#eae3d7]'
+                      }`}
+                    >
+                      <QrCode className="w-4 h-4" />
+                      <span>VNPay</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* QR Code Card Display */}
+                <div className="bg-[#f9f7f3] border border-[#e8e2d7] rounded-3xl p-5 flex flex-col items-center text-center">
+                  <div className="relative w-48 h-48 bg-white p-3 rounded-2xl border border-[#ded5c7] shadow-sm flex items-center justify-center mb-3">
+                    {qrGateway === 'VIETQR' ? (
+                      // VietQR API image
+                      <img
+                        src={vietQrUrl}
+                        alt="VietQR Code"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      // Mock visual SVG QR for MoMo / VNPay
+                      <div className="relative w-full h-full flex flex-col items-center justify-center">
+                        <svg
+                          className="w-36 h-36"
+                          viewBox="0 0 100 100"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <rect width="100" height="100" fill="white" />
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M10 10H40V40H10V10ZM16 16H34V34H16V16ZM20 20H30V30H20V20ZM60 10H90V40H60V10ZM66 16H84V34H66V16ZM70 20H80V30H70V20ZM10 60H40V90H10V60ZM16 66H34V84H16V66ZM20 70H30V80H20V70ZM48 10H52V24H48V10ZM48 30H52V40H48V30ZM10 48H24V52H10V48ZM30 48H40V52H30V48ZM60 48H74V52H60V48ZM80 48H90V52H80V48ZM48 60H52V74H48V60ZM48 80H52V90H48V80ZM60 60H70V70H60V60ZM75 60H85V70H75V60ZM60 75H70V85H60V75ZM75 75H85V85H75V75ZM85 85H90V90H85V85ZM55 48H58V52H55V48ZM48 55H52V58H48V55Z"
+                            fill={qrGateway === 'MOMO' ? '#a50064' : '#005baa'}
+                          />
+                        </svg>
+                        <div
+                          className={`absolute px-2 py-0.5 rounded text-[10px] font-black tracking-wider text-white shadow-xs ${
+                            qrGateway === 'MOMO' ? 'bg-[#a50064]' : 'bg-[#005baa]'
+                          }`}
+                        >
+                          {qrGateway}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-[#526658] font-medium">
+                    Mở App Ngân hàng hoặc Ví <strong className="font-bold">{qrGateway}</strong> để quét mã
+                  </p>
+                  <p className="text-[11px] text-[#8ca094] mt-0.5">
+                    Hệ thống sẽ tự động cập nhật khi nhận Webhook thành công
+                  </p>
+                </div>
+
+                {/* Transfer Info Details */}
+                <div className="bg-[#f4efe7] rounded-2xl p-4 space-y-2.5 text-xs text-[#14241b]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6e8074]">Đơn vị thụ hưởng:</span>
+                    <span className="font-bold text-[#163d2c]">BrewLite Coffee VN</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6e8074]">Số tiền thanh toán:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold font-serif text-sm text-[#163d2c]">
+                        {formatVND(finalTotal)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(finalTotal.toString(), 'amount')}
+                        className="text-[#708076] hover:text-[#163d2c] cursor-pointer"
+                        title="Sao chép số tiền"
+                      >
+                        {copiedField === 'amount' ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6e8074]">Mã đơn hàng:</span>
+                    <span className="font-mono font-semibold text-[#163d2c]">
+                      #{currentOrderCode}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-1 border-t border-[#ded5c7]">
+                    <span className="text-[#6e8074]">Nội dung chuyển khoản:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-[#163d2c]">
+                        BREWLITE {currentOrderCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopy(`BREWLITE ${currentOrderCode}`, 'content')
+                        }
+                        className="text-[#708076] hover:text-[#163d2c] cursor-pointer"
+                        title="Sao chép nội dung"
+                      >
+                        {copiedField === 'content' ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Third-Party Webhook Simulator Panel */}
+                <div className="border-t border-[#f0ebe0] pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck className="w-4 h-4 text-[#24523c]" />
+                    <h4 className="text-xs font-bold text-[#14241b] uppercase tracking-wider">
+                      Giả lập bên thứ 3 (Webhook Simulator)
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-[#6e8074] mb-3 leading-relaxed">
+                    Mô phỏng tín hiệu Webhook trả về từ Cổng Thanh Toán về API <code className="bg-[#f0ebe0] px-1 py-0.5 rounded text-[10px] font-mono">POST /payments/webhook</code> để hoàn tất đơn hàng:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Button 1: Webhook SUCCESS */}
+                    <button
+                      type="button"
+                      disabled={isSendingWebhook !== null}
+                      onClick={() => handleConfirmWebhook('SUCCESS')}
+                      className="bg-[#163d2c] hover:bg-[#102f21] text-white py-3 px-3.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] cursor-pointer disabled:opacity-60"
+                    >
+                      {isSendingWebhook === 'success' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Đang gửi Webhook...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-[#8fe3b2]" />
+                          <span>Xác nhận đã quét QR (Gửi Webhook SUCCESS)</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Button 2: Webhook FAILED */}
+                    <button
+                      type="button"
+                      disabled={isSendingWebhook !== null}
+                      onClick={() => handleConfirmWebhook('FAILED')}
+                      className="bg-[#fce9e5] hover:bg-[#fbd3cc] border border-[#f3b5a9] text-[#b33e2a] py-3 px-3.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-60"
+                    >
+                      {isSendingWebhook === 'failed' ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Đang hủy đơn...</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-[#b33e2a]" />
+                          <span>Giả lập lỗi/Hủy giao dịch (Gửi Webhook FAILED)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-[#f9f7f3] px-6 py-3 border-t border-[#e8e2d7] flex items-center justify-between text-[11px] text-[#708076]">
+                <span>Task 8 (FE) & Task 10.2 · Idempotency Enabled</span>
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="hover:text-[#163d2c] underline cursor-pointer"
+                >
+                  Đóng cửa sổ
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

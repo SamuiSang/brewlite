@@ -28,6 +28,15 @@ export default function CheckoutPage() {
   const [cvv, setCvv] = useState('•••');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
+  const [sandboxSession, setSandboxSession] = useState<{
+    paymentId: string;
+    orderId: string;
+    orderCode: string;
+    amount: number;
+    transactionRef: string;
+    qrCodeUrl: string;
+  } | null>(null);
+  const [isConfirmingWebhook, setIsConfirmingWebhook] = useState(false);
 
   // Task 10.2 — Idempotency key
   // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
@@ -70,38 +79,30 @@ export default function CheckoutPage() {
     }
   }, [authUser]);
 
+  // Bước 1: Khởi tạo đơn hàng PENDING & mở Cổng thanh toán QR Sandbox (chưa tự gán PAID)
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Bắt buộc người dùng phải đăng nhập mới được thanh toán
     if (!authToken || !authUser) {
       router.push('/signin?redirect=/checkout');
       return;
     }
 
     setIsProcessing(true);
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const isSuccess = mockOutcome === 'success' && cvv !== '000';
 
-    // Header xác thực bắt buộc gửi kèm JWT token của tài khoản đang đăng nhập
     const authHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
+      'Idempotency-Key': idempotencyKeyRef.current,
     };
-    // Task 10.2: Gắn idempotency-key vào mọi request thanh toán
-    authHeaders['Idempotency-Key'] = idempotencyKeyRef.current;
 
     try {
-      // 1. Lấy danh sách sản phẩm từ DB để map ID thực tế
       const prodRes = await fetch(`${apiUrl}/products`);
       const dbProducts: DbProduct[] = await prodRes.json();
       const defaultProductId = dbProducts[0]?.id;
 
-      let backendOrderId = '';
-
       if (defaultProductId) {
-        // Tạo đơn hàng trạng thái PENDING trên Backend (gửi kèm JWT và userId)
         const orderRes = await fetch(`${apiUrl}/orders`, {
           method: 'POST',
           headers: authHeaders,
@@ -130,42 +131,55 @@ export default function CheckoutPage() {
           return;
         }
 
-        const createdOrder: { id: string } = await orderRes.json();
-        backendOrderId = createdOrder.id;
-      }
-
-      // 2. Gọi POST /payments để xử lý Mock Payment
-      if (backendOrderId) {
-        await fetch(`${apiUrl}/payments`, {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            orderId: backendOrderId,
-            method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
-            mockSuccess: isSuccess,
-          }),
-        });
+        const createdOrder: { id: string; orderCode?: string } = await orderRes.json();
+        if (createdOrder?.id) {
+          const payRes = await fetch(`${apiUrl}/payments`, {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({
+              orderId: createdOrder.id,
+              method: paymentMethod === 'card' ? 'CARD' : 'MOMO',
+              twoStep: true,
+            }),
+          });
+          const payData = await payRes.json();
+          if (payData?.paymentId) {
+            setSandboxSession({
+              paymentId: payData.paymentId,
+              orderId: createdOrder.id,
+              orderCode: payData.orderCode || createdOrder.orderCode || '#1042',
+              amount: payData.amount ?? finalTotal,
+              transactionRef: payData.transactionRef || 'SANDBOX_TX',
+              qrCodeUrl: payData.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payData.paymentId)}`,
+            });
+            setIsProcessing(false);
+            return;
+          }
+        }
       }
     } catch (err) {
       console.error('Lỗi kết nối API:', err);
     }
 
-    // 3. Điều hướng trên Frontend dựa vào kết quả thanh toán
-    if (!isSuccess) {
-      // Task 10.2: Reset idempotency-key để lần thử lại là request hoàn toàn mới
+    // Fallback nếu chạy offline không bật Backend
+    const fallbackSuccess = mockOutcome === 'success' && cvv !== '000';
+    if (!fallbackSuccess) {
       idempotencyKeyRef.current = crypto.randomUUID();
       setIsProcessing(false);
       router.push('/payment-failed');
       return;
     }
+    finalizeFrontendOrder();
+  };
 
+  const finalizeFrontendOrder = () => {
     const paymentDesc =
       paymentMethod === 'card'
         ? `Bank card · Visa ending in ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
         : 'E-wallet · MoMo / ZaloPay';
 
     const newOrderId = createOrder({
-      customerName: customerName || authUser.fullName,
+      customerName: customerName || authUser?.fullName || 'Khách hàng',
       phoneNumber,
       orderNote,
       paymentMethod: paymentDesc,
@@ -177,7 +191,43 @@ export default function CheckoutPage() {
 
     setTimeout(() => {
       router.push(`/orders/${newOrderId}`);
-    }, 500);
+    }, 300);
+  };
+
+  // Bước 2: Cổng thanh toán Sandbox bắn Webhook callback POST /payments/webhook về Backend
+  const handleConfirmSandboxWebhook = async (outcome: 'SUCCESS' | 'FAILED') => {
+    if (!sandboxSession) return;
+    setIsConfirmingWebhook(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    try {
+      await fetch(`${apiUrl}/payments/webhook`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKeyRef.current,
+        },
+        body: JSON.stringify({
+          paymentId: sandboxSession.paymentId,
+          idempotencyKey: idempotencyKeyRef.current,
+          outcome,
+          transactionRef: sandboxSession.transactionRef,
+        }),
+      });
+    } catch (err) {
+      console.error('Lỗi gọi Webhook thanh toán:', err);
+    }
+
+    setIsConfirmingWebhook(false);
+    setSandboxSession(null);
+
+    if (outcome === 'FAILED') {
+      idempotencyKeyRef.current = crypto.randomUUID();
+      router.push('/payment-failed');
+      return;
+    }
+
+    finalizeFrontendOrder();
   };
 
   // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
@@ -214,6 +264,61 @@ export default function CheckoutPage() {
 
   return (
     <div className="flex-1 py-8 sm:py-12">
+      {/* Modal Cổng Thanh Toán QR Sandbox (Bước 2: Xác nhận Webhook Callback) */}
+      {sandboxSession && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-[#e8e2d7] shadow-2xl flex flex-col items-center text-center">
+            <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold tracking-wider uppercase px-3 py-1 rounded-full mb-2">
+              CỔNG THANH TOÁN SANDBOX (BƯỚC 2/2)
+            </span>
+            <h3 className="font-serif text-xl font-bold text-[#14241b]">
+              Quét mã QR để xác nhận thanh toán
+            </h3>
+            <p className="text-xs text-[#66776c] mt-1 mb-4">
+              Đơn hàng <strong>{sandboxSession.orderCode}</strong> đang ở trạng thái <strong>PENDING</strong>. Hệ thống chỉ chuyển sang <strong>PAID</strong> sau khi nhận Webhook từ cổng thanh toán.
+            </p>
+
+            <div className="bg-[#f8f5ee] p-4 rounded-2xl border border-[#e8e2d7] mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sandboxSession.qrCodeUrl}
+                alt="Sandbox QR Code"
+                className="w-44 h-44 mx-auto rounded-xl bg-white p-2 border border-[#eae4d8]"
+              />
+              <p className="text-[11px] font-mono text-[#526658] mt-2">
+                Mã GD: {sandboxSession.transactionRef}
+              </p>
+              <p className="font-serif text-lg font-bold text-[#163d2c] mt-0.5">
+                {formatVND(sandboxSession.amount)}
+              </p>
+            </div>
+
+            <div className="w-full flex flex-col gap-2.5">
+              <button
+                type="button"
+                disabled={isConfirmingWebhook}
+                onClick={() => handleConfirmSandboxWebhook('SUCCESS')}
+                className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:opacity-60 text-white text-xs font-bold py-3.5 px-5 rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isConfirmingWebhook ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : null}
+                <span>Xác nhận đã quét QR (Gửi Webhook SUCCESS)</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isConfirmingWebhook}
+                onClick={() => handleConfirmSandboxWebhook('FAILED')}
+                className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-3 px-5 rounded-2xl transition-all cursor-pointer"
+              >
+                Giả lập lỗi thanh toán (Gửi Webhook FAILED)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Breadcrumb */}
         <div className="text-xs text-[#738478] mb-4 flex items-center gap-2">

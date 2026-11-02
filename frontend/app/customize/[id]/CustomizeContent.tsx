@@ -309,6 +309,30 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                   Giá khởi điểm từ {formatVND(product.basePrice)}
                 </div>
 
+                {/* Hiển thị định mức công thức nguyên liệu pha chế 1 ly (Task 4 & 10.3) */}
+                {product.recipeItems && product.recipeItems.length > 0 && (
+                  <div className="mb-4 p-3.5 rounded-2xl bg-[#113123] border border-[#26543f]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#d6955b]">
+                        Định mức nguyên liệu pha chế (1 ly)
+                      </span>
+                      <span className="text-[11px] text-[#a3b8ab]">
+                        Khả dụng: <strong className="text-white">{product.stock} ly</strong>
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {product.recipeItems.map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[11px] bg-[#1a4432] text-[#e2f0e8] px-2.5 py-1 rounded-lg border border-[#2b6149]"
+                        >
+                          {item.name}: <strong>{item.amount}{item.unit}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="text-[11px] text-[#a3b8ab] flex flex-wrap gap-2 pt-4 border-t border-[#234d39]">
                   <span className="inline-block bg-[#1a4432] px-2.5 py-1 rounded-md">
                     ✓ Pha chế tươi mới khi nhận đơn

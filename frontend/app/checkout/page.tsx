@@ -20,8 +20,6 @@ import {
   Smartphone,
   CreditCard,
   Building2,
-  RefreshCw,
-  ExternalLink,
 } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 import { formatVND } from '@/lib/data';
@@ -45,7 +43,6 @@ export default function CheckoutPage() {
   const [expiryDate, setExpiryDate] = useState('12 / 28');
   const [cvv, setCvv] = useState('•••');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mockOutcome, setMockOutcome] = useState<'success' | 'failed'>('success');
 
   // Task 10.2 — Idempotency key
   // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
@@ -54,10 +51,16 @@ export default function CheckoutPage() {
   const idempotencyKeyRef = useRef<string>('');
 
   // Task 8 (FE) & Task 10.2: Modal Cổng Thanh Toán QR Sandbox 2 bước
+  const [sandboxSession, setSandboxSession] = useState<{
+    paymentId: string;
+    orderId: string;
+    orderCode: string;
+    amount: number;
+    transactionRef: string;
+    qrCodeUrl: string;
+  } | null>(null);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrGateway, setQrGateway] = useState<'VIETQR' | 'MOMO' | 'VNPAY'>('VIETQR');
-  const [currentBackendOrderId, setCurrentBackendOrderId] = useState<string>('');
-  const [currentOrderCode, setCurrentOrderCode] = useState<string>('');
   const [isSendingWebhook, setIsSendingWebhook] = useState<'success' | 'failed' | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(900); // Đếm ngược 15:00 phút
@@ -73,9 +76,10 @@ export default function CheckoutPage() {
     authUser,
     profile,
     updateProfile,
+    appliedVoucher,
+    useLoyaltyPoints,
+    setUseLoyaltyPoints,
   } = useCartStore();
-
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -158,10 +162,9 @@ export default function CheckoutPage() {
     }
 
     setIsProcessing(true);
-
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-    // Header xác thực bắt buộc gửi kèm JWT token và Idempotency-Key
+    // Header xác thực bắt buộc gửi kèm JWT token và Idempotency-Key (Task 10.2)
     const authHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${authToken}`,
@@ -187,6 +190,7 @@ export default function CheckoutPage() {
             customerName: customerName || authUser.fullName,
             phone: phoneNumber,
             notes: orderNote,
+            promotionCode: appliedVoucher?.code || undefined,
             useLoyaltyPoints: pointsUsed,
             items:
               items.length > 0
@@ -213,7 +217,7 @@ export default function CheckoutPage() {
 
       // 2. Gọi POST /payments với twoStep: true và header Idempotency-Key để khởi tạo cổng QR Sandbox
       if (backendOrderId) {
-        await fetch(`${apiUrl}/payments`, {
+        const payRes = await fetch(`${apiUrl}/payments`, {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({
@@ -222,15 +226,40 @@ export default function CheckoutPage() {
             twoStep: true,
             idempotencyKey: idempotencyKeyRef.current,
           }),
-        }).catch((err) => console.warn('POST /payments init:', err));
+        });
+
+        if (payRes.ok) {
+          const payData = await payRes.json();
+          setSandboxSession({
+            paymentId: payData.paymentId || backendOrderId,
+            orderId: payData.orderId || backendOrderId,
+            orderCode: payData.orderCode || orderCode || '1043',
+            amount: payData.amount || finalTotal,
+            transactionRef:
+              payData.transactionRef ||
+              `SANDBOX_${(payData.paymentId || 'TXN').slice(0, 8).toUpperCase()}`,
+            qrCodeUrl: payData.qrCodeUrl || '',
+          });
+        }
       }
     } catch (err) {
       console.error('Lỗi kết nối API khởi tạo thanh toán:', err);
     }
 
-    const fallbackCode = orderCode || `BW${Date.now().toString().slice(-6)}`;
-    setCurrentBackendOrderId(backendOrderId || fallbackCode);
-    setCurrentOrderCode(fallbackCode);
+    // Fallback sandbox session nếu API backend mock offline
+    setSandboxSession((prev) => {
+      if (prev) return prev;
+      const fallbackCode = orderCode || `BW${Date.now().toString().slice(-6)}`;
+      return {
+        paymentId: backendOrderId || fallbackCode,
+        orderId: backendOrderId || fallbackCode,
+        orderCode: fallbackCode,
+        amount: finalTotal,
+        transactionRef: `SANDBOX_${Date.now().toString().slice(-8)}`,
+        qrCodeUrl: '',
+      };
+    });
+
     setIsProcessing(false);
 
     // Mở Modal Cổng Thanh Toán QR Sandbox (Bước 2)
@@ -253,11 +282,16 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKeyRef.current,
           ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         },
         body: JSON.stringify({
-          orderId: currentBackendOrderId,
-          orderCode: currentOrderCode,
+          paymentId: sandboxSession?.paymentId || 'UNKNOWN',
+          idempotencyKey: idempotencyKeyRef.current,
+          outcome: status,
+          transactionRef: sandboxSession?.transactionRef,
+          orderId: sandboxSession?.orderId,
+          orderCode: sandboxSession?.orderCode,
           status,
           method: qrGateway,
           amount: finalTotal,
@@ -288,12 +322,14 @@ export default function CheckoutPage() {
 
       setIsSendingWebhook(null);
       setIsQrModalOpen(false);
+      setSandboxSession(null);
       router.push(`/orders/${newOrderId}`);
     } else {
       // Task 10.2: Reset idempotency-key khi thanh toán thất bại để lần thanh toán tiếp theo có key mới
       idempotencyKeyRef.current = crypto.randomUUID();
       setIsSendingWebhook(null);
       setIsQrModalOpen(false);
+      setSandboxSession(null);
       router.push('/payment-failed');
     }
   };
@@ -302,6 +338,7 @@ export default function CheckoutPage() {
     // Reset key và đóng modal nếu người dùng chủ động tắt
     idempotencyKeyRef.current = crypto.randomUUID();
     setIsQrModalOpen(false);
+    setSandboxSession(null);
   };
 
   // Nếu đã mount nhưng chưa đăng nhập, hiển thị thông báo yêu cầu đăng nhập
@@ -337,7 +374,9 @@ export default function CheckoutPage() {
   }
 
   // URL QR VietQR động
-  const vietQrUrl = `https://api.vietqr.io/image/970422-0901234567-compact2.png?amount=${finalTotal}&addInfo=BREWLITE%20${currentOrderCode || '1043'}&accountName=BREWLITE%20COFFEE`;
+  const vietQrUrl =
+    sandboxSession?.qrCodeUrl ||
+    `https://api.vietqr.io/image/970422-0901234567-compact2.png?amount=${finalTotal}&addInfo=BREWLITE%20${sandboxSession?.orderCode || '1043'}&accountName=BREWLITE%20COFFEE`;
 
   return (
     <div className="flex-1 py-8 sm:py-12">
@@ -670,7 +709,7 @@ export default function CheckoutPage() {
 
                 {discount > 0 && (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Ưu đãi thành viên</span>
+                    <span>Khuyến mãi {appliedVoucher ? `(${appliedVoucher.code})` : ''}</span>
                     <span className="font-semibold">-{formatVND(discount)}</span>
                   </div>
                 )}
@@ -741,7 +780,7 @@ export default function CheckoutPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="bg-[#d6955b] text-white text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                      SANDBOX MODE
+                      SANDBOX MODE (BƯỚC 2/2)
                     </span>
                     <span className="text-[11px] text-[#c2d1c7] flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
@@ -752,7 +791,7 @@ export default function CheckoutPage() {
                     Cổng Thanh Toán QR Sandbox
                   </h3>
                   <p className="text-xs text-[#a2b7aa] mt-0.5">
-                    Bước 2: Quét mã QR hoặc giả lập Webhook từ bên thứ 3
+                    Đơn hàng #{sandboxSession?.orderCode} đang ở trạng thái PENDING. Quét QR hoặc giả lập Webhook để xác nhận.
                   </p>
                 </div>
                 <button
@@ -819,6 +858,7 @@ export default function CheckoutPage() {
                   <div className="relative w-48 h-48 bg-white p-3 rounded-2xl border border-[#ded5c7] shadow-sm flex items-center justify-center mb-3">
                     {qrGateway === 'VIETQR' ? (
                       // VietQR API image
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={vietQrUrl}
                         alt="VietQR Code"
@@ -871,11 +911,13 @@ export default function CheckoutPage() {
                     <span className="text-[#6e8074]">Số tiền thanh toán:</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold font-serif text-sm text-[#163d2c]">
-                        {formatVND(finalTotal)}
+                        {formatVND(sandboxSession?.amount || finalTotal)}
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleCopy(finalTotal.toString(), 'amount')}
+                        onClick={() =>
+                          handleCopy((sandboxSession?.amount || finalTotal).toString(), 'amount')
+                        }
                         className="text-[#708076] hover:text-[#163d2c] cursor-pointer"
                         title="Sao chép số tiền"
                       >
@@ -891,7 +933,14 @@ export default function CheckoutPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-[#6e8074]">Mã đơn hàng:</span>
                     <span className="font-mono font-semibold text-[#163d2c]">
-                      #{currentOrderCode}
+                      #{sandboxSession?.orderCode}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#6e8074]">Mã giao dịch Sandbox:</span>
+                    <span className="font-mono text-[11px] text-[#163d2c]">
+                      {sandboxSession?.transactionRef}
                     </span>
                   </div>
 
@@ -899,12 +948,12 @@ export default function CheckoutPage() {
                     <span className="text-[#6e8074]">Nội dung chuyển khoản:</span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono font-bold text-[#163d2c]">
-                        BREWLITE {currentOrderCode}
+                        BREWLITE {sandboxSession?.orderCode}
                       </span>
                       <button
                         type="button"
                         onClick={() =>
-                          handleCopy(`BREWLITE ${currentOrderCode}`, 'content')
+                          handleCopy(`BREWLITE ${sandboxSession?.orderCode}`, 'content')
                         }
                         className="text-[#708076] hover:text-[#163d2c] cursor-pointer"
                         title="Sao chép nội dung"

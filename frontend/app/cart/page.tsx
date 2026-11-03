@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket, Loader2 } from 'lucide-react';
 import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
 import { formatVND } from '@/lib/data';
+import { getEligibleVoucherCodes } from '@/lib/voucher-eligibility';
 
 function CartItemQuantityInput({
   itemId,
@@ -160,6 +161,18 @@ export default function CartPage() {
   const subtotal = mounted ? getSubtotal() : 0;
   const discount = mounted ? getDiscount() : 0;
   const baseTotal = mounted ? getTotal() : 0;
+  const [voucherEligibility, setVoucherEligibility] = useState<{ subtotal: number; codes: string[] } | null>(null);
+
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    void getEligibleVoucherCodes(apiUrl, AVAILABLE_VOUCHERS.map((voucher) => voucher.code), subtotal)
+      .then((codes) => {
+        if (!cancelled) setVoucherEligibility({ subtotal, codes });
+      });
+    return () => { cancelled = true; };
+  }, [mounted, subtotal]);
 
   // Tính điểm thưởng tích lũy (Loyalty Points)
   const availablePoints = mounted ? (profile?.points ?? 129) : 129;
@@ -169,6 +182,10 @@ export default function CartPage() {
   const finalTotal = Math.max(0, baseTotal - pointsDiscount);
 
   const isVoucherEligible = !appliedVoucher?.minOrderAmount || subtotal >= appliedVoucher.minOrderAmount;
+
+  useEffect(() => {
+    if (mounted && appliedVoucher && !isVoucherEligible) removeVoucher();
+  }, [mounted, appliedVoucher, isVoucherEligible, removeVoucher]);
 
   const handleCheckout = () => {
     if (!authToken || !authUser) {
@@ -469,7 +486,7 @@ export default function CartPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {AVAILABLE_VOUCHERS.map((v) => {
                       const isSelected = appliedVoucher?.code === v.code;
-                      const canUse = subtotal >= (v.minOrderAmount || 0);
+                      const canUse = voucherEligibility?.subtotal === subtotal && voucherEligibility.codes.includes(v.code);
                       return (
                         <button
                           key={v.code}
@@ -477,7 +494,7 @@ export default function CartPage() {
                           disabled={isSelected || isApplyingVoucher}
                           onClick={() => handleApplyVoucher(undefined, v.code)}
                           className={`text-[11px] px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                            isSelected
+                            isSelected && canUse
                               ? 'bg-[#163d2c] text-white border-[#163d2c] font-bold cursor-default'
                               : canUse
                               ? 'bg-[#f4efe7] hover:bg-[#eae2d5] text-[#14241b] border-[#e2dacf] font-semibold active:scale-95'

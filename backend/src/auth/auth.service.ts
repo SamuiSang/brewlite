@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +32,9 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         fullName: dto.fullName,
+        phone: dto.phone || null,
         role: 'CUSTOMER', // Mặc định là khách hàng
+        loyaltyPoints: 0,
       },
     });
 
@@ -42,7 +45,9 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        phone: user.phone,
         role: user.role,
+        loyaltyPoints: user.loyaltyPoints,
       },
     };
   }
@@ -73,8 +78,49 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        phone: user.phone,
         role: user.role,
+        loyaltyPoints: user.loyaltyPoints,
       },
     };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        loyaltyPoints: true,
+        createdAt: true,
+      },
+    });
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy thông tin tài khoản');
+    }
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        loyaltyPoints: true,
+        createdAt: true,
+      },
+    });
+    return user;
   }
 }

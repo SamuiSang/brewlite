@@ -27,7 +27,7 @@ services:
     restart: always
     environment:
       PORT: 3001
-      DATABASE_URL: "postgresql://postgres:123@postgres:5432/brewlite?schema=public"
+      DATABASE_URL: "postgresql://postgres:123@postgres:5432/brewlite_current?schema=public"
       JWT_SECRET: "super_secret_key"
     ports:
       - "3001:3001"

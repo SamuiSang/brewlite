@@ -71,7 +71,6 @@ export default function CheckoutPage() {
     updateProfile,
     appliedVoucher,
     useLoyaltyPoints,
-    setUseLoyaltyPoints,
   } = useCartStore();
 
   useEffect(() => {
@@ -496,55 +495,24 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
-              {/* Voucher section */}
-              <div className="border border-[#ded7cb] bg-[#faf8f4] p-3.5 rounded-2xl space-y-1.5">
-                <span className="text-[10px] font-bold text-[#55695c] uppercase tracking-wider block">
-                  Mã khuyến mãi (Voucher)
-                </span>
-                {appliedVoucher ? (
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-mono font-bold text-[#163d2c]">{appliedVoucher.code}</span>
-                      <p className="text-[10px] text-[#708076]">{appliedVoucher.description}</p>
+              <ul className="border border-[#ded7cb] bg-[#faf8f4] p-3.5 rounded-2xl divide-y divide-[#e4ded4]">
+                {mounted && items.map((item) => (
+                  <li key={item.id} className="flex justify-between gap-3 py-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#163d2c]">{item.name} × {item.quantity}</p>
+                      <p className="text-[10px] text-[#708076]">
+                        {[item.sizeLabel || item.size, item.milkLabel, ...item.toppingsLabels].filter(Boolean).join(' · ')}
+                      </p>
                     </div>
-                    <span className="font-semibold text-[#2f664a]">-{formatVND(discount)}</span>
-                  </div>
-                ) : (
-                  <div className="text-xs text-[#708076] flex justify-between items-center">
-                    <span>Chưa áp dụng voucher</span>
-                    <Link href="/cart" className="text-[#163d2c] font-bold hover:underline text-[11px]">
-                      Chọn ở giỏ hàng →
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Loyalty Points Redemption Toggle */}
-              {availablePoints > 0 && (
-                <div className="bg-[#f2eee7] p-3.5 rounded-2xl flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-semibold text-[#14241b] block">
-                      Dùng điểm tích lũy ({availablePoints} điểm)
-                    </span>
-                    <span className="text-[10px] text-[#708076]">
-                      {useLoyaltyPoints
-                        ? `Đang dùng ${pointsUsed} điểm (giảm ${formatVND(pointsDiscount)})`
-                        : `Có thể giảm tối đa ${formatVND(maxPointsDiscount)}`}
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={useLoyaltyPoints}
-                    onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                    className="w-4 h-4 accent-[#163d2c] cursor-pointer"
-                  />
-                </div>
-              )}
+                    <span className="shrink-0 font-semibold text-[#14241b]">{formatVND(item.unitPrice * item.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
 
               {/* Total breakdown */}
               <div className="pt-3 border-t border-[#f0ebe0] space-y-2 text-xs text-[#708076]">
                 <div className="flex justify-between">
-                  <span>Tạm tính</span>
+                  <span>Tổng tiền</span>
                   <span className="font-medium text-[#14241b]">{formatVND(subtotal)}</span>
                 </div>
                 {discount > 0 && (
@@ -560,7 +528,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 <div className="pt-3 border-t border-[#f0ebe0] flex items-baseline justify-between">
-                  <span className="text-xs text-[#708076] font-medium">Tổng thanh toán</span>
+                  <span className="text-xs text-[#708076] font-medium">Thành tiền</span>
                   <span className="font-serif text-2xl sm:text-3xl font-bold text-[#14241b]">
                     {formatVND(finalTotal)}
                   </span>

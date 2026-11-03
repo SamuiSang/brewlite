@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -8,11 +8,92 @@ import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket,
 import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 
+function CartItemQuantityInput({
+  itemId,
+  quantity,
+  setQuantity,
+}: {
+  itemId: string;
+  quantity: number;
+  setQuantity: (id: string, qty: number) => void;
+}) {
+  const [val, setVal] = useState(String(quantity));
+
+  useEffect(() => {
+    setVal(String(quantity));
+  }, [quantity]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setVal(raw);
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setQuantity(itemId, Math.min(parsed, 9999));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      setVal('1');
+      setQuantity(itemId, 1);
+    } else {
+      const clamped = Math.min(parsed, 9999);
+      setVal(String(clamped));
+      setQuantity(itemId, clamped);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={val}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      className="w-12 text-center text-xs font-bold text-[#14241b] bg-white border border-[#d8cfbe] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#163d2c] shadow-2xs mx-1 cursor-text"
+      title="Nhập số lượng trực tiếp"
+      aria-label="Số lượng món"
+    />
+  );
+}
+
 export default function CartPage() {
   const router = useRouter();
   const [inputCode, setInputCode] = useState('');
   const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Trạng thái kiểm tra nguyên liệu realtime với BOM
+  const [inventoryValidation, setInventoryValidation] = useState<{
+    isValid: boolean;
+    items: Array<{
+      productId: string;
+      productName: string;
+      size: string;
+      requestedQuantity: number;
+      maxAvailable: number;
+      suggestedQuantity: number;
+      status: 'AVAILABLE' | 'INSUFFICIENT_QUANTITY' | 'OUT_OF_STOCK' | 'NO_RECIPE';
+      bottleneckIngredient: string | null;
+      message: string;
+    }>;
+    insufficientIngredients: Array<{
+      id: string;
+      name: string;
+      unit: string;
+      currentStock: number;
+      requiredAmount: number;
+      missingAmount: number;
+    }>;
+  } | null>(null);
 
   const {
     items,
@@ -22,6 +103,7 @@ export default function CartPage() {
     setUseLoyaltyPoints,
     profile,
     updateQuantity,
+    setQuantity,
     removeItem,
     applyVoucher,
     removeVoucher,
@@ -36,6 +118,42 @@ export default function CartPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Polling kiểm tra tồn kho nguyên liệu realtime mỗi 3 giây
+  const validateCartInventory = useCallback(async () => {
+    if (items.length === 0) {
+      setInventoryValidation(null);
+      return;
+    }
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const res = await fetch(`${apiUrl}/inventory/validate-cart`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map((it) => ({
+            productId: it.drinkId,
+            size: it.size,
+            quantity: it.quantity,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setInventoryValidation(data);
+      }
+    } catch (e) {
+      console.error('Lỗi kiểm tra tồn kho giỏ hàng:', e);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    validateCartInventory();
+    const interval = setInterval(validateCartInventory, 3000);
+    return () => clearInterval(interval);
+  }, [validateCartInventory]);
 
   const isLoggedIn = Boolean(mounted && authToken && authUser);
   const totalItems = mounted ? getTotalItems() : 0;
@@ -172,9 +290,11 @@ export default function CartPage() {
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-7 text-center text-xs font-bold text-[#14241b]">
-                              {item.quantity}
-                            </span>
+                            <CartItemQuantityInput
+                              itemId={item.id}
+                              quantity={item.quantity}
+                              setQuantity={setQuantity}
+                            />
                             <button
                               type="button"
                               onClick={() => updateQuantity(item.id, 1)}
@@ -190,6 +310,50 @@ export default function CartPage() {
                             </span>
                           </div>
                         </div>
+
+                        {/* Cảnh báo thiếu nguyên liệu hoặc hết hàng */}
+                        {(() => {
+                          const valItem = inventoryValidation?.items?.find(
+                            (v) =>
+                              (v.productId === item.drinkId || v.productName.toLowerCase() === item.name.toLowerCase()) &&
+                              v.size === item.size,
+                          );
+
+                          if (!valItem) return null;
+
+                          if (valItem.status === 'INSUFFICIENT_QUANTITY') {
+                            return (
+                              <div className="mt-2.5 p-2.5 bg-[#fff8eb] border border-[#f5d99b] rounded-xl flex items-center justify-between gap-2 text-xs">
+                                <div className="flex items-center gap-1.5 text-[#8c5211] min-w-0">
+                                  <AlertCircle className="w-3.5 h-3.5 text-[#d97706] shrink-0" />
+                                  <span className="truncate">
+                                    Chỉ đủ nguyên liệu làm tối đa <strong>{valItem.maxAvailable}</strong> ly
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setQuantity(item.id, valItem.suggestedQuantity)}
+                                  className="bg-[#163d2c] hover:bg-[#102f21] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 transition-transform active:scale-95 cursor-pointer shadow-2xs"
+                                >
+                                  Giảm về {valItem.suggestedQuantity} ly
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          if (valItem.status === 'OUT_OF_STOCK') {
+                            return (
+                              <div className="mt-2.5 p-2 bg-[#fdf2f2] border border-[#f8b4b4] rounded-xl flex items-center gap-1.5 text-xs text-[#9b1c1c]">
+                                <AlertCircle className="w-3.5 h-3.5 text-[#e02424] shrink-0" />
+                                <span className="font-semibold">
+                                  Hết nguyên liệu: thiếu {valItem.bottleneckIngredient || 'nguyên liệu pha chế'}
+                                </span>
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -464,14 +628,33 @@ export default function CartPage() {
                 </div>
               )}
 
+              {/* Cảnh báo tổng kho giỏ hàng nếu thiếu nguyên liệu */}
+              {inventoryValidation && !inventoryValidation.isValid && (
+                <div className="bg-[#fdf2f2] border border-[#f8b4b4] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[#9b1c1c]">
+                  <AlertCircle className="w-4 h-4 text-[#e02424] shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-bold">Kho không đủ nguyên liệu đáp ứng giỏ hàng</p>
+                    <p className="text-[11px] mt-0.5 leading-relaxed">
+                      Vui lòng giảm số lượng món theo gợi ý ở từng đồ uống trước khi tiếp tục thanh toán.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Checkout Button */}
               <button
                 type="button"
-                disabled={items.length === 0}
+                disabled={items.length === 0 || (inventoryValidation !== null && !inventoryValidation.isValid)}
                 onClick={handleCheckout}
-                className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:bg-[#a9b5ad] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
+                className="w-full bg-[#163d2c] hover:bg-[#102f21] disabled:bg-[#a9b5ad] disabled:cursor-not-allowed text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm cursor-pointer"
               >
-                <span>{isLoggedIn ? 'Tiếp tục thanh toán' : 'Đăng nhập để thanh toán'}</span>
+                <span>
+                  {inventoryValidation && !inventoryValidation.isValid
+                    ? 'Không đủ nguyên liệu để thanh toán'
+                    : isLoggedIn
+                      ? 'Tiếp tục thanh toán'
+                      : 'Đăng nhập để thanh toán'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 

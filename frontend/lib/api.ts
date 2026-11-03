@@ -12,6 +12,23 @@ export interface ApiCategory {
   isActive?: boolean;
 }
 
+// Bảng Tồn kho Nguyên liệu thô (Task 2 & Task 10 - Chiến)
+export interface ApiIngredient {
+  id: string;
+  name: string;
+  unit: string; // 'g', 'ml', 'cái'
+  stock: number;
+}
+
+// Bảng Định mức công thức pha chế cho 1 ly (Task 2 & Task 4 - Duy)
+export interface ApiRecipeItem {
+  id: string;
+  productId: string;
+  ingredientId: string;
+  amount: number;
+  ingredient?: ApiIngredient;
+}
+
 export interface ApiTopping {
   id: string;
   name: string;
@@ -29,6 +46,7 @@ export interface ApiProduct {
   stock?: number;
   categoryId?: string;
   category?: ApiCategory;
+  recipeItems?: ApiRecipeItem[];
   isActive?: boolean;
 }
 
@@ -45,6 +63,7 @@ export interface NormalizedProduct {
   bestseller?: boolean;
   description: string;
   stock: number;
+  recipeItems?: ApiRecipeItem[];
 }
 
 // Dữ liệu topping dự phòng phong phú đúng theo CSDL backend
@@ -59,6 +78,360 @@ export const FALLBACK_TOPPINGS: ApiTopping[] = [
   { id: 'extra-shot', name: 'Extra shot espresso', price: 10000 },
   { id: 'caramel-drizzle', name: 'Caramel drizzle', price: 5000 },
 ];
+
+/**
+ * Tạo công thức định lượng nguyên liệu mẫu (RecipeItems) cho dữ liệu dự phòng
+ * Đảm bảo giao diện luôn hiển thị đầy đủ công thức theo đúng chỉ đạo của thầy Phiêu
+ */
+export function getFallbackRecipeForProduct(id: string, name: string): ApiRecipeItem[] {
+  const lower = (id + ' ' + name).toLowerCase();
+
+  const cupIngredient: ApiIngredient = {
+    id: 'ing-cup',
+    name: 'Ly nhựa mang đi',
+    unit: 'cái',
+    stock: 200,
+  };
+
+  if (lower.includes('cold brew') || lower.includes('cold-brew')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 25,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica (ủ lạnh 16h)', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-vanilla-syrup',
+        amount: 20,
+        ingredient: { id: 'ing-vanilla-syrup', name: 'Syrup Vanilla Pháp', unit: 'ml', stock: 800 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('mocha')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 18,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-chocolate',
+        amount: 25,
+        ingredient: { id: 'ing-chocolate', name: 'Sốt sô-cô-la đen nguyên chất', unit: 'ml', stock: 600 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 120,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-4`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('flat white') || lower.includes('flat-white')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 20,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica (Double Ristretto)', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 140,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi đánh bọt mịn Microfoam', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('brown sugar') || lower.includes('đường đen')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 18,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica Cầu Đất', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-brown-sugar',
+        amount: 20,
+        ingredient: { id: 'ing-brown-sugar', name: 'Syrup đường đen Hàn Quốc', unit: 'ml', stock: 800 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 120,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-4`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('caramel')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 18,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-caramel',
+        amount: 20,
+        ingredient: { id: 'ing-caramel', name: 'Sốt Caramel muối', unit: 'ml', stock: 800 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 120,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-4`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('muối') || lower.includes('salt')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-robusta',
+        amount: 25,
+        ingredient: { id: 'ing-robusta', name: 'Hạt cà phê Robusta Đắk Lắk', unit: 'g', stock: 1500 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-condensed-milk',
+        amount: 20,
+        ingredient: { id: 'ing-condensed-milk', name: 'Sữa đặc Ông Thọ', unit: 'ml', stock: 1000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-salt-cream',
+        amount: 40,
+        ingredient: { id: 'ing-salt-cream', name: 'Kem béo thực vật muối biển', unit: 'ml', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-4`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('đen') || lower.includes('black')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-robusta',
+        amount: 20,
+        ingredient: { id: 'ing-robusta', name: 'Hạt cà phê Robusta Đắk Lắk', unit: 'g', stock: 1500 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('sữa') || lower.includes('nâu') || lower.includes('milk coffee')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-robusta',
+        amount: 20,
+        ingredient: { id: 'ing-robusta', name: 'Hạt cà phê Robusta Đắk Lắk', unit: 'g', stock: 1500 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-condensed-milk',
+        amount: 30,
+        ingredient: { id: 'ing-condensed-milk', name: 'Sữa đặc Ông Thọ', unit: 'ml', stock: 1000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('bạc xỉu') || lower.includes('bac xiu')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-robusta',
+        amount: 10,
+        ingredient: { id: 'ing-robusta', name: 'Hạt cà phê Robusta', unit: 'g', stock: 1500 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-condensed-milk',
+        amount: 40,
+        ingredient: { id: 'ing-condensed-milk', name: 'Sữa đặc', unit: 'ml', stock: 1000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 100,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-4`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('latte') || lower.includes('cappuccino') || lower.includes('americano')) {
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-arabica',
+        amount: 18,
+        ingredient: { id: 'ing-arabica', name: 'Hạt cà phê Arabica Cầu Đất', unit: 'g', stock: 1200 },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 120,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  if (lower.includes('matcha')) {
+    // Phục vụ test trực quan: Giả lập món matcha-cloud hết nguyên liệu bột Matcha trong kho
+    const isMockOutOfStock = id === 'matcha-cloud';
+    return [
+      {
+        id: `rec-${id}-1`,
+        productId: id,
+        ingredientId: 'ing-matcha',
+        amount: 30,
+        ingredient: {
+          id: 'ing-matcha',
+          name: 'Bột Matcha Uji Nhật Bản',
+          unit: 'g',
+          stock: isMockOutOfStock ? 0 : 800,
+        },
+      },
+      {
+        id: `rec-${id}-2`,
+        productId: id,
+        ingredientId: 'ing-fresh-milk',
+        amount: 100,
+        ingredient: { id: 'ing-fresh-milk', name: 'Sữa tươi thanh trùng', unit: 'ml', stock: 2000 },
+      },
+      {
+        id: `rec-${id}-3`,
+        productId: id,
+        ingredientId: 'ing-cup',
+        amount: 1,
+        ingredient: cupIngredient,
+      },
+    ];
+  }
+
+  // Mặc định cho các loại trà và đồ uống khác
+  return [
+    {
+      id: `rec-${id}-1`,
+      productId: id,
+      ingredientId: 'ing-tea',
+      amount: 120,
+      ingredient: { id: 'ing-tea', name: 'Nước cốt trà ủ hoa nhài', unit: 'ml', stock: 3000 },
+    },
+    {
+      id: `rec-${id}-2`,
+      productId: id,
+      ingredientId: 'ing-cup',
+      amount: 1,
+      ingredient: cupIngredient,
+    },
+  ];
+}
 
 /**
  * Chuẩn hóa sản phẩm từ API backend sang cấu trúc đồng nhất cho UI
@@ -76,6 +449,12 @@ export function normalizeProduct(apiItem: ApiProduct): NormalizedProduct {
 
   const categoryName = apiItem.category?.name || 'Cà phê';
 
+  // Lấy recipeItems từ API hoặc nạp công thức dự phòng
+  const recipeItems =
+    apiItem.recipeItems && apiItem.recipeItems.length > 0
+      ? apiItem.recipeItems
+      : getFallbackRecipeForProduct(apiItem.id, apiItem.name);
+
   return {
     id: apiItem.id,
     name: apiItem.name,
@@ -90,6 +469,7 @@ export function normalizeProduct(apiItem: ApiProduct): NormalizedProduct {
     bestseller: false,
     description: apiItem.description || 'Thức uống được pha chế tỉ mỉ từ nguyên liệu tươi ngon.',
     stock: apiItem.stock ?? 100,
+    recipeItems,
   };
 }
 
@@ -107,7 +487,8 @@ export function getFallbackProducts(): NormalizedProduct[] {
     largeImage: d.largeImage,
     bestseller: d.bestseller,
     description: d.description,
-    stock: 100,
+    stock: d.id === 'matcha-cloud' ? 0 : 100,
+    recipeItems: getFallbackRecipeForProduct(d.id, d.name),
   }));
 }
 
@@ -222,22 +603,52 @@ export async function fetchCategories(): Promise<{ categories: { id: string; nam
 
 /**
  * Lấy thông tin chi tiết một sản phẩm (GET /products/:id)
+ * Tự động đồng bộ với công thức và tồn kho BOM từ backend (GET /inventory/availability/:id)
  */
 export async function fetchProductById(id: string): Promise<NormalizedProduct | null> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    });
+    // Gọi đồng thời thông tin món và bảng tồn kho nguyên liệu chi tiết (BOM)
+    const [prodRes, availRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/products/${encodeURIComponent(id)}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      }).catch(() => null),
+      fetch(`${API_BASE_URL}/inventory/availability/${encodeURIComponent(id)}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      }).catch(() => null),
+    ]);
 
     clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const data: ApiProduct = await res.json();
+    if (prodRes && prodRes.ok) {
+      const data: ApiProduct = await prodRes.json();
       if (data && data.id) {
+        // Nạp công thức và tồn kho nguyên liệu thực tế từ endpoint availability
+        if (availRes && availRes.ok) {
+          try {
+            const availData = await availRes.json();
+            if (availData && Array.isArray(availData.ingredientsDetail) && availData.ingredientsDetail.length > 0) {
+              data.recipeItems = availData.ingredientsDetail.map((ing: any, idx: number) => ({
+                id: `rec-${id}-${idx}`,
+                productId: id,
+                ingredientId: `ing-${idx}`,
+                amount: ing.requiredPerCup || ing.effectivePerCup || 0,
+                ingredient: {
+                  id: `ing-${idx}`,
+                  name: ing.ingredientName,
+                  unit: ing.unit || 'g',
+                  stock: typeof ing.currentStock === 'number' ? ing.currentStock : parseFloat(String(ing.currentStock)) || 0,
+                },
+              }));
+            }
+          } catch (e) {
+            console.warn('[FetchProductById] Lỗi parse availability:', e);
+          }
+        }
         return normalizeProduct(data);
       }
     }
@@ -258,7 +669,8 @@ export async function fetchProductById(id: string): Promise<NormalizedProduct | 
       largeImage: found.largeImage,
       bestseller: found.bestseller,
       description: found.description,
-      stock: 100,
+      stock: found.id === 'matcha-cloud' ? 0 : 100,
+      recipeItems: getFallbackRecipeForProduct(found.id, found.name),
     };
   }
 

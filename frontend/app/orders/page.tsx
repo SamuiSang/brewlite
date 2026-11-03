@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Lock } from 'lucide-react';
-import { formatVND, INITIAL_ORDERS } from '@/lib/data';
+import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 
 export default function OrdersPage() {
@@ -17,15 +17,18 @@ export default function OrdersPage() {
   const ordersFromStore = useCartStore((state) => state.orders);
   const authToken = useCartStore((state) => state.authToken);
   const authUser = useCartStore((state) => state.authUser);
+  const fetchMyOrders = useCartStore((state) => state.fetchMyOrders);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (authToken) {
+      fetchMyOrders();
+    }
+  }, [authToken, fetchMyOrders]);
 
   const isLoggedIn = Boolean(mounted && authToken && authUser);
-  const orders = mounted ? ordersFromStore : INITIAL_ORDERS;
+  const orders = mounted ? ordersFromStore : [];
 
-  // Tên hiển thị tiếng Việt, giữ nguyên giá trị lọc nội bộ
   const filterLabels = {
     All: 'Tất cả đơn hàng',
     'In progress': 'Đang xử lý',
@@ -108,26 +111,26 @@ export default function OrdersPage() {
 
         {/* Filter Pills */}
         <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-1 scrollbar-none">
-  {filterTabs.map((tab) => {
-    const key = tab;
-    const isActive = filter === key;
+          {filterTabs.map((tab) => {
+            const key = tab;
+            const isActive = filter === key;
 
-    return (
-      <button
-        key={tab}
-        type="button"
-        onClick={() => setFilter(key)}
-        className={`text-xs px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all duration-200 cursor-pointer ${
-          isActive
-            ? 'bg-[#163d2c] text-white shadow-sm'
-            : 'bg-[#ede7dc] text-[#526359] hover:bg-[#e4ddd0]'
-        }`}
-      >
-        {filterLabels[tab]}
-      </button>
-    );
-  })}
-</div>
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`text-xs px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#163d2c] text-white shadow-sm'
+                    : 'bg-[#ede7dc] text-[#526359] hover:bg-[#e4ddd0]'
+                }`}
+              >
+                {filterLabels[tab]}
+              </button>
+            );
+          })}
+        </div>
 
         {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -140,6 +143,7 @@ export default function OrdersPage() {
             ) : (
               filteredOrders.map((order) => {
                 const isActiveOrder = order.active;
+                const displayCode = order.orderCode || `#${order.id.slice(0, 8)}`;
 
                 if (isActiveOrder) {
                   return (
@@ -149,7 +153,7 @@ export default function OrdersPage() {
                     >
                       <div className="relative sm:w-48 h-40 sm:h-auto shrink-0 bg-[#224b37]">
                         <Image
-                          src={order.items[0]?.image || '/images/brown-sugar-latte.png'}
+                          src={order.items[0]?.image || '/images/drinks/brown-sugar-latte.png'}
                           alt={order.title}
                           fill
                           className="object-cover"
@@ -160,7 +164,7 @@ export default function OrdersPage() {
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-serif text-2xl font-bold text-white">
-                              #{order.id}
+                              {displayCode}
                             </h3>
                             <span className="bg-[#24523c] text-[#d6ede0] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
                               {order.status}
@@ -200,7 +204,7 @@ export default function OrdersPage() {
                   >
                     <div className="relative sm:w-48 h-36 sm:h-auto shrink-0 bg-[#f4efe7]">
                       <Image
-                        src={order.items[0]?.image || '/images/vanilla-cold-brew.png'}
+                        src={order.items[0]?.image || '/images/drinks/vanilla-cold-brew.png'}
                         alt={order.title}
                         fill
                         className="object-cover"
@@ -211,7 +215,7 @@ export default function OrdersPage() {
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <h3 className="font-serif text-xl font-bold text-[#14241b]">
-                            #{order.id}
+                            {displayCode}
                           </h3>
                           <span
                             className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${
@@ -250,13 +254,12 @@ export default function OrdersPage() {
             )}
 
             <p className="text-xs text-[#78887e] pt-2">
-              hiển thị {filteredOrders.length} đơn hàng · 10-2026
+              hiển thị {filteredOrders.length} đơn hàng
             </p>
           </div>
 
           {/* Right Column: Promotional & Counter banner */}
           <div className="lg:col-span-4 flex flex-col gap-6">
-            {/* Your Next Coffee Break Card */}
             <div className="bg-[#f5e6d6] rounded-3xl overflow-hidden border border-[#ebd2ba] shadow-xs">
               <div className="relative w-full h-44 bg-[#ebd2ba]">
                 <Image
@@ -284,7 +287,6 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            {/* Pickup Made Simple Card */}
             <div className="bg-white rounded-3xl p-6 border border-[#e8e2d7] shadow-xs flex flex-col gap-3">
               <h3 className="font-serif text-xl font-bold text-[#14241b]">
                 Nhận đồ uống thật dễ dàng
@@ -292,15 +294,14 @@ export default function OrdersPage() {
               <p className="text-xs text-[#6e8074] leading-relaxed">
                 Tất cả đơn hàng đều nhận tại quầy Brewlite · Quận 3. Vui lòng cung cấp mã đơn khi nhận hàng.
               </p>
-              <div className="pt-3 border-t border-[#f2eee7] flex items-center justify-between text-xs">
-                <span className="text-[#708076]">Đơn hàng hiện tại</span>
-                <span className="font-bold text-[#163d2c]">
-                  #{activeOrder?.id || '1042'}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#55695c]">
-                Đã thanh toán · Chờ pha chế
-              </p>
+              {activeOrder && (
+                <div className="pt-3 border-t border-[#f2eee7] flex items-center justify-between text-xs">
+                  <span className="text-[#708076]">Đơn hàng hiện tại</span>
+                  <span className="font-bold text-[#163d2c]">
+                    {activeOrder.orderCode || `#${activeOrder.id.slice(0, 8)}`}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -54,7 +54,7 @@ export default function Navbar() {
   // Lấy tên hiển thị ngắn gọn (tên cuối)
   const displayName = hasHydrated && authUser
     ? authUser.fullName.split(' ').pop() || authUser.fullName
-    : 'Duy';
+    : 'Tài khoản';
 
   const isLoggedIn = hasHydrated && !!authUser;
 

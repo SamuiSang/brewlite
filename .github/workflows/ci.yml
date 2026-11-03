@@ -109,3 +109,4 @@ jobs:
       - name: 🏗️ Build Next.js Application
         working-directory: frontend
         run: npm run build
+

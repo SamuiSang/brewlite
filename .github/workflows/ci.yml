@@ -55,7 +55,7 @@ jobs:
 
       - name: 📦 Install Backend Dependencies
         working-directory: backend
-        run: npm ci || npm install
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: 🔄 Generate Prisma Client & Migrate Database
         working-directory: backend
@@ -109,4 +109,3 @@ jobs:
       - name: 🏗️ Build Next.js Application
         working-directory: frontend
         run: npm run build
-

@@ -20,18 +20,6 @@ export interface ApiTopping {
   isAvailable?: boolean;
 }
 
-export interface ApiRecipeItem {
-  id?: string;
-  ingredientId: string;
-  amount: number;
-  ingredient?: {
-    id: string;
-    name: string;
-    unit: string;
-    stock: number;
-  };
-}
-
 export interface ApiProduct {
   id: string;
   name: string;
@@ -42,7 +30,6 @@ export interface ApiProduct {
   categoryId?: string;
   category?: ApiCategory;
   isActive?: boolean;
-  recipeItems?: ApiRecipeItem[];
 }
 
 // Cấu trúc sản phẩm chuẩn hóa hiển thị trên UI Frontend
@@ -58,7 +45,6 @@ export interface NormalizedProduct {
   bestseller?: boolean;
   description: string;
   stock: number;
-  recipeItems?: { name: string; amount: number; unit: string; stock?: number }[];
 }
 
 // Dữ liệu topping dự phòng phong phú đúng theo CSDL backend
@@ -104,12 +90,6 @@ export function normalizeProduct(apiItem: ApiProduct): NormalizedProduct {
     bestseller: false,
     description: apiItem.description || 'Thức uống được pha chế tỉ mỉ từ nguyên liệu tươi ngon.',
     stock: apiItem.stock ?? 100,
-    recipeItems: apiItem.recipeItems?.map((r) => ({
-      name: r.ingredient?.name || 'Nguyên liệu',
-      amount: r.amount,
-      unit: r.ingredient?.unit || 'g',
-      stock: r.ingredient?.stock,
-    })),
   };
 }
 

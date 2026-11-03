@@ -16,8 +16,8 @@ function SignInInner() {
   const redirectTo = searchParams.get('redirect') || '/rewards';
   const isFromCheckout = searchParams.get('redirect') === '/checkout';
 
-  const [email, setEmail] = useState('duy.nguyen@example.com');
-  const [password, setPassword] = useState('Password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +47,7 @@ function SignInInner() {
       }
 
       // Lưu token & thông tin user vào Zustand store (persist vào localStorage)
-      setAuth(data.accessToken, data.user);
+      await setAuth(data.accessToken, data.user);
 
       // Điều hướng sau khi đăng nhập thành công (về trang trước đó hoặc rewards)
       router.push(redirectTo);
@@ -59,7 +59,7 @@ function SignInInner() {
         setAuth('demo-token', {
           id: 'demo-user',
           email,
-          fullName: 'Nguyen Duy',
+          fullName: email.split('@')[0],
           role: 'CUSTOMER',
         });
         router.push(redirectTo);

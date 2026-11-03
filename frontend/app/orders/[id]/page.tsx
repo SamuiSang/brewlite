@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
-import { INITIAL_ORDERS } from '@/lib/data';
 import OrderDetailsContent from './OrderDetailsContent';
 
 export function generateStaticParams() {
-  return INITIAL_ORDERS.map((o) => ({ id: o.id }));
+  return [{ id: 'demo' }];
 }
 
 export default async function OrderDetailsPage({

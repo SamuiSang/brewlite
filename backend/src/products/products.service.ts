@@ -18,27 +18,8 @@ export class ProductsService {
     });
   }
 
-  /**
-   * Tự tính số ly tối đa pha được từ nguyên liệu tồn kho hiện tại (Task 2 - Chiến)
-   * stock = min(floor(Ingredient.stock / RecipeItem.amount))
-   */
-  private calculateDynamicStock(product: any): number {
-    if (!product.recipeItems || product.recipeItems.length === 0) {
-      return product.stock ?? 0;
-    }
-
-    const possibleCupsPerIngredient = product.recipeItems.map((r: any) => {
-      const ingStock = r.ingredient ? r.ingredient.stock : 0;
-      const amountNeeded = r.amount;
-      if (amountNeeded <= 0) return 999999;
-      return Math.floor(ingStock / amountNeeded);
-    });
-
-    return Math.max(0, Math.min(...possibleCupsPerIngredient));
-  }
-
   async findAll(categoryId?: string, search?: string) {
-    const products = await this.prisma.product.findMany({
+    return this.prisma.product.findMany({
       where: {
         isActive: true,
         ...(categoryId ? { categoryId } : {}),
@@ -53,19 +34,9 @@ export class ProductsService {
       },
       include: {
         category: true,
-        recipeItems: {
-          include: {
-            ingredient: true,
-          },
-        },
       },
       orderBy: { createdAt: 'asc' },
     });
-
-    return products.map((p) => ({
-      ...p,
-      stock: this.calculateDynamicStock(p),
-    }));
   }
 
   async findOne(id: string) {
@@ -73,11 +44,6 @@ export class ProductsService {
       where: { id },
       include: {
         category: true,
-        recipeItems: {
-          include: {
-            ingredient: true,
-          },
-        },
       },
     });
 
@@ -85,9 +51,6 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID "${id}" not found`);
     }
 
-    return {
-      ...product,
-      stock: this.calculateDynamicStock(product),
-    };
+    return product;
   }
 }

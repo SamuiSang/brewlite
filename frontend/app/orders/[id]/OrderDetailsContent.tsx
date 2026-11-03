@@ -4,30 +4,55 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Check, MapPin, ArrowRight } from 'lucide-react';
-import { formatVND, INITIAL_ORDERS } from '@/lib/data';
+import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 
 export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const [mounted, setMounted] = useState(false);
   const getOrderById = useCartStore((state) => state.getOrderById);
+  const authToken = useCartStore((state) => state.authToken);
+  const authUser = useCartStore((state) => state.authUser);
+  const profile = useCartStore((state) => state.profile);
   const [apiOrder, setApiOrder] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
 
     async function loadOrder() {
       try {
+        setLoading(true);
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
         const code = orderId.startsWith('#') ? orderId.slice(1) : orderId;
-        const res = await fetch(`${apiUrl}/orders/code/${encodeURIComponent(code)}`);
+        const headers: Record<string, string> = {};
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        const res = await fetch(`${apiUrl}/orders/code/${encodeURIComponent(code)}`, {
+          headers,
+        });
+
         if (res.ok) {
           const o = await res.json();
           if (o && o.id) {
+            const total = Number(o.totalAmount || o.subtotal || 0);
             setApiOrder({
               id: code,
               orderCode: o.orderCode || `#${code}`,
+              customerName: o.user?.fullName || o.customerName || profile?.name || authUser?.fullName || 'bạn',
               status: o.status,
-              statusLabel: o.status === 'PAID' ? 'Đã nhận thanh toán' : o.status,
+              statusLabel:
+                o.status === 'PAID'
+                  ? 'Đã nhận thanh toán'
+                  : o.status === 'COMPLETED'
+                  ? 'Hoàn tất'
+                  : o.status === 'PREPARING'
+                  ? 'Đang pha chế'
+                  : o.status === 'READY'
+                  ? 'Sẵn sàng'
+                  : o.status === 'CANCELLED'
+                  ? 'Đã hủy'
+                  : 'Đang chờ',
               date: new Date(o.createdAt).toLocaleDateString('vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -36,38 +61,69 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                 year: 'numeric',
               }),
               title: o.orderItems?.[0]?.product?.name || `Đơn hàng #${code}`,
-              total: Number(o.totalAmount || o.subtotal || 0),
+              subtotal: Number(o.subtotal || o.totalAmount || 0),
+              discount: Number(o.discountAmount || 0),
+              total,
+              pointsEarned: Math.floor(total / 10000),
+              paymentMethod: o.paymentMethod === 'VNPAY' ? 'Thanh toán trực tuyến (VNPAY)' : 'Thanh toán tiền mặt tại quầy',
               active: ['PENDING', 'PAID', 'PREPARING', 'READY'].includes(o.status),
-              items: o.orderItems?.map((it: any) => ({
-                id: it.id,
-                name: it.product?.name,
-                image: it.product?.imageUrl || '/images/brown-sugar-latte.png',
-                price: Number(it.unitPrice || 0),
-                quantity: it.qty,
-                size: it.size,
-                selectedToppings: it.toppings?.map((tp: any) => tp.topping?.name || 'Topping'),
-              })) || [],
+              items:
+                o.orderItems?.map((it: any) => ({
+                  id: it.id,
+                  name: it.product?.name,
+                  image: it.product?.imageUrl || '/images/brown-sugar-latte.png',
+                  price: Number(it.unitPrice || 0),
+                  qty: it.qty,
+                  size: it.size,
+                  details: `${it.size || 'Regular'}${it.toppings?.length ? ` · ${it.toppings.map((t: any) => t.topping?.name).join(', ')}` : ''}`,
+                })) || [],
             });
           }
         }
       } catch (e) {
-        console.warn('Dùng dữ liệu local order details:', e);
+        console.warn('Không thể tải chi tiết đơn hàng từ backend:', e);
+      } finally {
+        setLoading(false);
       }
     }
 
     loadOrder();
-  }, [orderId]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  }, [orderId, authToken, profile, authUser]);
 
   const orderFromStore = mounted ? getOrderById(orderId) : undefined;
-  const order =
-    apiOrder ||
-    orderFromStore ||
-    INITIAL_ORDERS.find((o) => o.id === orderId) ||
-    INITIAL_ORDERS[0];
+  const order = apiOrder || orderFromStore;
+
+  if (!order && loading) {
+    return (
+      <div className="flex-1 py-16 text-center">
+        <p className="text-sm text-[#738478]">Đang tải thông tin đơn hàng...</p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex-1 py-16 text-center max-w-md mx-auto px-4">
+        <h2 className="font-serif text-2xl font-bold text-[#14241b] mb-3">Không tìm thấy đơn hàng</h2>
+        <p className="text-xs text-[#738478] mb-6">
+          Đơn hàng #{orderId} không tồn tại hoặc bạn không có quyền xem đơn hàng này.
+        </p>
+        <Link
+          href="/orders"
+          className="inline-block bg-[#163d2c] text-white text-xs font-bold py-3 px-6 rounded-2xl"
+        >
+          Quay lại danh sách đơn hàng
+        </Link>
+      </div>
+    );
+  }
+
+  const items = order.items || [];
+  const displayName = order.customerName
+    ? order.customerName.trim().split(' ').pop()
+    : profile?.name
+    ? profile.name.trim().split(' ').pop()
+    : 'bạn';
 
   return (
     <div className="flex-1 py-8 sm:py-12">
@@ -84,10 +140,12 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
         {/* Title */}
         <div className="mb-8">
           <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#14241b] tracking-tight leading-tight">
-            Cảm ơn Duy. Đơn hàng của bạn đã được ghi nhận.
+            Cảm ơn {displayName}. Đơn hàng của bạn đã được ghi nhận.
           </h1>
           <p className="text-xs sm:text-sm text-[#66776c] mt-2">
-            Đã nhận thanh toán. Tách cà phê thơm ngon của bạn sắp sẵn sàng.
+            {order.status === 'PAID'
+              ? 'Đã nhận thanh toán. Tách cà phê thơm ngon của bạn sắp sẵn sàng.'
+              : 'Đơn hàng của bạn đang được xử lý.'}
           </p>
         </div>
 
@@ -128,7 +186,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                   Theo dõi đơn hàng
                 </h3>
                 <span className="bg-[#d5e3d4] text-[#163d2c] text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
-                  ĐÃ THANH TOÁN · Đã nhận thanh toán
+                  {order.statusLabel || 'Đang xử lý'}
                 </span>
               </div>
 
@@ -143,29 +201,47 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                     ĐANG CHỜ
                   </span>
                   <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
-                    Đơn hàng đã được ghi nhận
+                    Đã ghi nhận
                   </span>
-                  <span className="text-[10px] text-[#708076] mt-0.5">14:20</span>
                 </div>
 
                 {/* Step 2 */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-[#163d2c] text-white flex items-center justify-center mb-2 shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3]" />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                      ['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status)
+                        ? 'bg-[#163d2c] text-white'
+                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                    }`}
+                  >
+                    {['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : (
+                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                    )}
                   </div>
                   <span className="text-[9px] font-bold tracking-wider uppercase text-[#546b5a]">
                     ĐÃ THANH TOÁN
                   </span>
                   <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
-                    Đã nhận thanh toán
+                    Đã nhận tiền
                   </span>
-                  <span className="text-[10px] text-[#708076] mt-0.5">14:21</span>
                 </div>
 
                 {/* Step 3 */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#b5c7bc] text-[#8aa193] flex items-center justify-center mb-2">
-                    <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                      ['PREPARING', 'READY', 'COMPLETED'].includes(order.status)
+                        ? 'bg-[#163d2c] text-white'
+                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                    }`}
+                  >
+                    {['PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : (
+                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                    )}
                   </div>
                   <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
                     ĐANG CHUẨN BỊ
@@ -173,40 +249,61 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                   <span className="text-[11px] font-medium text-[#708076] mt-0.5">
                     Đang pha chế
                   </span>
-                  <span className="text-[10px] text-[#8ca094] mt-0.5">Tiếp theo</span>
                 </div>
 
                 {/* Step 4 */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#b5c7bc] text-[#8aa193] flex items-center justify-center mb-2">
-                    <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                      ['READY', 'COMPLETED'].includes(order.status)
+                        ? 'bg-[#163d2c] text-white'
+                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                    }`}
+                  >
+                    {['READY', 'COMPLETED'].includes(order.status) ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : (
+                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                    )}
                   </div>
                   <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
                     SẴN SÀNG
                   </span>
                   <span className="text-[11px] font-medium text-[#708076] mt-0.5">
-                    Chờ nhận tại quầy
+                    Chờ nhận
                   </span>
-                  <span className="text-[10px] text-[#8ca094] mt-0.5">Sắp có</span>
                 </div>
 
                 {/* Step 5 */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#b5c7bc] text-[#8aa193] flex items-center justify-center mb-2">
-                    <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                      order.status === 'COMPLETED'
+                        ? 'bg-[#163d2c] text-white'
+                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                    }`}
+                  >
+                    {order.status === 'COMPLETED' ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : (
+                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                    )}
                   </div>
                   <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
                     HOÀN TẤT
                   </span>
                   <span className="text-[11px] font-medium text-[#708076] mt-0.5">
-                    Thưởng thức cà phê
+                    Thưởng thức
                   </span>
-                  <span className="text-[10px] text-[#8ca094] mt-0.5">Sau khi nhận hàng</span>
                 </div>
               </div>
 
               <p className="text-xs text-[#708076] pt-3 border-t border-[#f2eee7]">
-                Đơn hàng đã được thanh toán nhưng chưa sẵn sàng. Chúng tôi sẽ cập nhật trạng thái khi bắt đầu pha chế và khi bạn có thể đến nhận hàng.
+                {order.status === 'READY'
+                  ? 'Đơn hàng đã sẵn sàng! Mời bạn tới quầy nhận đồ uống.'
+                  : order.status === 'COMPLETED'
+                  ? 'Đơn hàng đã hoàn tất. Chúc bạn một ngày tràn đầy năng lượng!'
+                  : 'Đơn hàng đang được chuẩn bị. Chúng tôi sẽ cập nhật trạng thái khi bạn có thể đến nhận hàng.'}
               </p>
             </div>
 
@@ -252,17 +349,17 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                   Đơn hàng của bạn
                 </h2>
                 <span className="bg-[#ede7dc] text-[#55695c] text-xs font-semibold px-2.5 py-1 rounded-full">
-                  {order.items.length} món
+                  {items.length} món
                 </span>
               </div>
 
               <div className="divide-y divide-[#f2eee7]">
-                {order.items.map((item: any, idx: number) => (
+                {items.map((item: any, idx: number) => (
                   <div key={idx} className="py-4 first:pt-0 last:pb-0 flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#e8e2d8] shrink-0 border border-[#eee8df]">
                       <Image
                         src={item.image || '/images/brown-sugar-latte.png'}
-                        alt={item.name}
+                        alt={item.name || 'Sản phẩm'}
                         fill
                         className="object-cover"
                       />
@@ -279,7 +376,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                       </p>
                     </div>
                     <span className="font-serif text-sm font-bold text-[#14241b]">
-                      {formatVND(item.price)}
+                      {formatVND(item.price * (item.qty || 1))}
                     </span>
                   </div>
                 ))}
@@ -287,12 +384,14 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
 
               <div className="pt-4 border-t border-[#f0ebe0] space-y-2 text-xs text-[#6e8074]">
                 <div className="flex justify-between">
-                  <span>Tạm tính · {order.items.length} món</span>
-                  <span className="font-semibold text-[#14241b]">{formatVND(order.subtotal || 124000)}</span>
+                  <span>Tạm tính · {items.length} món</span>
+                  <span className="font-semibold text-[#14241b]">
+                    {formatVND(order.subtotal || order.total || 0)}
+                  </span>
                 </div>
                 {(order.discount || 0) > 0 && (
                   <div className="flex justify-between text-[#266345]">
-                    <span>Ưu đãi thành viên</span>
+                    <span>Ưu đãi</span>
                     <span className="font-semibold">-{formatVND(order.discount)}</span>
                   </div>
                 )}
@@ -305,7 +404,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
               </div>
 
               <div className="pt-3 border-t border-[#f0ebe0] text-xs text-[#708076]">
-                {order.paymentMethod}
+                {order.paymentMethod || 'Thanh toán trực tiếp'}
               </div>
             </div>
 
@@ -315,7 +414,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                 Lời cảm ơn nhỏ
               </span>
               <h3 className="font-serif text-2xl sm:text-3xl font-bold text-[#7a4216] mb-2">
-                +{order.pointsEarned} điểm đã tích lũy
+                +{order.pointsEarned || 0} điểm đã tích lũy
               </h3>
               <p className="text-xs text-[#875026] leading-relaxed">
                 Điểm sẽ được cộng sau khi thanh toán thành công. Cảm ơn bạn đã lựa chọn Brewlite!

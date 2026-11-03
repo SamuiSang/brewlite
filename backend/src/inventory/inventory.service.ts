@@ -138,7 +138,7 @@ export class InventoryService {
    * Điều chỉnh tồn kho thủ công (kiểm kê, hao hụt, hỏng hóc)
    * PATCH /inventory/ingredients/:id/adjust
    */
-  async adjustStock(id: string, dto: AdjustStockDto, userId?: string) {
+  async adjustStock(id: string, dto: AdjustStockDto, _userId?: string) {
     return this.prisma.$transaction(async (tx) => {
       const ing = await tx.ingredient.findUnique({ where: { id } });
       if (!ing) {

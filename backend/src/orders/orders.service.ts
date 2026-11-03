@@ -137,15 +137,18 @@ export class OrdersService {
   }
 
   /**
-   * Khởi tạo đơn hàng với Khóa tồn kho đồng thời (Optimistic Lock version),
-   * Voucher & Loyalty points (Task 10 - Quang)
+   * Khởi tạo đơn hàng với:
+   * 1. Kiểm tra định mức nguyên liệu công thức món (BOM - Bill of Materials).
+   * 2. Khóa tồn kho đồng thời (Optimistic Locking).
+   * 3. Trừ kho nguyên liệu và lưu nhật ký giao dịch kho (Inventory Transactions).
+   * 4. Voucher & Loyalty points.
    */
   async createOrder(dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Giỏ hàng không được để trống');
     }
 
-    // 1. Gom số lượng yêu cầu theo từng productId để kiểm tra tổng tồn kho
+    // 1. Gom số lượng yêu cầu theo từng productId để kiểm tra tổng tồn kho sản phẩm
     const requiredProductQtyMap = new Map<string, number>();
     for (const item of dto.items) {
       const current = requiredProductQtyMap.get(item.productId) || 0;
@@ -190,9 +193,7 @@ export class OrdersService {
           toppingsMap,
         );
       } catch (error) {
-        // Nếu là lỗi xung đột Optimistic Lock và còn lượt retry -> thử lại
         if (error instanceof ConflictException && attempt < MAX_RETRIES) {
-          // Chờ ngẫu nhiên một khoảng ngắn (backoff jitter)
           await new Promise((resolve) =>
             setTimeout(resolve, 50 * attempt + Math.floor(Math.random() * 50)),
           );
@@ -208,7 +209,7 @@ export class OrdersService {
   }
 
   /**
-   * Thực thi Transaction tạo đơn hàng kèm Optimistic Locking
+   * Thực thi Transaction tạo đơn hàng kèm kiểm tra nguyên liệu & Optimistic Locking
    */
   private async executeCreateOrderTransaction(
     dto: CreateOrderDto,
@@ -216,18 +217,11 @@ export class OrdersService {
     productIds: string[],
     toppingsMap: Map<string, { id: string; price: Prisma.Decimal }>,
   ) {
-    // Truy vấn dữ liệu sản phẩm mới nhất kèm version, recipeItems & ingredient
+    // 1. Truy vấn sản phẩm
     const products = await this.prisma.product.findMany({
       where: {
         id: { in: productIds },
         isActive: true,
-      },
-      include: {
-        recipeItems: {
-          include: {
-            ingredient: true,
-          },
-        },
       },
     });
 
@@ -239,45 +233,104 @@ export class OrdersService {
 
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Kiểm tra số lượng tồn kho sản phẩm và tồn kho nguyên vật liệu trước khi vào transaction
-    const requiredIngredientMap = new Map<
+    // 2. TÍNH TOÁN NGUYÊN LIỆU THEO CÔNG THỨC (BOM - Bill of Materials)
+    // Nghiệp vụ chuẩn: Không lưu tồn kho theo ly cà phê thành phẩm pha sẵn.
+    // Tồn kho được quản lý theo Nguyên liệu thô (Raw Ingredients): Cà phê (g), Sữa (ml), Ly/Nắp (cái).
+    // Hệ thống đối soát công thức (Recipe) và tổng nguyên liệu thực tế trước khi nhận đơn.
+    const requiredIngredientsMap = new Map<
       string,
-      { ingredient: any; requiredAmount: number }
+      { id: string; name: string; unit: string; requiredAmount: number }
     >();
 
-    for (const [pId, reqQty] of requiredProductQtyMap.entries()) {
-      const product: any = productMap.get(pId)!;
-      if (typeof product.stock === 'number' && product.stock < reqQty) {
+    for (const item of dto.items) {
+      const product = productMap.get(item.productId);
+      const prodName = product?.name || item.productId;
+
+      // 1. Chuẩn hóa kích thước ly (size)
+      let normalizedSize = item.size?.toUpperCase()?.trim();
+      if (normalizedSize === 'REGULAR' || normalizedSize === 'SMALL') normalizedSize = 'S';
+      else if (normalizedSize === 'MEDIUM') normalizedSize = 'M';
+      else if (normalizedSize === 'LARGE') normalizedSize = 'L';
+      else if (!normalizedSize) normalizedSize = 'M';
+
+      // 2. Tìm công thức theo size chuẩn hóa
+      let recipes = await this.prisma.productRecipe.findMany({
+        where: { productId: item.productId, size: normalizedSize },
+        include: { ingredient: true },
+      });
+
+      // 3. Nếu không tìm thấy, thử tìm theo size nguyên bản gửi lên
+      if (recipes.length === 0 && item.size) {
+        recipes = await this.prisma.productRecipe.findMany({
+          where: { productId: item.productId, size: item.size },
+          include: { ingredient: true },
+        });
+      }
+
+      // 4. Nếu không tìm thấy, thử tìm công thức chung (size = null)
+      if (recipes.length === 0) {
+        recipes = await this.prisma.productRecipe.findMany({
+          where: { productId: item.productId, size: null },
+          include: { ingredient: true },
+        });
+      }
+
+      // 5. Nếu size hiện tại chưa cấu hình nhưng sản phẩm có công thức ở size khác, fallback sang size có sẵn
+      if (recipes.length === 0) {
+        const anyRecipes = await this.prisma.productRecipe.findMany({
+          where: { productId: item.productId },
+          include: { ingredient: true },
+        });
+        if (anyRecipes.length > 0) {
+          const fallbackSize = anyRecipes[0].size;
+          recipes = anyRecipes.filter((r) => r.size === fallbackSize);
+        }
+      }
+
+      // 6. Kiểm tra chốt chặn: Nếu sản phẩm hoàn toàn chưa cấu hình công thức -> Chặn bán
+      if (recipes.length === 0) {
         throw new BadRequestException(
-          `Sản phẩm "${product.name}" không đủ số lượng tồn kho (chỉ còn ${product.stock}, yêu cầu ${reqQty})`,
+          `Sản phẩm "${prodName}" chưa được cấu hình công thức định lượng nguyên liệu (Recipe). Vui lòng cấu hình định lượng kho trước khi bán!`,
         );
       }
-      if (product.recipeItems && product.recipeItems.length > 0) {
-        for (const recipe of product.recipeItems) {
-          const ingId = recipe.ingredientId;
-          const needed = recipe.amount * reqQty;
-          const existing = requiredIngredientMap.get(ingId);
-          if (existing) {
-            existing.requiredAmount += needed;
-          } else {
-            requiredIngredientMap.set(ingId, {
-              ingredient: recipe.ingredient,
-              requiredAmount: needed,
-            });
-          }
+
+      for (const r of recipes) {
+        const amount = Number(r.amount);
+        const wasteRate = Number((r as any).wasteRate || 0);
+        const effectivePerUnit = amount * (1 + wasteRate / 100);
+        const amountNeeded = Math.round(effectivePerUnit * item.qty * 100) / 100;
+
+        const existing = requiredIngredientsMap.get(r.ingredientId);
+        if (existing) {
+          existing.requiredAmount = Math.round((existing.requiredAmount + amountNeeded) * 100) / 100;
+        } else {
+          requiredIngredientsMap.set(r.ingredientId, {
+            id: r.ingredientId,
+            name: r.ingredient.name,
+            unit: r.ingredient.unit,
+            requiredAmount: amountNeeded,
+          });
         }
       }
     }
 
-    for (const [, { ingredient, requiredAmount }] of requiredIngredientMap.entries()) {
-      if (ingredient && ingredient.stock < requiredAmount) {
+    // Kiểm tra định mức nguyên liệu trước khi tiến hành tính tiền và mở transaction
+    for (const [ingId, req] of requiredIngredientsMap.entries()) {
+      const ing = await this.prisma.ingredient.findUnique({ where: { id: ingId } });
+      if (!ing) {
+        throw new BadRequestException(`Không tìm thấy nguyên liệu: ${req.name}`);
+      }
+
+      const currentStock = Number(ing.currentStock);
+      if (currentStock < req.requiredAmount) {
+        const missing = Math.round((req.requiredAmount - currentStock) * 100) / 100;
         throw new BadRequestException(
-          `Nguyên liệu "${ingredient.name}" không đủ để pha chế (tồn kho: ${ingredient.stock} ${ingredient.unit}, yêu cầu: ${requiredAmount} ${ingredient.unit})`,
+          `Không đủ nguyên liệu để pha chế: ${req.name} (cần ${req.requiredAmount} ${req.unit}, hiện chỉ còn ${currentStock} ${req.unit}, thiếu ${missing} ${req.unit})`,
         );
       }
     }
 
-    // Tính toán chi tiết từng món trong đơn
+    // 3. Tính toán chi tiết các món trong đơn
     let calculatedSubtotal = 0;
     const preparedItems = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
@@ -312,7 +365,7 @@ export class OrdersService {
       };
     });
 
-    // 4. Áp dụng Voucher / Khuyến mãi (nếu có)
+    // 4. Áp dụng Voucher
     let voucherDiscount = 0;
     let appliedPromotionCode: string | null = null;
 
@@ -335,8 +388,7 @@ export class OrdersService {
       appliedPromotionCode = promotion.code;
     }
 
-    // 5. Xử lý Điểm tích lũy thành viên (Loyalty Points)
-    // Quy ước: 1 điểm = 1.000đ giảm giá
+    // 5. Xử lý Điểm Loyalty
     const POINT_TO_VND_RATE = 1000;
     let loyaltyDiscount = 0;
     let pointsToDeduct = 0;
@@ -371,70 +423,47 @@ export class OrdersService {
 
     const totalDiscount = voucherDiscount + loyaltyDiscount;
     const totalAmount = Math.max(0, calculatedSubtotal - totalDiscount);
-
-    // Tích điểm mới: Mỗi 10.000đ = 1 điểm tích lũy
     const pointsEarned = Math.floor(totalAmount / 10000);
 
-    // 6. Thực thi Transaction nguyên tử (Atomic Database Transaction)
+    // 6. Thực thi Transaction nguyên tử
     return await this.prisma.$transaction(async (tx) => {
-      // 6.1. OPTIMISTIC LOCKING: Khóa tồn kho sản phẩm và nguyên liệu đồng thời với version check
-      for (const [pId, reqQty] of requiredProductQtyMap.entries()) {
-        const currentProd: any = productMap.get(pId)!;
+      // 6.1. KIỂM TRA VÀ TRỪ TỒN KHO NGUYÊN LIỆU TRONG TRANSACTION
+      for (const [ingId, req] of requiredIngredientsMap.entries()) {
+        const ing = await tx.ingredient.findUnique({ where: { id: ingId } });
+        if (!ing) {
+          throw new BadRequestException(`Không tìm thấy nguyên liệu: ${req.name}`);
+        }
 
-        if (tx.product?.updateMany && typeof currentProd.version === 'number') {
-          const updateResult = await tx.product.updateMany({
-            where: {
-              id: pId,
-              version: currentProd.version,
-              stock: { gte: reqQty },
-            },
-            data: {
-              stock: { decrement: reqQty },
-              version: { increment: 1 },
-            },
-          });
-
-          if (updateResult.count === 0) {
-            throw new ConflictException(
-              `Xung đột dữ liệu khi khóa tồn kho cho món "${currentProd.name}". Phiên bản đã thay đổi.`,
-            );
-          }
+        const currentStock = Number(ing.currentStock);
+        if (currentStock < req.requiredAmount) {
+          const missing = req.requiredAmount - currentStock;
+          throw new BadRequestException(
+            `Không đủ nguyên liệu để pha chế: ${req.name} (cần ${req.requiredAmount} ${req.unit}, hiện chỉ còn ${currentStock} ${req.unit}, thiếu ${missing} ${req.unit})`,
+          );
         }
       }
 
-      if (requiredIngredientMap.size > 0 && (tx as any).ingredient) {
-        for (const [ingId, { ingredient, requiredAmount }] of requiredIngredientMap.entries()) {
-          const currentIng = await (tx as any).ingredient.findUnique({
-            where: { id: ingId },
-          });
+      // 6.2. OPTIMISTIC LOCKING PHIÊN BẢN SẢN PHẨM (Chống race-condition)
+      for (const [pId] of requiredProductQtyMap.entries()) {
+        const currentProd = productMap.get(pId)!;
+        const updateResult = await tx.product.updateMany({
+          where: {
+            id: pId,
+            version: currentProd.version,
+          },
+          data: {
+            version: { increment: 1 },
+          },
+        });
 
-          if (!currentIng || currentIng.stock < requiredAmount) {
-            throw new BadRequestException(
-              `Nguyên liệu "${ingredient?.name || ingId}" đã hết hoặc không đủ tồn kho để đáp ứng đơn hàng`,
-            );
-          }
-
-          const ingUpdate = await (tx as any).ingredient.updateMany({
-            where: {
-              id: ingId,
-              version: currentIng.version,
-              stock: { gte: requiredAmount },
-            },
-            data: {
-              stock: { decrement: requiredAmount },
-              version: { increment: 1 },
-            },
-          });
-
-          if (ingUpdate.count === 0) {
-            throw new ConflictException(
-              `Xung đột dữ liệu khi trừ tồn kho nguyên liệu "${ingredient?.name || ingId}". Phiên bản đã thay đổi do giao dịch đồng thời.`,
-            );
-          }
+        if (updateResult.count === 0) {
+          throw new ConflictException(
+            `Xung đột dữ liệu khi khóa phiên bản món "${currentProd.name}". Vui lòng thử lại.`,
+          );
         }
       }
 
-      // 6.2. Trừ điểm Loyalty đã dùng (nếu có)
+      // 6.3. TRỪ ĐIỂM LOYALTY ĐÃ DÙNG
       if (pointsToDeduct > 0 && dto.userId) {
         await tx.user.update({
           where: { id: dto.userId },
@@ -444,10 +473,10 @@ export class OrdersService {
         });
       }
 
-      // 6.3. Sinh mã đơn hàng
+      // 6.4. SINH MÃ ĐƠN HÀNG
       const orderCode = await this.generateOrderCode(tx);
 
-      // 6.4. Lưu đơn hàng
+      // 6.5. TẠO BẢN GHI ĐƠN HÀNG
       const order = await tx.order.create({
         data: {
           orderCode,
@@ -493,15 +522,29 @@ export class OrdersService {
         },
       });
 
+      // 6.6. NẾU ĐƠN HÀNG Ở TRẠNG THÁI PAID (THANH TOÁN TRỰC TIẾP TẠI QUẦY) -> TRỪ KHO NGAY
+      // NẾU LÀ VNPAY (PENDING) -> CHỜ XÁC NHẬN THANH TOÁN QUA WEBHOOK MỚI TRỪ KHO ĐỂ KHÔNG GIỮ CHỖ
+      if (order.status === 'PAID') {
+        await this.deductOrderInventoryInTx(order.id, tx);
+      }
+
+      // 6.7. GHI NHẬT KÝ TRẠNG THÁI ĐƠN HÀNG
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: null,
+          toStatus: 'PENDING',
+          reason: 'Khởi tạo đơn hàng mới',
+          changedBy: dto.customerName,
+        },
+      });
+
       return order;
     });
   }
 
   /**
-   * Lấy danh sách tất cả các đơn hàng
-   */
-  /**
-   * Lấy danh sách lịch sử đơn hàng của người dùng đang đăng nhập (Task 9 - Sprint 3)
+   * Lấy danh sách lịch sử đơn hàng của người dùng đang đăng nhập
    * GET /orders/me
    */
   async findMyOrders(userId: string) {
@@ -523,18 +566,25 @@ export class OrdersService {
         },
         promotion: true,
         payments: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findAll(query?: { status?: string; userId?: string; phone?: string }) {
+  /**
+   * Lấy danh sách đơn hàng có bộ lọc
+   */
+  async findAll(params: { status?: string; userId?: string; phone?: string }) {
+    const where: any = {};
+    if (params.status) where.status = params.status;
+    if (params.userId) where.userId = params.userId;
+    if (params.phone) where.phone = { contains: params.phone };
+
     return this.prisma.order.findMany({
-      where: {
-        ...(query?.status ? { status: query.status } : {}),
-        ...(query?.userId ? { userId: query.userId } : {}),
-        ...(query?.phone ? { phone: { contains: query.phone } } : {}),
-      },
+      where,
       include: {
         orderItems: {
           include: {
@@ -547,6 +597,7 @@ export class OrdersService {
           },
         },
         promotion: true,
+        payments: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -571,6 +622,9 @@ export class OrdersService {
         },
         promotion: true,
         payments: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -582,7 +636,7 @@ export class OrdersService {
   }
 
   /**
-   * Tìm đơn hàng theo mã đơn (orderCode), ví dụ: "#1042" hoặc "1042"
+   * Tìm đơn hàng theo mã đơn (orderCode)
    */
   async findByOrderCode(code: string) {
     const normalizedCode = code.startsWith('#') ? code : `#${code}`;
@@ -601,6 +655,9 @@ export class OrdersService {
         },
         promotion: true,
         payments: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -614,7 +671,7 @@ export class OrdersService {
   }
 
   /**
-   * Lấy các trạng thái kế tiếp hợp lệ theo Order State Machine
+   * Lấy các trạng thái kế tiếp hợp lệ
    */
   async getAllowedNextStatuses(id: string) {
     const order = await this.findOne(id);
@@ -630,12 +687,15 @@ export class OrdersService {
   }
 
   /**
-   * Task 10.1 (Chiến): Cập nhật trạng thái đơn hàng tuân thủ Máy trạng thái đơn hàng (Order State Machine)
-   * Bổ sung logic: nếu trạng thái đơn chuyển sang 'CANCELLED' -> tự động cộng hoàn lại
-   * số lượng tồn kho stock và tăng version của sản phẩm trong CSDL.
-   * Đồng thời thu hồi điểm thưởng loyalty nếu đơn đã thanh toán trước đó.
+   * Cập nhật trạng thái đơn hàng tuân thủ Order State Machine
+   * Kèm logic hoàn kho nguyên liệu nếu CANCELLED & ghi OrderStatusHistory
    */
-  async updateStatus(id: string, status: string) {
+  async updateStatus(
+    id: string,
+    status: string,
+    reason?: string,
+    changedBy: string = 'SYSTEM',
+  ) {
     const upperStatus = status.toUpperCase();
 
     if (!OrderStateMachine.isValidStatus(upperStatus)) {
@@ -649,19 +709,7 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
-        orderItems: {
-          include: {
-            product: {
-              include: {
-                recipeItems: {
-                  include: {
-                    ingredient: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+        orderItems: true,
       },
     });
 
@@ -672,51 +720,67 @@ export class OrdersService {
     const currentStatus = order.status as OrderStatus;
     const targetStatus = upperStatus as OrderStatus;
 
-    // Xác thực chuyển đổi trạng thái bằng Order State Machine (Task 10.1)
+    // Xác thực chuyển đổi trạng thái bằng Order State Machine
     OrderStateMachine.validateTransition(currentStatus, targetStatus);
 
     if (currentStatus === targetStatus) {
       return this.findOne(id);
     }
 
-    // Thực hiện chuyển đổi trạng thái kèm Side-effects trong Transaction (Task 10.1)
     return await this.prisma.$transaction(async (tx) => {
-      // Khi hủy đơn hàng (CANCELLED): Hoàn trả tồn kho cho tất cả các món trong đơn
+      // KHI HỦY ĐƠN HÀNG (CANCELLED):
       if (targetStatus === 'CANCELLED') {
-        // 1. Hoàn trả tồn kho stock và nguyên liệu thô (Task 6 & Task 10.1 - Chiến)
-        const refundIngredientMap = new Map<string, number>();
-        for (const item of order.orderItems as any[]) {
-          if (tx.product?.update) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: { increment: item.qty },
-                version: { increment: 1 },
-              },
+        // HOÀN KHO NGUYÊN LIỆU THÔ (Restock Ingredients theo đúng BOM thực tế)
+        const deductTxs = await tx.inventoryTransaction.findMany({
+          where: {
+            orderId: order.id,
+            type: 'ORDER_DEDUCT',
+          },
+        });
+
+        // Kiểm tra xem đã có giao dịch RESTOCK cho đơn này chưa (chống hoàn kho 2 lần)
+        const restockCount = await tx.inventoryTransaction.count({
+          where: {
+            orderId: order.id,
+            type: 'RESTOCK',
+          },
+        });
+
+        if (order.isInventoryDeducted && restockCount === 0 && deductTxs.length > 0) {
+          for (const dTx of deductTxs) {
+            const ing = await tx.ingredient.findUnique({
+              where: { id: dTx.ingredientId },
             });
-          }
-          if (item.product && item.product.recipeItems) {
-            for (const recipe of item.product.recipeItems) {
-              const refundQty = recipe.amount * item.qty;
-              const current = refundIngredientMap.get(recipe.ingredientId) || 0;
-              refundIngredientMap.set(recipe.ingredientId, current + refundQty);
+            if (ing) {
+              const returnQty = Math.abs(Number(dTx.quantity));
+              const newStock = Number(ing.currentStock) + returnQty;
+
+              await tx.ingredient.update({
+                where: { id: ing.id },
+                data: { currentStock: newStock },
+              });
+
+              await tx.inventoryTransaction.create({
+                data: {
+                  ingredientId: ing.id,
+                  type: 'RESTOCK',
+                  quantity: returnQty,
+                  balanceAfter: newStock,
+                  referenceType: 'ORDER',
+                  orderId: order.id,
+                  notes: `Hoàn kho nguyên liệu do hủy đơn hàng ${order.orderCode}`,
+                },
+              });
             }
           }
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: { isInventoryDeducted: false },
+          });
         }
 
-        if (refundIngredientMap.size > 0 && (tx as any).ingredient?.update) {
-          for (const [ingId, refundQty] of refundIngredientMap.entries()) {
-            await (tx as any).ingredient.update({
-              where: { id: ingId },
-              data: {
-                stock: { increment: refundQty },
-                version: { increment: 1 },
-              },
-            });
-          }
-        }
-
-        // 2. Nếu đơn trước đó đã PAID và có tích điểm cho User -> Thu hồi điểm thưởng đã tích
+        // 3. Nếu đơn trước đó đã PAID và có tích điểm -> Thu hồi điểm
         if (
           currentStatus === 'PAID' &&
           order.userId &&
@@ -732,7 +796,7 @@ export class OrdersService {
         }
       }
 
-      // Cập nhật trạng thái đơn
+      // Cập nhật trạng thái đơn hàng
       const updatedOrder = await tx.order.update({
         where: { id },
         data: { status: targetStatus },
@@ -752,7 +816,157 @@ export class OrdersService {
         },
       });
 
+      // Ghi nhật ký chuyển đổi trạng thái (OrderStatusHistory)
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: currentStatus,
+          toStatus: targetStatus,
+          reason: reason || `Cập nhật trạng thái sang ${targetStatus}`,
+          changedBy,
+        },
+      });
+
       return updatedOrder;
     });
+  }
+
+  /**
+   * Trừ tồn kho nguyên liệu theo công thức BOM trong Database Transaction với Khóa Pessimistic Locking
+   * Chống Race condition & Double deduction
+   */
+  async deductOrderInventoryInTx(orderId: string, tx: Prisma.TransactionClient) {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        orderItems: {
+          include: {
+            product: {
+              include: {
+                recipes: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Không tìm thấy đơn hàng "${orderId}"`);
+    }
+
+    // 1. Chống Double Deduction: Nếu đơn hàng đã trừ kho rồi thì bỏ qua ngay lập tức
+    if (order.isInventoryDeducted) {
+      return { alreadyDeducted: true, order };
+    }
+
+    // 2. Thu thập và cộng dồn nguyên liệu cần thiết theo công thức (BOM)
+    const requiredMap = new Map<string, { id: string; name: string; unit: string; requiredAmount: number }>();
+
+    for (const oi of order.orderItems) {
+      const product = oi.product;
+      const size = oi.size;
+
+      let recipes = product.recipes.filter((r) => r.size === size);
+      if (recipes.length === 0) {
+        recipes = product.recipes.filter((r) => r.size === null);
+      }
+      if (recipes.length === 0 && product.recipes.length > 0) {
+        recipes = product.recipes;
+      }
+
+      for (const r of recipes) {
+        const amount = Number(r.amount);
+        const wasteRate = Number((r as any).wasteRate || 0);
+        const effectivePerCup = amount * (1 + wasteRate / 100);
+        const needed = Math.round(effectivePerCup * oi.qty * 100) / 100;
+
+        const existing = requiredMap.get(r.ingredientId);
+        if (existing) {
+          existing.requiredAmount = Math.round((existing.requiredAmount + needed) * 100) / 100;
+        } else {
+          requiredMap.set(r.ingredientId, {
+            id: r.ingredientId,
+            name: r.ingredient.name,
+            unit: r.ingredient.unit,
+            requiredAmount: needed,
+          });
+        }
+      }
+    }
+
+    const ingredientIds = Array.from(requiredMap.keys());
+    if (ingredientIds.length === 0) {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { isInventoryDeducted: true, inventoryDeductedAt: new Date() },
+      });
+      return { alreadyDeducted: false, order };
+    }
+
+    // 3. Sắp xếp danh sách ID nguyên liệu tăng dần (ORDER BY id ASC)
+    // Triệt tiêu 100% Deadlock khi nhiều transaction đồng thời khóa các tài nguyên trùng nhau
+    const sortedIds = [...ingredientIds].sort();
+
+    // 4. Khóa độc quyền (Exclusive Pessimistic Lock - SELECT FOR UPDATE)
+    const lockedIngredients = await tx.$queryRaw<
+      Array<{ id: string; current_stock: any; name: string }>
+    >`
+      SELECT id, current_stock, name
+      FROM ingredients
+      WHERE id IN (${Prisma.join(sortedIds)})
+      ORDER BY id ASC
+      FOR UPDATE
+    `;
+
+    const lockedMap = new Map(lockedIngredients.map((ing) => [ing.id, Number(ing.current_stock)]));
+
+    // 5. Kiểm tra tồn kho thực tế dưới khóa
+    for (const [ingId, req] of requiredMap.entries()) {
+      const stock = lockedMap.get(ingId);
+      if (stock === undefined || stock < req.requiredAmount) {
+        const currentStock = stock ?? 0;
+        const missing = Math.round((req.requiredAmount - currentStock) * 100) / 100;
+        throw new BadRequestException(
+          `Không đủ nguyên liệu trong kho để hoàn tất đơn hàng: ${req.name} (cần ${req.requiredAmount} ${req.unit}, hiện chỉ còn ${currentStock} ${req.unit}, thiếu ${missing} ${req.unit})`,
+        );
+      }
+    }
+
+    // 6. Thực hiện trừ kho thực tế và ghi nhận InventoryTransaction
+    for (const [ingId, req] of requiredMap.entries()) {
+      const oldStock = lockedMap.get(ingId)!;
+      const newStock = Math.round((oldStock - req.requiredAmount) * 100) / 100;
+
+      await tx.ingredient.update({
+        where: { id: ingId },
+        data: { currentStock: newStock },
+      });
+
+      await tx.inventoryTransaction.create({
+        data: {
+          ingredientId: ingId,
+          type: 'ORDER_DEDUCT',
+          quantity: -req.requiredAmount,
+          balanceAfter: newStock,
+          referenceType: 'ORDER',
+          orderId: order.id,
+          notes: `Trừ kho pha chế cho đơn hàng ${order.orderCode}`,
+        },
+      });
+    }
+
+    // 7. Cập nhật cờ isInventoryDeducted = true
+    const updatedOrder = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        isInventoryDeducted: true,
+        inventoryDeductedAt: new Date(),
+      },
+    });
+
+    return { alreadyDeducted: false, order: updatedOrder };
   }
 }

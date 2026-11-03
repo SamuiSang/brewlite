@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
@@ -27,31 +28,57 @@ export class OrdersController {
   }
 
   /**
-   * API Tạo đơn hàng mới (kèm Khóa tồn kho Optimistic Lock & Voucher/Loyalty)
-   * Bắt buộc người dùng phải đăng nhập tài khoản (JwtAuthGuard)
+   * API Tạo đơn hàng mới kèm kiểm tra công thức nguyên liệu (BOM) & Optimistic Lock
+   * Bắt buộc xác thực người dùng (JwtAuthGuard)
+   * Tuyệt đối không nhận userId từ body request để chống tấn công IDOR
    * POST /orders
    */
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() dto: CreateOrderDto, @Req() req: any) {
-    if (req?.user?.sub && !dto.userId) {
-      dto.userId = req.user.sub;
-    }
+    const authUserId = req.user?.sub || req.user?.id;
+    // Cưỡng chế gắn userId từ token xác thực
+    dto.userId = authUserId;
     return this.ordersService.createOrder(dto);
   }
 
   /**
-   * API Lấy danh sách tất cả các đơn hàng
-   * GET /orders
-   * Hỗ trợ query: ?status=PENDING&userId=...&phone=...
+   * API Lấy danh sách lịch sử đơn hàng của người dùng đăng nhập
+   * GET /orders/me
    */
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  findMyOrders(@Req() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    return this.ordersService.findMyOrders(userId);
+  }
+
+  /**
+   * API Lấy danh sách đơn hàng
+   * Nếu là CUSTOMER: CHỈ được xem đơn của chính mình (chặn rò rỉ dữ liệu / IDOR)
+   * Nếu là ADMIN/BARISTA: Có thể tra cứu tất cả hoặc lọc theo userId
+   * GET /orders
+   */
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(
+    @Req() req: any,
     @Query('status') status?: string,
     @Query('userId') userId?: string,
     @Query('phone') phone?: string,
   ) {
-    return this.ordersService.findAll({ status, userId, phone });
+    const userRole = req.user?.role;
+    const currentUserId = req.user?.sub || req.user?.id;
+
+    let targetUserId: string | undefined = undefined;
+    if (userRole === 'ADMIN' || userRole === 'BARISTA') {
+      targetUserId = userId || undefined;
+    } else {
+      // CUSTOMER chỉ được xem đơn của chính mình
+      targetUserId = currentUserId;
+    }
+
+    return this.ordersService.findAll({ status, userId: targetUserId, phone });
   }
 
   /**
@@ -74,33 +101,44 @@ export class OrdersController {
 
   /**
    * API Lấy chi tiết đơn hàng theo ID (UUID)
+   * Có kiểm tra quyền truy cập (CUSTOMER chỉ được xem đơn của mình)
    * GET /orders/:id
    */
-  /**
-   * API Lấy danh sách lịch sử đơn hàng của người dùng đăng nhập (Task 9 - Sprint 3)
-   * GET /orders/me
-   */
   @UseGuards(JwtAuthGuard)
-  @Get('me')
-  findMyOrders(@Req() req: any) {
-    const userId = req.user?.sub || req.user?.id || req.user?.userId;
-    return this.ordersService.findMyOrders(userId);
-  }
-
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    const order = await this.ordersService.findOne(id);
+    const userRole = req.user?.role;
+    const currentUserId = req.user?.sub || req.user?.id;
+
+    if (
+      userRole !== 'ADMIN' &&
+      userRole !== 'BARISTA' &&
+      order.userId &&
+      order.userId !== currentUserId
+    ) {
+      throw new ForbiddenException(
+        'Bạn không có quyền truy cập vào thông tin đơn hàng của người khác',
+      );
+    }
+
+    return order;
   }
 
   /**
    * API Cập nhật trạng thái đơn hàng (PENDING, PAID, PREPARING, READY, COMPLETED, CANCELLED)
+   * Kèm lý do và người cập nhật
    * PATCH /orders/:id/status
    */
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
   updateStatus(
     @Param('id') id: string,
     @Body('status') status: string,
+    @Body('reason') reason?: string,
+    @Req() req?: any,
   ) {
-    return this.ordersService.updateStatus(id, status);
+    const changedBy = req?.user?.fullName || req?.user?.email || 'SYSTEM';
+    return this.ordersService.updateStatus(id, status, reason, changedBy);
   }
 }

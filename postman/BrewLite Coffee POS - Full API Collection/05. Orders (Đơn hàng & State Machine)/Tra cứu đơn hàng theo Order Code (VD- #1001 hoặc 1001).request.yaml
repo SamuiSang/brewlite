@@ -1,0 +1,5 @@
+$kind: http-request
+name: "Tra cứu đơn hàng theo Order Code (VD: #1001 hoặc 1001)"
+url: "{{baseUrl}}/orders/code/1001"
+method: GET
+order: 5000

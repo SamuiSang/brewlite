@@ -1,0 +1,43 @@
+{
+  "id": "brewlite-local-env",
+  "name": "BrewLite Local",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "tokenCustomer",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJlbWFpbCI6ImtoYWNoaGFuZ0BnbWFpbC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3OTQzMjg0NDUsImV4cCI6MTc5NDQxNDg0NX0.LCvChKUtgQVaP0vamXUDEZksQ291cBhz7wwLp9avRec",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "tokenBarista",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJlbWFpbCI6ImJhcmlzdGFAYnJld2xpdGUudm4iLCJyb2xlIjoiQkFSSVNUQSIsImlhdCI6MTc5NDMyODQ1MSwiZXhwIjoxNzk0NDE0ODUxfQ.0q04lzVyZ_MZvdqK6NZUWeGjH-9uUAWKnH-CDczhHfA",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQGJyZXdsaXRlLnZuIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzk0MzI4NDUxLCJleHAiOjE3OTQ0MTQ4NTF9.XbHUoCnxQKvipjlvJCbkYWMEiZPHmuKFfsrnA67Ii8Q",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "currentOrderId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "currentPaymentId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

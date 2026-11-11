@@ -1,0 +1,16 @@
+$kind: http-request
+name: 7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)
+url: "{{baseUrl}}/payments"
+method: POST
+headers:
+  Idempotency-Key: order-pay-key-001
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": "{{currentOrderId}}",
+      "method": "MOMO",
+      "mockSuccess": true
+    }
+order: 7000

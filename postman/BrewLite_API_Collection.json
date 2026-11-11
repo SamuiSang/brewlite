@@ -1,0 +1,934 @@
+{
+  "info": {
+    "_postman_id": "brewlite-api-collection-2026",
+    "name": "BrewLite Coffee POS - Full API Collection",
+    "description": "Bộ sưu tập toàn bộ API hệ thống BrewLite (Auth, Menu, Cart, Orders, Payments, Inventory & BOM, Test Lỗi Giảng Viên)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "tokenCustomer",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJlbWFpbCI6ImtoYWNoaGFuZ0BnbWFpbC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3OTQzMjg0NDUsImV4cCI6MTc5NDQxNDg0NX0.LCvChKUtgQVaP0vamXUDEZksQ291cBhz7wwLp9avRec",
+      "type": "string"
+    },
+    {
+      "key": "tokenBarista",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJlbWFpbCI6ImJhcmlzdGFAYnJld2xpdGUudm4iLCJyb2xlIjoiQkFSSVNUQSIsImlhdCI6MTc5NDMyODQ1MSwiZXhwIjoxNzk0NDE0ODUxfQ.0q04lzVyZ_MZvdqK6NZUWeGjH-9uUAWKnH-CDczhHfA",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQGJyZXdsaXRlLnZuIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzk0MzI4NDUxLCJleHAiOjE3OTQ0MTQ4NTF9.XbHUoCnxQKvipjlvJCbkYWMEiZPHmuKFfsrnA67Ii8Q",
+      "type": "string"
+    },
+    {
+      "key": "currentOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentPaymentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Auth & Users",
+      "item": [
+        {
+          "name": "Đăng nhập Khách hàng (Lưu tokenCustomer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenCustomer', res.accessToken);",
+                  "    pm.environment.set('tokenCustomer', res.accessToken);",
+                  "    pm.globals.set('tokenCustomer', res.accessToken);",
+                  "    console.log('Saved tokenCustomer successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"khachhang@gmail.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Đăng nhập Barista (Lưu tokenBarista)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenBarista', res.accessToken);",
+                  "    pm.environment.set('tokenBarista', res.accessToken);",
+                  "    pm.globals.set('tokenBarista', res.accessToken);",
+                  "    console.log('Saved tokenBarista successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"barista@brewlite.vn\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Đăng nhập Admin (Lưu tokenAdmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenAdmin', res.accessToken);",
+                  "    pm.environment.set('tokenAdmin', res.accessToken);",
+                  "    pm.globals.set('tokenAdmin', res.accessToken);",
+                  "    console.log('Saved tokenAdmin successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@brewlite.vn\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Đăng ký tài khoản mới",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test_customer_new@gmail.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"Trần Văn Test\",\n  \"phone\": \"0912345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Lấy thông tin tài khoản hiện tại (Profile & Loyalty)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Cập nhật Profile cá nhân",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn A (Đã đổi tên)\",\n  \"phone\": \"0909999888\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Menu & Sản Phẩm (Public)",
+      "item": [
+        {
+          "name": "Lấy danh mục sản phẩm (Categories)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách Topping kèm giá & tồn kho",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/toppings",
+              "host": ["{{baseUrl}}"],
+              "path": ["toppings"]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách món (Tất cả)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
+            }
+          }
+        },
+        {
+          "name": "Lọc sản phẩm theo danh mục hoặc từ khóa tìm kiếm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products?search=Cà phê",
+              "host": ["{{baseUrl}}"],
+              "path": ["products"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Cà phê"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy chi tiết 1 sản phẩm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products/p1111111-1111-1111-1111-222222222222",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "p1111111-1111-1111-1111-222222222222"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Cart (Giỏ hàng)",
+      "item": [
+        {
+          "name": "Lấy giỏ hàng của User hiện tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            }
+          }
+        },
+        {
+          "name": "Đồng bộ (Lưu) giỏ hàng",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2,\n      \"toppings\": [\"t1111111-1111-1111-1111-111111111111\"],\n      \"note\": \"Ít đá 50%\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            }
+          }
+        },
+        {
+          "name": "Xóa sạch giỏ hàng",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Inventory & BOM (Quản lý kho & Định lượng)",
+      "item": [
+        {
+          "name": "Lấy danh sách 17 nguyên liệu kho & mức an toàn",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/ingredients",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "ingredients"]
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra tính khả dụng giỏ hàng với BOM tồn kho (validate-cart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/validate-cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "validate-cart"]
+            }
+          }
+        },
+        {
+          "name": "Tính số ly tối đa có thể pha theo nguyên liệu kho",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/availability/p1111111-1111-1111-1111-222222222222?size=M",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "availability", "p1111111-1111-1111-1111-222222222222"],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "M"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tổng quan công thức tất cả sản phẩm & COGS",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/recipes",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "recipes"]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết công thức định lượng (BOM) 1 sản phẩm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/recipes/p1111111-1111-1111-1111-222222222222",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "recipes", "p1111111-1111-1111-1111-222222222222"]
+            }
+          }
+        },
+        {
+          "name": "Lịch sử giao dịch kho (Audit Log)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transactions?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "transactions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nhập kho nguyên liệu (Hỗ trợ quy đổi đơn vị kg->g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier\": \"Nha cung cap Dak Lak\",\n  \"notes\": \"Nhap kho ca phe dau thang\",\n  \"items\": [\n    {\n      \"ingredientId\": \"ing-1\",\n      \"quantity\": 2,\n      \"unit\": \"kg\",\n      \"unitPrice\": 250000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/receipts",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "receipts"]
+            }
+          }
+        },
+        {
+          "name": "Điều chỉnh tồn kho thủ công (Kiểm kê/Hao hụt)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actualStock\": 3500,\n  \"reason\": \"Kiem ke dinh ky cuoi ngay\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/ingredients/ing-1/adjust",
+              "host": ["{{baseUrl}}"],
+              "path": ["inventory", "ingredients", "ing-1", "adjust"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Orders (Đơn hàng & State Machine)",
+      "item": [
+        {
+          "name": "Kiểm tra mã Voucher (validate-voucher)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 58000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "validate-voucher"]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn hàng mới (Tự động trừ kho theo BOM & lưu currentOrderId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "    pm.collectionVariables.set('currentOrderId', res.id);",
+                  "    pm.environment.set('currentOrderId', res.id);",
+                  "    pm.globals.set('currentOrderId', res.id);",
+                  "    console.log('Saved currentOrderId:', res.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"deliveryAddress\": \"123 Nguyễn Văn Cừ, Q.5, TP.HCM\",\n  \"notes\": \"Giao nhanh giúp mình\",\n  \"promotionCode\": \"WELCOME10\",\n  \"useLoyaltyPoints\": 0,\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 2,\n      \"toppingIds\": [\"t1111111-1111-1111-1111-111111111111\"]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách đơn hàng của tôi (Khách hàng)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "me"]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách đơn hàng hệ thống (Barista/Admin xem)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders?status=PENDING",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tra cứu đơn hàng theo Order Code (VD: #1001 hoặc 1001)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/code/1001",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "code", "1001"]
+            }
+          }
+        },
+        {
+          "name": "Xem các trạng thái kế tiếp hợp lệ theo State Machine",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{currentOrderId}}", "allowed-transitions"]
+            }
+          }
+        },
+        {
+          "name": "Lấy chi tiết đơn hàng (Kiểm tra quyền)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{currentOrderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Cập nhật trạng thái đơn (State Machine: PENDING -> PREPARING)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\",\n  \"reason\": \"Barista bat dau pha che mon\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{currentOrderId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Payments & VNPAY (Thanh toán)",
+      "item": [
+        {
+          "name": "Lấy cấu hình test & số thẻ VNPAY Sandbox",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/config",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "vnpay", "config"]
+            }
+          }
+        },
+        {
+          "name": "Tạo URL thanh toán VNPAY Sandbox",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"bankCode\": \"NCB\",\n  \"language\": \"vn\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/create-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "vnpay", "create-url"]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán Mock (Kèm Idempotency-Key chống trùng lặp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.payment && res.payment.id) {",
+                  "    pm.collectionVariables.set('currentPaymentId', res.payment.id);",
+                  "    pm.environment.set('currentPaymentId', res.payment.id);",
+                  "    pm.globals.set('currentPaymentId', res.payment.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "order-pay-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true,\n  \"twoStep\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            }
+          }
+        },
+        {
+          "name": "Lấy mã VietQR & QR Base64 thanh toán",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{currentPaymentId}}/qr",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "{{currentPaymentId}}", "qr"]
+            }
+          }
+        },
+        {
+          "name": "Giả lập Webhook thanh toán thành công",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"{{currentPaymentId}}\",\n  \"outcome\": \"SUCCESS\",\n  \"transactionRef\": \"BANK_MOCK_TRANS_999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "webhook"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. ERROR & EDGE CASES (Giảng viên thường test lỗi qua API)",
+      "item": [
+        {
+          "name": "1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "me"]
+            }
+          }
+        },
+        {
+          "name": "2. Test 400 Validation Error (Thiếu trường bắt buộc, sai định dạng)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"\",\n  \"phone\": \"\",\n  \"items\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "3. Test 400 BOM Tồn Kho (Đặt 9999 ly vượt quá nguyên liệu kho)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Test Vuot Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 20000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "validate-voucher"]
+            }
+          }
+        },
+        {
+          "name": "5. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"reason\": \"Cố tình nhảy cóc trạng thái\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{currentOrderId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "6. Test 403 IDOR (Khách hàng cố tình xem đơn hàng của người khác)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "o1111111-1111-1111-1111-111111111111"]
+            }
+          }
+        },
+        {
+          "name": "7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "order-pay-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

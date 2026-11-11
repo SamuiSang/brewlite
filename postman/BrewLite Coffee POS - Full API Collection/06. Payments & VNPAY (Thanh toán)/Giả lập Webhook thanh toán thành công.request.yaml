@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/webhook"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "paymentId": "{{currentPaymentId}}",
+      "outcome": "SUCCESS",
+      "transactionRef": "BANK_MOCK_TRANS_999"
+    }
+order: 5000

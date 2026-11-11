@@ -1,0 +1,23 @@
+$kind: http-request
+name: Nhập kho nguyên liệu (Hỗ trợ quy đổi đơn vị kg->g)
+url: "{{baseUrl}}/inventory/receipts"
+method: POST
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "supplier": "Nha cung cap Dak Lak",
+      "notes": "Nhap kho ca phe dau thang",
+      "items": [
+        {
+          "ingredientId": "ing-1",
+          "quantity": 2,
+          "unit": "kg",
+          "unitPrice": 250000
+        }
+      ]
+    }
+order: 7000

@@ -1,0 +1,5 @@
+$kind: http-request
+name: 1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)
+url: "{{baseUrl}}/orders/me"
+method: GET
+order: 1000

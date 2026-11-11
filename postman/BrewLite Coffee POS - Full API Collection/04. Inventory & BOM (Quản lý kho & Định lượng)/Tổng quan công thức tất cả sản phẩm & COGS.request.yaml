@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/recipes"
+method: GET
+order: 4000

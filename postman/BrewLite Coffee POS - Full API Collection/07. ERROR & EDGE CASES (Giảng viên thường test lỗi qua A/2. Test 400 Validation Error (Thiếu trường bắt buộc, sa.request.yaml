@@ -1,0 +1,16 @@
+$kind: http-request
+name: 2. Test 400 Validation Error (Thiếu trường bắt buộc, sai định dạng)
+url: "{{baseUrl}}/orders"
+method: POST
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "customerName": "",
+      "phone": "",
+      "items": []
+    }
+order: 2000

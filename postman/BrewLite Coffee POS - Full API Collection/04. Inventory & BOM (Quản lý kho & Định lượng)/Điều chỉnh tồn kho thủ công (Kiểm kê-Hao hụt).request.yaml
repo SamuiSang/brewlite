@@ -1,0 +1,15 @@
+$kind: http-request
+name: Điều chỉnh tồn kho thủ công (Kiểm kê/Hao hụt)
+url: "{{baseUrl}}/inventory/ingredients/ing-1/adjust"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "actualStock": 3500,
+      "reason": "Kiem ke dinh ky cuoi ngay"
+    }
+order: 8000

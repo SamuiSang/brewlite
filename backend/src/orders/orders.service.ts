@@ -101,10 +101,18 @@ export class OrdersService {
     return Math.min(discountAmount, subtotal);
   }
 
+  private async checkFirstOrderVoucher(code: string, userId?: string, client: Prisma.TransactionClient = this.prisma) {
+    if (code !== 'WELCOME10') return;
+    if (!userId) throw new BadRequestException('Vui lòng đăng nhập để sử dụng mã WELCOME10');
+    if (await client.order.count({ where: { userId } })) {
+      throw new BadRequestException('Mã WELCOME10 chỉ áp dụng cho đơn hàng đầu tiên');
+    }
+  }
+
   /**
    * API Kiểm tra & tính thử giá trị giảm giá của Voucher (dành cho frontend)
    */
-  async validateVoucher(dto: ValidateVoucherDto) {
+  async validateVoucher(dto: ValidateVoucherDto, userId?: string) {
     const promoCode = dto.code.trim().toUpperCase();
     const promotion = await this.prisma.promotion.findUnique({
       where: { code: promoCode },
@@ -114,6 +122,7 @@ export class OrdersService {
       throw new NotFoundException(`Mã khuyến mãi "${promoCode}" không tồn tại`);
     }
 
+    await this.checkFirstOrderVoucher(promoCode, userId);
     const discountAmount = this.calculatePromotionDiscount(
       promotion,
       dto.subtotal,
@@ -381,6 +390,7 @@ export class OrdersService {
         );
       }
 
+      await this.checkFirstOrderVoucher(promoCode, dto.userId);
       voucherDiscount = this.calculatePromotionDiscount(
         promotion,
         calculatedSubtotal,
@@ -427,6 +437,11 @@ export class OrdersService {
 
     // 6. Thực thi Transaction nguyên tử
     return await this.prisma.$transaction(async (tx) => {
+      if (dto.userId) {
+        // Khóa cùng tài khoản để hai đơn đồng thời không cùng nhận ưu đãi đơn đầu.
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${dto.userId} FOR UPDATE`;
+      }
+      await this.checkFirstOrderVoucher(appliedPromotionCode || '', dto.userId, tx);
       // 6.1. KIỂM TRA VÀ TRỪ TỒN KHO NGUYÊN LIỆU TRONG TRANSACTION
       for (const [ingId, req] of requiredIngredientsMap.entries()) {
         const ing = await tx.ingredient.findUnique({ where: { id: ingId } });

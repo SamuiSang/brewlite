@@ -102,10 +102,28 @@ export class OrdersService {
   }
 
   private async checkFirstOrderVoucher(code: string, userId?: string, client: Prisma.TransactionClient = this.prisma) {
-    if (code !== 'WELCOME10') return;
-    if (!userId) throw new BadRequestException('Vui lòng đăng nhập để sử dụng mã WELCOME10');
-    if (await client.order.count({ where: { userId } })) {
-      throw new BadRequestException('Mã WELCOME10 chỉ áp dụng cho đơn hàng đầu tiên');
+    if (!code) return;
+
+    if (code === 'WELCOME10') {
+      if (!userId) throw new BadRequestException('Vui lòng đăng nhập để sử dụng mã WELCOME10');
+      if (await client.order.count({ where: { userId } })) {
+        throw new BadRequestException('Mã WELCOME10 chỉ áp dụng cho đơn hàng đầu tiên');
+      }
+      return;
+    }
+
+    // Mỗi khuyến mãi chỉ được dùng 1 lần cho 1 tài khoản
+    if (userId) {
+      const usedCount = await client.order.count({
+        where: {
+          userId,
+          promotionCode: code,
+          status: { not: 'CANCELLED' },
+        },
+      });
+      if (usedCount > 0) {
+        throw new BadRequestException(`Bạn đã sử dụng mã khuyến mãi "${code}" rồi`);
+      }
     }
   }
 

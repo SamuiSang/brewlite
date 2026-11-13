@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/validate-cart"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "productId": "p9999999-9999-9999-9999-999999999999",
+          "size": "M",
+          "quantity": 1
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Flags non-existent product as invalid", function () {
+          const res = pm.response.json();
+          pm.expect(res.isValid).to.be.false;
+          pm.expect(res.items[0].message).to.equal("Sản phẩm không tồn tại");
+      });
+    language: text/javascript
+order: 14000

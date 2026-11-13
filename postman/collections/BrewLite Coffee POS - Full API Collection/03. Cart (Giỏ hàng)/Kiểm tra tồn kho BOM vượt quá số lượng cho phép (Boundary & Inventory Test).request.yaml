@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/validate-cart"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "productId": "p1111111-1111-1111-1111-222222222222",
+          "size": "M",
+          "quantity": 9999
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Cart validation detects stock limit exceeded", function () {
+          const res = pm.response.json();
+          pm.expect(res.isValid).to.be.false;
+          pm.expect(res.items[0].status).to.be.oneOf(["OUT_OF_STOCK", "INSUFFICIENT_QUANTITY"]);
+      });
+    language: text/javascript
+order: 13000

@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "BREWLITE",
+      "subtotal": 500000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Discount capped at maxDiscountAmount (50.000đ)", function () {
+          const res = pm.response.json();
+          pm.expect(res.maxDiscountAmount).to.equal(50000);
+          pm.expect(res.discountAmount).to.equal(50000); // 15% của 500k = 75k -> cap 50k
+          pm.expect(res.finalAmount).to.equal(450000);
+      });
+    language: text/javascript
+order: 6000

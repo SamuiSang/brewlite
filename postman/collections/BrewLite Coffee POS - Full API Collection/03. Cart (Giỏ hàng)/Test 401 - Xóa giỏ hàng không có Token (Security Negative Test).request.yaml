@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 401 Unauthorized", function () {
+          pm.response.to.have.status(401);
+      });
+      pm.test("Unauthorized error returned", function () {
+          const res = pm.response.json();
+          pm.expect(res.statusCode).to.equal(401);
+      });
+    language: text/javascript
+order: 17000

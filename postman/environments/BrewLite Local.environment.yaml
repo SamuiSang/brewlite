@@ -1,0 +1,26 @@
+name: BrewLite Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:3001'
+    type: default
+    enabled: true
+  - key: tokenCustomer
+    value: ''
+    type: secret
+    enabled: true
+  - key: tokenBarista
+    value: ''
+    type: secret
+    enabled: true
+  - key: tokenAdmin
+    value: ''
+    type: secret
+    enabled: true
+  - key: currentOrderId
+    value: ''
+    type: default
+    enabled: true
+  - key: currentPaymentId
+    value: ''
+    type: default
+    enabled: true

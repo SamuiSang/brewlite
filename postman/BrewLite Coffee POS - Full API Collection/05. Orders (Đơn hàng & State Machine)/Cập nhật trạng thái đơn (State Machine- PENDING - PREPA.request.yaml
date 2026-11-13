@@ -1,0 +1,15 @@
+$kind: http-request
+name: "Cập nhật trạng thái đơn (State Machine: PENDING -> PREPARING)"
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "PREPARING",
+      "reason": "Barista bat dau pha che mon"
+    }
+order: 8000

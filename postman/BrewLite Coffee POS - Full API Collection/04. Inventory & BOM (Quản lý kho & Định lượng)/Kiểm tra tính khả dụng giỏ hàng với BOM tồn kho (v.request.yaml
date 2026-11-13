@@ -1,0 +1,19 @@
+$kind: http-request
+name: Kiểm tra tính khả dụng giỏ hàng với BOM tồn kho (validate-cart)
+url: "{{baseUrl}}/inventory/validate-cart"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "productId": "p1111111-1111-1111-1111-222222222222",
+          "size": "M",
+          "quantity": 2
+        }
+      ]
+    }
+order: 2000

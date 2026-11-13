@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers/validate"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "GIAM20K",
+      "orderAmount": 100000,
+      "customerId": ""
+    }
+order: 3000

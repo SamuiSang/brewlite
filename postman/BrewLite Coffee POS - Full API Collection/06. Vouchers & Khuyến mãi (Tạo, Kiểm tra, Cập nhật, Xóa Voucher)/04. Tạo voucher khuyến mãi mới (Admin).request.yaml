@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers"
+method: POST
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "SUMMER50",
+      "discountType": "PERCENTAGE",
+      "discountValue": 50,
+      "minOrderAmount": 80000,
+      "maxDiscountAmount": 40000,
+      "validUntil": "2026-12-31T23:59:59.000Z",
+      "isActive": true
+    }
+order: 4000

@@ -135,7 +135,7 @@ async function main() {
       name: 'Cappuccino',
       description: 'Tỉ lệ cân bằng giữa Espresso, sữa tươi và lớp bọt sữa dày rắc bột cacao.',
       basePrice: 45000,
-      imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668ba67e53?w=600&auto=format&fit=crop&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {
@@ -144,7 +144,7 @@ async function main() {
       name: 'Caramel Macchiato',
       description: 'Sữa tươi hương vani kết hợp Espresso đậm đà và sốt caramel thơm lừng.',
       basePrice: 49000,
-      imageUrl: 'https://images.unsplash.com/photo-1485808191629-be0dc82f8141?w=600&auto=format&fit=crop&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
 
@@ -184,7 +184,7 @@ async function main() {
       name: 'Trà sữa truyền thống',
       description: 'Trà đen Ceylon đậm vị quyện cùng sữa tươi béo ngậy chuẩn gu.',
       basePrice: 35000,
-      imageUrl: 'https://images.unsplash.com/photo-1558857563-b37cf5a2b0e6?w=600&auto=format&fit=crop&q=80',
+      imageUrl: 'https://images.unsplash.com/photo-1558160074-4d7d8bdf4256?w=600&auto=format&fit=crop&q=80',
       stock: 100,
     },
     {

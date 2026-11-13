@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "PREPARING",
+      "reason": "Barista bắt đầu pha chế món"
+    }
+order: 6000

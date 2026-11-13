@@ -161,18 +161,18 @@ export default function CartPage() {
   const subtotal = mounted ? getSubtotal() : 0;
   const discount = mounted ? getDiscount() : 0;
   const baseTotal = mounted ? getTotal() : 0;
-  const [voucherEligibility, setVoucherEligibility] = useState<{ subtotal: number; codes: string[] } | null>(null);
+  const [voucherEligibility, setVoucherEligibility] = useState<{ subtotal: number; token: string | null; codes: string[] } | null>(null);
 
   useEffect(() => {
     if (!mounted) return;
     let cancelled = false;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    void getEligibleVoucherCodes(apiUrl, AVAILABLE_VOUCHERS.map((voucher) => voucher.code), subtotal)
+    void getEligibleVoucherCodes(apiUrl, AVAILABLE_VOUCHERS.map((voucher) => voucher.code), subtotal, authToken)
       .then((codes) => {
-        if (!cancelled) setVoucherEligibility({ subtotal, codes });
+        if (!cancelled) setVoucherEligibility({ subtotal, token: authToken, codes });
       });
     return () => { cancelled = true; };
-  }, [mounted, subtotal]);
+  }, [mounted, subtotal, authToken]);
 
   // Tính điểm thưởng tích lũy (Loyalty Points)
   const availablePoints = mounted ? (profile?.points ?? 129) : 129;
@@ -486,7 +486,7 @@ export default function CartPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {AVAILABLE_VOUCHERS.map((v) => {
                       const isSelected = appliedVoucher?.code === v.code;
-                      const canUse = voucherEligibility?.subtotal === subtotal && voucherEligibility.codes.includes(v.code);
+                      const canUse = voucherEligibility?.subtotal === subtotal && voucherEligibility.token === authToken && voucherEligibility.codes.includes(v.code);
                       return (
                         <button
                           key={v.code}
@@ -501,6 +501,7 @@ export default function CartPage() {
                               : 'bg-[#faf7f2] text-[#93a499] border-[#ede7dc] hover:border-[#dfd6c8]'
                           }`}
                           title={v.description}
+                          aria-label={`${v.code}: ${v.description}`}
                         >
                           <span className="font-bold">{v.code}</span>
                           <span className="text-[10px] opacity-80">

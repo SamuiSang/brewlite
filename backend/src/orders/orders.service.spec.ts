@@ -104,12 +104,14 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         update: jest.fn<any>(),
       },
       order: {
+        count: jest.fn<any>().mockResolvedValue(0),
         findFirst: jest.fn<any>(),
         findUnique: jest.fn<any>(),
         findMany: jest.fn<any>(),
         create: jest.fn<any>(),
         update: jest.fn<any>(),
       },
+      $queryRaw: jest.fn<any>().mockResolvedValue([]),
       $transaction: jest.fn((callback: any) => callback(prisma)),
     };
 
@@ -276,6 +278,43 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
   });
 
   describe('3. Voucher / Promotion Calculation', () => {
+    it('WELCOME10 từ chối khách chưa đăng nhập', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      await expect(service.validateVoucher({ code: 'WELCOME10', subtotal: 100000 }))
+        .rejects.toThrow(/đăng nhập/);
+    });
+
+    it('WELCOME10 từ chối tài khoản đã từng đặt đơn', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.validateVoucher({ code: 'WELCOME10', subtotal: 100000 }, 'user-1'))
+        .rejects.toThrow(/đơn hàng đầu tiên/);
+    });
+
+    it('không thể bỏ qua điều kiện WELCOME10 khi tạo đơn trực tiếp', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.createOrder({
+        userId: 'user-1', customerName: 'Quang', phone: '0901234567',
+        promotionCode: 'WELCOME10',
+        items: [{ productId: 'prod-1', size: 'S', qty: 2 }],
+      })).rejects.toThrow(/đơn hàng đầu tiên/);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('kiểm tra lại đơn đầu trong transaction trước khi ghi đơn', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+      await expect(service.createOrder({
+        userId: 'user-1', customerName: 'Quang', phone: '0901234567',
+        promotionCode: 'WELCOME10',
+        items: [{ productId: 'prod-1', size: 'S', qty: 2 }],
+      })).rejects.toThrow(/đơn hàng đầu tiên/);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
     it('tính giảm giá theo % kèm trần maxDiscountAmount chính xác', () => {
       const discount = service.calculatePromotionDiscount(
         mockPromotionPercent,
@@ -315,7 +354,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       const result = await service.validateVoucher({
         code: 'WELCOME10',
         subtotal: 100000,
-      });
+      }, 'user-1');
 
       expect(result.code).toBe('WELCOME10');
       expect(result.discountAmount).toBe(10000);

@@ -375,13 +375,38 @@ export const useCartStore = create<CartStore>()(
       },
 
       setAuth: async (token, user) => {
-        // Tải giỏ hàng riêng của user hiện tại
+        // Tải giỏ hàng của khách vãng lai và giỏ hàng đã lưu của user
+        const guestItems = get().items || [];
         const userCart = getStoredCartForUser(user.id);
+
+        let finalItems: CartItem[];
+        if (guestItems.length > 0) {
+          // Gộp giỏ hàng khách vào giỏ hàng tài khoản:
+          // Nếu món đã tồn tại trong giỏ tài khoản thì cộng dồn số lượng, nếu chưa thì thêm mới
+          const merged = [...userCart];
+          for (const gItem of guestItems) {
+            const matchIndex = merged.findIndex((uItem) => uItem.id === gItem.id);
+            if (matchIndex > -1) {
+              merged[matchIndex] = {
+                ...merged[matchIndex],
+                quantity: merged[matchIndex].quantity + gItem.quantity,
+              };
+            } else {
+              merged.push(gItem);
+            }
+          }
+          finalItems = merged;
+          // Lưu lại giỏ hàng đã gộp cho tài khoản và dọn sạch giỏ guest
+          saveCartForUser(user.id, finalItems);
+          saveCartForUser(undefined, []);
+        } else {
+          finalItems = userCart;
+        }
 
         set({
           authToken: token,
           authUser: user,
-          items: userCart,
+          items: finalItems,
           orders: [], // Reset danh sách đơn để fetch mới theo user
           voucherCode: '',
           appliedVoucher: null,

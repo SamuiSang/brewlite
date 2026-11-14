@@ -1,0 +1,3 @@
+name: "02. Tạo đơn hàng mới (Chờ thanh toán: PENDING) [Lưu currentOrderId]"
+method: POST
+url: "{{baseUrl}}/orders"

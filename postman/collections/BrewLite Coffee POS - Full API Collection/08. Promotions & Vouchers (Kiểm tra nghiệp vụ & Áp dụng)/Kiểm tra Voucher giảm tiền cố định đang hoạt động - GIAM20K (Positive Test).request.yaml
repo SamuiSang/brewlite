@@ -1,0 +1,3 @@
+name: "Kiểm tra Voucher giảm tiền cố định đang hoạt động - GIAM20K (Positive Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

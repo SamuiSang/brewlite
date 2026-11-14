@@ -1,0 +1,3 @@
+name: "Kiểm tra Voucher giảm giá 5K - BREW5 (Positive Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

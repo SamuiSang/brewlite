@@ -1,0 +1,3 @@
+name: "02. Tạo URL thanh toán VNPAY Sandbox"
+method: POST
+url: "{{baseUrl}}/payments/vnpay/create-url"

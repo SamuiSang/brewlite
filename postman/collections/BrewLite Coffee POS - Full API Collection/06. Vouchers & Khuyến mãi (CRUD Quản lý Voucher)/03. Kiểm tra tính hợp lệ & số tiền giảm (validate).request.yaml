@@ -1,0 +1,3 @@
+name: "03. Kiểm tra tính hợp lệ & số tiền giảm (validate)"
+method: POST
+url: "{{baseUrl}}/vouchers/validate"

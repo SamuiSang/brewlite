@@ -1,0 +1,3 @@
+name: "Kiểm tra chênh lệch tổng tiền trước và sau khi áp dụng khuyến mãi (Calculation Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

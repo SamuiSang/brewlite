@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: GET
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+order: 1000

@@ -1,17 +1,3 @@
-$kind: http-request
-url: "{{baseUrl}}/cart"
+name: "Kiểm tra giỏ hàng trống sau khi xóa (Positive Test)"
 method: GET
-headers:
-  Authorization: Bearer {{tokenCustomer}}
-scripts:
-  - type: afterResponse
-    code: |-
-      pm.test("Status code is 200 OK", function () {
-          pm.response.to.have.status(200);
-      });
-      pm.test("Cart items is an array", function () {
-          const res = pm.response.json();
-          pm.expect(res.items).to.be.an('array');
-      });
-    language: text/javascript
-order: 8000
+url: "{{baseUrl}}/cart"

@@ -1,0 +1,3 @@
+name: "07. Chuyển trạng thái: Đã làm xong đơn (PREPARING -> READY)"
+method: PATCH
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"

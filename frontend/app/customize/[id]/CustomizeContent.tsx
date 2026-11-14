@@ -62,6 +62,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [drinkNote, setDrinkNote] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
+  const [imageError, setImageError] = useState<boolean>(false);
 
   // Nạp thông tin sản phẩm và toppings từ API (Task 4)
   const loadProductData = useCallback(async () => {
@@ -275,12 +276,13 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             <div className="bg-[#163d2c] text-white rounded-3xl overflow-hidden border border-[#234d39] shadow-sm">
               <div className="relative w-full aspect-[4/3] bg-[#224b37]">
                 <Image
-                  src={product.largeImage || product.image}
+                  src={imageError ? '/images/drinks/hero-drink.png' : (product.largeImage || product.image)}
                   alt={product.name}
                   fill
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover"
                   priority
+                  onError={() => setImageError(true)}
                 />
               </div>
 

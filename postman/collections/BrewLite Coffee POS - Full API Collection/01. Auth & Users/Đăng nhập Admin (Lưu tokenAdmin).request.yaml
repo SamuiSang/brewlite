@@ -1,22 +1,3 @@
-$kind: http-request
-url: "{{baseUrl}}/auth/login"
+name: "Đăng nhập Admin (Lưu tokenAdmin)"
 method: POST
-headers:
-  Content-Type: application/json
-body:
-  type: text
-  content: |-
-    {
-      "email": "admin@brewlite.vn",
-      "password": "Password123"
-    }
-scripts:
-  - type: afterResponse
-    code: |-
-      const res = pm.response.json();
-      if (res.accessToken) {
-          pm.collectionVariables.set('tokenAdmin', res.accessToken);
-          console.log('Saved tokenAdmin successfully');
-      }
-    language: text/javascript
-order: 3000
+url: "{{baseUrl}}/auth/login"

@@ -1,0 +1,3 @@
+name: "Test 400 - Từ chối dùng lại voucher đã sử dụng trên cùng tài khoản (Negative Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

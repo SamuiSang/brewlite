@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers/SUMMER50"
+method: PUT
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "discountType": "FIXED_AMOUNT",
+      "discountValue": 30000,
+      "minOrderAmount": 60000,
+      "maxDiscountAmount": 30000,
+      "isActive": true
+    }
+order: 6000

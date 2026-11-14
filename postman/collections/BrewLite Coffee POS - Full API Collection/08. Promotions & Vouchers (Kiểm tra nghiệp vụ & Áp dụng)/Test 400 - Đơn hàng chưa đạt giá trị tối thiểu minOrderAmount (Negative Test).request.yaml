@@ -1,0 +1,3 @@
+name: "Test 400 - Đơn hàng chưa đạt giá trị tối thiểu minOrderAmount (Negative Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

@@ -1,17 +1,3 @@
-$kind: http-request
-url: "{{baseUrl}}/cart"
+name: "Xóa sạch giỏ hàng"
 method: DELETE
-headers:
-  Authorization: Bearer {{tokenCustomer}}
-scripts:
-  - type: afterResponse
-    code: |-
-      pm.test("Status code is 200 OK", function () {
-          pm.response.to.have.status(200);
-      });
-      pm.test("Returns clear cart message", function () {
-          const res = pm.response.json();
-          pm.expect(res.message).to.equal("Đã xóa toàn bộ giỏ hàng");
-      });
-    language: text/javascript
-order: 3000
+url: "{{baseUrl}}/cart"

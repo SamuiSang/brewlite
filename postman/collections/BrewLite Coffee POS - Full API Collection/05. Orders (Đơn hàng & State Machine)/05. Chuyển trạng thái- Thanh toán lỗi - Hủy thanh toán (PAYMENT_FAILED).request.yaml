@@ -1,0 +1,3 @@
+name: "05. Chuyển trạng thái: Thanh toán lỗi / Hủy thanh toán (PAYMENT_FAILED)"
+method: PATCH
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"

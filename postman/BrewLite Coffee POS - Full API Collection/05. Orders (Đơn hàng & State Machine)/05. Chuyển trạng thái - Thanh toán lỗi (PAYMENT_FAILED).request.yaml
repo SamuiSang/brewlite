@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "PAYMENT_FAILED",
+      "reason": "Khách hủy thanh toán hoặc giao dịch thất bại"
+    }
+order: 5000

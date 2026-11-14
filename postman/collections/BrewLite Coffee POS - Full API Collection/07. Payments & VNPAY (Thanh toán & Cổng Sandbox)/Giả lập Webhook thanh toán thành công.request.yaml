@@ -1,0 +1,3 @@
+name: "Giả lập Webhook thanh toán thành công"
+method: POST
+url: "{{baseUrl}}/payments/webhook"

@@ -376,7 +376,9 @@ export const useCartStore = create<CartStore>()(
 
       setAuth: async (token, user) => {
         // Tải giỏ hàng của khách vãng lai và giỏ hàng đã lưu của user
-        const guestItems = get().items || [];
+        const inMemoryItems = get().items || [];
+        const guestStored = getStoredCartForUser(undefined);
+        const guestItems = inMemoryItems.length > 0 ? inMemoryItems : guestStored;
         const userCart = getStoredCartForUser(user.id);
 
         let finalItems: CartItem[];

@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: PUT
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "productId": "prod-2",
+          "size": "M",
+          "quantity": 2,
+          "milk": "Sữa đặc",
+          "note": "Ít đá",
+          "toppings": [
+            "top-1"
+          ]
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Cart replaced with 1 item of quantity 2 (subtotal 88000)', function () {
+        pm.expect(res.items.length).to.eql(1);
+        pm.expect(res.items[0].quantity).to.eql(2);
+        pm.expect(res.summary.subtotal).to.eql(88000);
+      });
+    language: text/javascript
+order: 16000

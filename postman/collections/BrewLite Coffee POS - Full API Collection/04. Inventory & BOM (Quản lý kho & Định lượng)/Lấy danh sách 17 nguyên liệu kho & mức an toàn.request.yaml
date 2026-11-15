@@ -1,0 +1,3 @@
+name: "Lấy danh sách 17 nguyên liệu kho & mức an toàn"
+method: GET
+url: "{{baseUrl}}/inventory/ingredients"

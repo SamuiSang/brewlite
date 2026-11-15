@@ -1,0 +1,3 @@
+name: "Tính tổng số lượng và tổng tiền nhiều món (Positive & Calculation Test)"
+method: PUT
+url: "{{baseUrl}}/cart"

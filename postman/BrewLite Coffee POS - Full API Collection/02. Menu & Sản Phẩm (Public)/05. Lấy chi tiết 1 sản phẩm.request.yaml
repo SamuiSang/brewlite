@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/products/{{firstProductId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Product detail matches requested id', function () {
+        pm.expect(res.id).to.eql(pm.environment.get('firstProductId') || pm.collectionVariables.get('firstProductId'));
+        pm.expect(res).to.have.property('name');
+      });
+    language: text/javascript
+order: 5000

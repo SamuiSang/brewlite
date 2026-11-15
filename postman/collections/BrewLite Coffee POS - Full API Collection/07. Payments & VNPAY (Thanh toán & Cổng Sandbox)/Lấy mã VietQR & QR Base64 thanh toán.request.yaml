@@ -1,0 +1,3 @@
+name: "Lấy mã VietQR & QR Base64 thanh toán"
+method: GET
+url: "{{baseUrl}}/payments/{{currentPaymentId}}/qr"

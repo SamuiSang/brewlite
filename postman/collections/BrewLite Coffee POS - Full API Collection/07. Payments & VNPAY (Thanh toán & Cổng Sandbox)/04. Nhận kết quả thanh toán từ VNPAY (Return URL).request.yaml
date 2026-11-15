@@ -1,0 +1,3 @@
+name: "04. Nhận kết quả thanh toán từ VNPAY (Return URL)"
+method: GET
+url: "{{baseUrl}}/payments/vnpay/return?format=json&vnp_ResponseCode=00"

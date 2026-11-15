@@ -1,0 +1,34 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{testRegisterEmail}}",
+      "password": "Password123",
+      "fullName": "Người Dùng Test API",
+      "phone": "0909888777"
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const ts = Date.now();
+      pm.environment.set('testRegisterEmail', `tester_${ts}@brewlite.vn`);
+      pm.collectionVariables.set('testRegisterEmail', `tester_${ts}@brewlite.vn`);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Returns created user without passwordHash', function () {
+        pm.expect(res.user).to.be.an('object');
+        pm.expect(res.user.email).to.eql(pm.environment.get('testRegisterEmail') || pm.collectionVariables.get('testRegisterEmail'));
+        pm.expect(res.user).to.not.have.property('passwordHash');
+        pm.expect(res.user.role).to.eql('CUSTOMER');
+      });
+    language: text/javascript
+order: 1000

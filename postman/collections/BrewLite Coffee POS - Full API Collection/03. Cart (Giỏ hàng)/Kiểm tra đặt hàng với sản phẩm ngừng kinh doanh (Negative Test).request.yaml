@@ -1,0 +1,3 @@
+name: "Kiểm tra đặt hàng với sản phẩm ngừng kinh doanh (Negative Test)"
+method: POST
+url: "{{baseUrl}}/orders"

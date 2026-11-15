@@ -1,0 +1,3 @@
+name: "14. Lấy chi tiết đơn hàng (Kiểm tra quyền)"
+method: GET
+url: "{{baseUrl}}/orders/{{currentOrderId}}"

@@ -1,0 +1,3 @@
+name: "Tổng quan công thức tất cả sản phẩm & COGS"
+method: GET
+url: "{{baseUrl}}/inventory/recipes"

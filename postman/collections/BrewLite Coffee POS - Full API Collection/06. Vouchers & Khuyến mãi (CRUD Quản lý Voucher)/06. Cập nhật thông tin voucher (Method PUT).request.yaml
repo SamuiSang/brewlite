@@ -1,0 +1,3 @@
+name: "06. Cập nhật thông tin voucher (Method PUT)"
+method: PUT
+url: "{{baseUrl}}/vouchers/GIAM30K"

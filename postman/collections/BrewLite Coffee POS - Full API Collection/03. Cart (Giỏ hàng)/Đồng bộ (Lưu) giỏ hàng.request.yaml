@@ -1,0 +1,3 @@
+name: "Đồng bộ (Lưu) giỏ hàng"
+method: PUT
+url: "{{baseUrl}}/cart"

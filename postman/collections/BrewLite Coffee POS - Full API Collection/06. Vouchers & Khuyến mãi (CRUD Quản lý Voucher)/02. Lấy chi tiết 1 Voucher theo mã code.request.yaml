@@ -1,0 +1,3 @@
+name: "02. Lấy chi tiết 1 Voucher theo mã code"
+method: GET
+url: "{{baseUrl}}/vouchers/WELCOME10"

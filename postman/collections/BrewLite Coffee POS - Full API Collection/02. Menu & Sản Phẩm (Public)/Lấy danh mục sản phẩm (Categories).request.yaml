@@ -1,0 +1,3 @@
+name: "Lấy danh mục sản phẩm (Categories)"
+method: GET
+url: "{{baseUrl}}/categories"

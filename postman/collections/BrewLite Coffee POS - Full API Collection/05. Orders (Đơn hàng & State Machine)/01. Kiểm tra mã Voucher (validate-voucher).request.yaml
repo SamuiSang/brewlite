@@ -1,0 +1,3 @@
+name: "01. Kiểm tra mã Voucher (validate-voucher)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

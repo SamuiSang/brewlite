@@ -40,7 +40,7 @@ export class OrdersService {
    * Tính phụ thu theo size đồ uống:
    * Size S: 0đ | Size M: +5.000đ | Size L: +10.000đ
    */
-  private getSizeExtraPrice(size: 'S' | 'M' | 'L'): number {
+  getSizeExtraPrice(size: 'S' | 'M' | 'L'): number {
     switch (size) {
       case 'M':
         return 5000;

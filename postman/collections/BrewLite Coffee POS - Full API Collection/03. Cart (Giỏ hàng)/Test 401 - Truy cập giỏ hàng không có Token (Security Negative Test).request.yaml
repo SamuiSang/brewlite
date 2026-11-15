@@ -1,0 +1,3 @@
+name: "Test 401 - Truy cập giỏ hàng không có Token (Security Negative Test)"
+method: GET
+url: "{{baseUrl}}/cart"

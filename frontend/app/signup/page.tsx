@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, ArrowRight, Check, Loader2 } from 'lucide-react';
+import { useCartStore } from '@/lib/store';
 
 function SignUpInner() {
   const router = useRouter();
@@ -62,7 +63,24 @@ function SignUpInner() {
         return;
       }
 
-      // Đăng ký thành công → chuyển sang đăng nhập (kèm redirect nếu có)
+      // Đăng ký thành công → tự động đăng nhập để giữ phiên và tự động gộp giỏ hàng
+      try {
+        const loginRes = await fetch(`${apiUrl}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (loginRes.ok) {
+          const loginData = await loginRes.json();
+          await useCartStore.getState().setAuth(loginData.accessToken, loginData.user);
+          router.push(redirect || '/cart');
+          return;
+        }
+      } catch {
+        // Fallback nếu có lỗi tự động login
+      }
+
+      // Chuyển sang đăng nhập (kèm redirect nếu có)
       const signinUrl = redirect
         ? `/signin?registered=1&redirect=${encodeURIComponent(redirect)}`
         : '/signin?registered=1';

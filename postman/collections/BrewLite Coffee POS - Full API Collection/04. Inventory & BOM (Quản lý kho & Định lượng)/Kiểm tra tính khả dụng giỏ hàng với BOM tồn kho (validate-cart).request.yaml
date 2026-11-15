@@ -1,0 +1,3 @@
+name: "Kiểm tra tính khả dụng giỏ hàng với BOM tồn kho (validate-cart)"
+method: POST
+url: "{{baseUrl}}/inventory/validate-cart"

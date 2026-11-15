@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/orders?status=COMPLETED"
+method: GET
+headers:
+  Authorization: "Bearer {{tokenBarista}}"
+queryParams:
+  status: COMPLETED
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('All returned orders have COMPLETED status', function () {
+        pm.expect(res).to.be.an('array').that.is.not.empty;
+        res.forEach(o => pm.expect(o.status).to.eql('COMPLETED'));
+      });
+    language: text/javascript
+order: 15000

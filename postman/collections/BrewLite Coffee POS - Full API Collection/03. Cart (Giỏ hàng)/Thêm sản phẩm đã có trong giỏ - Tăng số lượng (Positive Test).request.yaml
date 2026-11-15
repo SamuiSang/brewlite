@@ -1,0 +1,3 @@
+name: "Thêm sản phẩm đã có trong giỏ - Tăng số lượng (Positive Test)"
+method: PUT
+url: "{{baseUrl}}/cart"

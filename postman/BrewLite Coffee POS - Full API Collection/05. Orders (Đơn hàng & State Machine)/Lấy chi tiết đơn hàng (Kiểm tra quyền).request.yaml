@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/orders/{{currentOrderId}}"
-method: GET
-headers:
-  Authorization: Bearer {{tokenCustomer}}
-order: 7000

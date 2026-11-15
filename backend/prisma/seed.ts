@@ -9,31 +9,31 @@ async function main() {
   // 1. Danh muc do uong (Categories)
   const categories = [
     {
-      id: 'c1111111-1111-1111-1111-111111111111',
+      id: 'cat-1',
       name: 'Cà phê Việt Nam',
       description: 'Cà phê Robusta truyền thống pha phin đậm đà',
       isActive: true,
     },
     {
-      id: 'c2222222-2222-2222-2222-222222222222',
+      id: 'cat-2',
       name: 'Cà phê Máy',
       description: 'Cà phê pha máy từ hạt Arabica nguyên chất',
       isActive: true,
     },
     {
-      id: 'c3333333-3333-3333-3333-333333333333',
+      id: 'cat-3',
       name: 'Trà Trái Cây',
       description: 'Trà ủ lạnh kết hợp trái cây nhiệt đới thanh mát',
       isActive: true,
     },
     {
-      id: 'c4444444-4444-4444-4444-444444444444',
+      id: 'cat-4',
       name: 'Trà Sữa',
       description: 'Trà đậm vị kết hợp sữa tươi thanh trùng',
       isActive: true,
     },
     {
-      id: 'c5555555-5555-5555-5555-555555555555',
+      id: 'cat-5',
       name: 'Đá Xay',
       description: 'Đồ uống đá xay mát lạnh phủ kem whipping béo mịn',
       isActive: true,
@@ -51,14 +51,14 @@ async function main() {
 
   // 2. Topping
   const toppings = [
-    { id: 't1111111-1111-1111-1111-111111111111', name: 'Trân châu đen', price: 10000, stock: 150 },
-    { id: 't2222222-2222-2222-2222-222222222222', name: 'Trân châu trắng 3Q', price: 10000, stock: 150 },
-    { id: 't3333333-3333-3333-3333-333333333333', name: 'Thạch cà phê', price: 10000, stock: 100 },
-    { id: 't4444444-4444-4444-4444-444444444444', name: 'Thạch củ năng', price: 10000, stock: 100 },
-    { id: 't5555555-5555-5555-5555-555555555555', name: 'Kem Macchiato phô mai', price: 12000, stock: 80 },
-    { id: 't6666666-6666-6666-6666-666666666666', name: 'Đào ngâm miếng', price: 12000, stock: 80 },
-    { id: 't7777777-7777-7777-7777-777777777777', name: 'Hạt sen tươi', price: 12000, stock: 60 },
-    { id: 't8888888-8888-8888-8888-888888888888', name: 'Vải thiều ngâm', price: 12000, stock: 60 },
+    { id: 'top-1', name: 'Trân châu đen', price: 10000, stock: 150 },
+    { id: 'top-2', name: 'Trân châu trắng 3Q', price: 10000, stock: 150 },
+    { id: 'top-3', name: 'Thạch cà phê', price: 10000, stock: 100 },
+    { id: 'top-4', name: 'Thạch củ năng', price: 10000, stock: 100 },
+    { id: 'top-5', name: 'Kem Macchiato phô mai', price: 12000, stock: 80 },
+    { id: 'top-6', name: 'Đào ngâm miếng', price: 12000, stock: 80 },
+    { id: 'top-7', name: 'Hạt sen tươi', price: 12000, stock: 60 },
+    { id: 'top-8', name: 'Vải thiều ngâm', price: 12000, stock: 60 },
   ];
 
   for (const t of toppings) {
@@ -74,8 +74,8 @@ async function main() {
   const products = [
     // Nhóm 1: Cà phê Việt Nam (cat-1)
     {
-      id: 'p1111111-1111-1111-1111-111111111111',
-      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      id: 'prod-1',
+      categoryId: 'cat-1',
       name: 'Cà phê đen đá',
       description: 'Cà phê phin truyền thống, vị đắng đậm nguyên bản từ hạt Robusta Đắk Lắk.',
       basePrice: 25000,
@@ -83,8 +83,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p1111111-1111-1111-1111-222222222222',
-      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      id: 'prod-2',
+      categoryId: 'cat-1',
       name: 'Cà phê sữa đá',
       description: 'Cà phê phin đậm đà hòa quyện cùng sữa đặc béo ngọt truyền thống.',
       basePrice: 29000,
@@ -92,8 +92,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p1111111-1111-1111-1111-333333333333',
-      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      id: 'prod-3',
+      categoryId: 'cat-1',
       name: 'Bạc xỉu',
       description: 'Nhiều sữa ít cà phê, vị ngọt béo dịu nhẹ phù hợp với người thích vị ngọt ngào.',
       basePrice: 32000,
@@ -101,8 +101,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p1111111-1111-1111-1111-444444444444',
-      categoryId: 'c1111111-1111-1111-1111-111111111111',
+      id: 'prod-4',
+      categoryId: 'cat-1',
       name: 'Cà phê muối',
       description: 'Cà phê truyền thống kết hợp lớp kem mặn béo mịn màng đặc trưng.',
       basePrice: 35000,
@@ -112,8 +112,8 @@ async function main() {
 
     // Nhóm 2: Cà phê Máy (cat-2)
     {
-      id: 'p2222222-2222-2222-2222-111111111111',
-      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      id: 'prod-5',
+      categoryId: 'cat-2',
       name: 'Americano',
       description: 'Espresso pha loãng với nước, vị thanh thoát và hậu vị êm dịu.',
       basePrice: 35000,
@@ -121,8 +121,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p2222222-2222-2222-2222-222222222222',
-      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      id: 'prod-6',
+      categoryId: 'cat-2',
       name: 'Latte',
       description: 'Espresso kết hợp sữa tươi đánh nóng với lớp bọt sữa mỏng mềm mịn.',
       basePrice: 45000,
@@ -130,8 +130,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p2222222-2222-2222-2222-333333333333',
-      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      id: 'prod-7',
+      categoryId: 'cat-2',
       name: 'Cappuccino',
       description: 'Tỉ lệ cân bằng giữa Espresso, sữa tươi và lớp bọt sữa dày rắc bột cacao.',
       basePrice: 45000,
@@ -139,8 +139,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p2222222-2222-2222-2222-444444444444',
-      categoryId: 'c2222222-2222-2222-2222-222222222222',
+      id: 'prod-8',
+      categoryId: 'cat-2',
       name: 'Caramel Macchiato',
       description: 'Sữa tươi hương vani kết hợp Espresso đậm đà và sốt caramel thơm lừng.',
       basePrice: 49000,
@@ -150,8 +150,8 @@ async function main() {
 
     // Nhóm 3: Trà Trái Cây (cat-3)
     {
-      id: 'p3333333-3333-3333-3333-111111111111',
-      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      id: 'prod-9',
+      categoryId: 'cat-3',
       name: 'Trà đào cam sả',
       description: 'Trà đen thơm mát kết hợp vị đào giòn ngọt, cam tươi và hương sả nồng ấm.',
       basePrice: 39000,
@@ -159,8 +159,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p3333333-3333-3333-3333-222222222222',
-      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      id: 'prod-10',
+      categoryId: 'cat-3',
       name: 'Trà vải lài',
       description: 'Hương lài thanh tao hòa quyện vị ngọt thanh của vải thiều tươi mọng.',
       basePrice: 39000,
@@ -168,8 +168,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p3333333-3333-3333-3333-333333333333',
-      categoryId: 'c3333333-3333-3333-3333-333333333333',
+      id: 'prod-11',
+      categoryId: 'cat-3',
       name: 'Trà ổi hồng hạt sen',
       description: 'Vị chua ngọt của ổi hồng kết hợp hạt sen bùi béo bổ dưỡng.',
       basePrice: 42000,
@@ -179,8 +179,8 @@ async function main() {
 
     // Nhóm 4: Trà Sữa (cat-4)
     {
-      id: 'p4444444-4444-4444-4444-111111111111',
-      categoryId: 'c4444444-4444-4444-4444-444444444444',
+      id: 'prod-12',
+      categoryId: 'cat-4',
       name: 'Trà sữa truyền thống',
       description: 'Trà đen Ceylon đậm vị quyện cùng sữa tươi béo ngậy chuẩn gu.',
       basePrice: 35000,
@@ -188,8 +188,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p4444444-4444-4444-4444-222222222222',
-      categoryId: 'c4444444-4444-4444-4444-444444444444',
+      id: 'prod-13',
+      categoryId: 'cat-4',
       name: 'Trà sữa ô long nướng',
       description: 'Hương ô long nướng thơm lừng, hậu vị chát nhẹ ngọt hậu đậm đà.',
       basePrice: 39000,
@@ -197,8 +197,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p4444444-4444-4444-4444-333333333333',
-      categoryId: 'c4444444-4444-4444-4444-444444444444',
+      id: 'prod-14',
+      categoryId: 'cat-4',
       name: 'Trà sữa Matcha',
       description: 'Bột matcha Uji Nhật Bản nguyên chất thơm nồng và béo thanh.',
       basePrice: 42000,
@@ -208,8 +208,8 @@ async function main() {
 
     // Nhóm 5: Đá Xay (cat-5)
     {
-      id: 'p5555555-5555-5555-5555-111111111111',
-      categoryId: 'c5555555-5555-5555-5555-555555555555',
+      id: 'prod-15',
+      categoryId: 'cat-5',
       name: 'Cà phê đá xay Macchiato',
       description: 'Cà phê nguyên chất xay nhuyễn cùng đá tuyết, phủ lớp kem cheese béo mặn.',
       basePrice: 49000,
@@ -217,8 +217,8 @@ async function main() {
       stock: 100,
     },
     {
-      id: 'p5555555-5555-5555-5555-222222222222',
-      categoryId: 'c5555555-5555-5555-5555-555555555555',
+      id: 'prod-16',
+      categoryId: 'cat-5',
       name: 'Matcha đá xay kem tuyết',
       description: 'Matcha đậm vị kết hợp đá xay mịn màng và lớp kem whipping ngọt ngào.',
       basePrice: 49000,
@@ -311,7 +311,7 @@ async function main() {
 
   const users = [
     {
-      id: 'u1111111-1111-1111-1111-111111111111',
+      id: 'user-admin',
       email: 'admin@brewlite.vn',
       passwordHash: defaultPasswordHash,
       fullName: 'Quản trị viên BrewLite',
@@ -320,7 +320,7 @@ async function main() {
       loyaltyPoints: 1000,
     },
     {
-      id: 'u2222222-2222-2222-2222-222222222222',
+      id: 'user-customer',
       email: 'khachhang@gmail.com',
       passwordHash: defaultPasswordHash,
       fullName: 'Nguyễn Văn A',
@@ -329,7 +329,7 @@ async function main() {
       loyaltyPoints: 50,
     },
     {
-      id: 'u3333333-3333-3333-3333-333333333333',
+      id: 'user-barista',
       email: 'barista@brewlite.vn',
       passwordHash: defaultPasswordHash,
       fullName: 'Nhân viên Pha chế',
@@ -338,7 +338,7 @@ async function main() {
       loyaltyPoints: 100,
     },
     {
-      id: '08b739a8-8111-4561-8550-95d84b408c7e',
+      id: 'user-duy',
       email: 'duy.nguyen@example.com',
       passwordHash: defaultPasswordHash,
       fullName: 'Nguyễn Duy',
@@ -347,7 +347,7 @@ async function main() {
       loyaltyPoints: 131,
     },
     {
-      id: 'a9d9fee5-6a07-4c1f-9683-602f040cfafb',
+      id: 'user-quang',
       email: 'tran.quang@example.com',
       passwordHash: defaultPasswordHash,
       fullName: 'Trần Kỳ Quang',
@@ -428,113 +428,113 @@ async function main() {
   await prisma.productRecipe.deleteMany({});
 
   const recipes = [
-    // 1. Cà phê đen đá (p1111111-1111-1111-1111-111111111111)
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-1', size: 'S', amount: 20, wasteRate: 5 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 5 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-1', size: 'L', amount: 30, wasteRate: 5 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-111111111111', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
+    // 1. Cà phê đen đá (prod-1)
+    { productId: 'prod-1', ingredientId: 'ing-1', size: 'S', amount: 20, wasteRate: 5 },
+    { productId: 'prod-1', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 5 },
+    { productId: 'prod-1', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-1', size: 'L', amount: 30, wasteRate: 5 },
+    { productId: 'prod-1', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
+    { productId: 'prod-1', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
 
-    // 2. Cà phê sữa đá (p1111111-1111-1111-1111-222222222222) - Chuẩn công thức theo Prompt
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-1', size: 'S', amount: 20, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-3', size: 'S', amount: 30, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-3', size: 'M', amount: 35, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-1', size: 'L', amount: 30, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-3', size: 'L', amount: 45, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-222222222222', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
+    // 2. Cà phê sữa đá (prod-2) - Chuẩn công thức theo Prompt
+    { productId: 'prod-2', ingredientId: 'ing-1', size: 'S', amount: 20, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-3', size: 'S', amount: 30, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-3', size: 'M', amount: 35, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-1', size: 'L', amount: 30, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-3', size: 'L', amount: 45, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
+    { productId: 'prod-2', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
 
-    // 3. Bạc xỉu (p1111111-1111-1111-1111-333333333333) - Chuẩn công thức theo Prompt
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-1', size: 'S', amount: 15, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-3', size: 'S', amount: 25, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-4', size: 'S', amount: 100, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-1', size: 'M', amount: 18, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-3', size: 'M', amount: 30, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-4', size: 'M', amount: 130, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-1', size: 'L', amount: 22, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-3', size: 'L', amount: 35, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-4', size: 'L', amount: 160, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-333333333333', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
+    // 3. Bạc xỉu (prod-3) - Chuẩn công thức theo Prompt
+    { productId: 'prod-3', ingredientId: 'ing-1', size: 'S', amount: 15, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-3', size: 'S', amount: 25, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-4', size: 'S', amount: 100, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-1', size: 'M', amount: 18, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-3', size: 'M', amount: 30, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-4', size: 'M', amount: 130, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-1', size: 'L', amount: 22, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-3', size: 'L', amount: 35, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-4', size: 'L', amount: 160, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
+    { productId: 'prod-3', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
 
-    // 4. Trà sữa Matcha (Matcha sữa - p4444444-4444-4444-4444-333333333333) - Chuẩn công thức theo Prompt
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-14', size: 'S', amount: 5, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-4', size: 'S', amount: 150, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-5', size: 'S', amount: 10, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-14', size: 'M', amount: 7, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-4', size: 'M', amount: 200, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-5', size: 'M', amount: 15, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-14', size: 'L', amount: 10, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-4', size: 'L', amount: 250, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-5', size: 'L', amount: 20, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-333333333333', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
+    // 4. Trà sữa Matcha (Matcha sữa - prod-14) - Chuẩn công thức theo Prompt
+    { productId: 'prod-14', ingredientId: 'ing-14', size: 'S', amount: 5, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-4', size: 'S', amount: 150, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-5', size: 'S', amount: 10, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-6', size: 'S', amount: 150, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-7', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-8', size: 'S', amount: 1, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-14', size: 'M', amount: 7, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-4', size: 'M', amount: 200, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-5', size: 'M', amount: 15, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-8', size: 'M', amount: 1, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-14', size: 'L', amount: 10, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-4', size: 'L', amount: 250, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-5', size: 'L', amount: 20, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-6', size: 'L', amount: 220, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-7', size: 'L', amount: 1, wasteRate: 0 },
+    { productId: 'prod-14', ingredientId: 'ing-8', size: 'L', amount: 1, wasteRate: 0 },
 
-    // 5. Cà phê muối (p1111111-1111-1111-1111-444444444444)
-    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: 'ing-3', size: 'M', amount: 20, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: 'ing-9', size: 'M', amount: 40, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
-    { productId: 'p1111111-1111-1111-1111-444444444444', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 5. Cà phê muối (prod-4)
+    { productId: 'prod-4', ingredientId: 'ing-1', size: 'M', amount: 25, wasteRate: 0 },
+    { productId: 'prod-4', ingredientId: 'ing-3', size: 'M', amount: 20, wasteRate: 0 },
+    { productId: 'prod-4', ingredientId: 'ing-9', size: 'M', amount: 40, wasteRate: 0 },
+    { productId: 'prod-4', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
+    { productId: 'prod-4', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
 
-    // 6. Americano (p2222222-2222-2222-2222-111111111111)
-    { productId: 'p2222222-2222-2222-2222-111111111111', ingredientId: 'ing-2', size: 'M', amount: 18, wasteRate: 0 },
-    { productId: 'p2222222-2222-2222-2222-111111111111', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
-    { productId: 'p2222222-2222-2222-2222-111111111111', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 6. Americano (prod-5)
+    { productId: 'prod-5', ingredientId: 'ing-2', size: 'M', amount: 18, wasteRate: 0 },
+    { productId: 'prod-5', ingredientId: 'ing-6', size: 'M', amount: 180, wasteRate: 0 },
+    { productId: 'prod-5', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
 
-    // 7. Latte (p2222222-2222-2222-2222-222222222222)
-    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: 'ing-2', size: 'M', amount: 18, wasteRate: 0 },
-    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: 'ing-4', size: 'M', amount: 200, wasteRate: 0 },
-    { productId: 'p2222222-2222-2222-2222-222222222222', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 7. Latte (prod-6)
+    { productId: 'prod-6', ingredientId: 'ing-2', size: 'M', amount: 18, wasteRate: 0 },
+    { productId: 'prod-6', ingredientId: 'ing-4', size: 'M', amount: 200, wasteRate: 0 },
+    { productId: 'prod-6', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
 
-    // 8. Trà đào cam sả (p3333333-3333-3333-3333-111111111111)
-    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: 'ing-11', size: 'M', amount: 15, wasteRate: 0 },
-    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: 'ing-16', size: 'M', amount: 40, wasteRate: 0 },
-    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
-    { productId: 'p3333333-3333-3333-3333-111111111111', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 8. Trà đào cam sả (prod-9)
+    { productId: 'prod-9', ingredientId: 'ing-11', size: 'M', amount: 15, wasteRate: 0 },
+    { productId: 'prod-9', ingredientId: 'ing-16', size: 'M', amount: 40, wasteRate: 0 },
+    { productId: 'prod-9', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
+    { productId: 'prod-9', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
 
-    // 9. Trà sữa truyền thống (p4444444-4444-4444-4444-111111111111)
-    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: 'ing-11', size: 'M', amount: 15, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: 'ing-4', size: 'M', amount: 120, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: 'ing-3', size: 'M', amount: 25, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-111111111111', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 9. Trà sữa truyền thống (prod-12)
+    { productId: 'prod-12', ingredientId: 'ing-11', size: 'M', amount: 15, wasteRate: 0 },
+    { productId: 'prod-12', ingredientId: 'ing-4', size: 'M', amount: 120, wasteRate: 0 },
+    { productId: 'prod-12', ingredientId: 'ing-3', size: 'M', amount: 25, wasteRate: 0 },
+    { productId: 'prod-12', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
+    { productId: 'prod-12', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
 
-    // 10. Trà sữa ô long nướng (p4444444-4444-4444-4444-222222222222)
-    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: 'ing-13', size: 'M', amount: 15, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: 'ing-4', size: 'M', amount: 120, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: 'ing-3', size: 'M', amount: 25, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
-    { productId: 'p4444444-4444-4444-4444-222222222222', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
+    // 10. Trà sữa ô long nướng (prod-13)
+    { productId: 'prod-13', ingredientId: 'ing-13', size: 'M', amount: 15, wasteRate: 0 },
+    { productId: 'prod-13', ingredientId: 'ing-4', size: 'M', amount: 120, wasteRate: 0 },
+    { productId: 'prod-13', ingredientId: 'ing-3', size: 'M', amount: 25, wasteRate: 0 },
+    { productId: 'prod-13', ingredientId: 'ing-6', size: 'M', amount: 150, wasteRate: 0 },
+    { productId: 'prod-13', ingredientId: 'ing-7', size: 'M', amount: 1, wasteRate: 0 },
   ];
 
   for (const r of recipes) {
@@ -572,7 +572,7 @@ async function main() {
       supplier: 'Tong kho Nguyen lieu BrewLite Viet Nam',
       totalCost: totalReceiptCost,
       notes: 'Nhap kho khoi tao he thong',
-      receivedById: 'u1111111-1111-1111-1111-111111111111',
+      receivedById: 'user-admin',
     },
   });
 

@@ -1,0 +1,3 @@
+name: "Đặt đơn hàng không áp dụng khuyến mãi hoặc Hủy mã (Integration Positive Test)"
+method: POST
+url: "{{baseUrl}}/orders"

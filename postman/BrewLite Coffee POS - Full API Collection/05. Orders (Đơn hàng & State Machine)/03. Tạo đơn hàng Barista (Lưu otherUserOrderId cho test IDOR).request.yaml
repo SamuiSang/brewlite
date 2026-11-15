@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{baseUrl}}/orders"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenBarista}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "customerName": "Barista Test Order",
+      "phone": "0902223333",
+      "items": [
+        {
+          "productId": "prod-1",
+          "size": "S",
+          "qty": 1
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Saved otherUserOrderId for IDOR tests', function () {
+        pm.expect(res.id).to.be.a('string');
+      });
+      pm.collectionVariables.set('otherUserOrderId', res.id);
+      pm.environment.set('otherUserOrderId', res.id);
+    language: text/javascript
+order: 3000

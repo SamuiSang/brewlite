@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/items"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "productId": "prod-3",
+      "size": "L",
+      "quantity": 1,
+      "milk": "Sữa tươi",
+      "note": "Nhiều sữa",
+      "toppings": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Cart now has 2 distinct items (3 total cups)', function () {
+        pm.expect(res.items.length).to.eql(2);
+        pm.expect(res.summary.totalItems).to.eql(3);
+      });
+      pm.collectionVariables.set('secondCartItemId', res.lastAddedItemId);
+      pm.environment.set('secondCartItemId', res.lastAddedItemId);
+    language: text/javascript
+order: 5000

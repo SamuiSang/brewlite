@@ -1,0 +1,3 @@
+name: "Test 400 - Số lượng âm (Negative Test)"
+method: PUT
+url: "{{baseUrl}}/cart"

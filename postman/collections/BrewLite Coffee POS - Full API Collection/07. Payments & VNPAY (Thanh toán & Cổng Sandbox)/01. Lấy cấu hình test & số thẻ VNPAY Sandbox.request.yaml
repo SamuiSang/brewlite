@@ -1,0 +1,3 @@
+name: "01. Lấy cấu hình test & số thẻ VNPAY Sandbox"
+method: GET
+url: "{{baseUrl}}/payments/vnpay/config"

@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/payments"
+method: POST
+headers:
+  Idempotency-Key: order-pay-key-001
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": "{{currentOrderId}}",
+      "method": "MOMO",
+      "mockSuccess": true,
+      "twoStep": false
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const res = pm.response.json();
+      if (res.payment && res.payment.id) {
+          pm.collectionVariables.set('currentPaymentId', res.payment.id);
+      }
+    language: text/javascript
+order: 3000

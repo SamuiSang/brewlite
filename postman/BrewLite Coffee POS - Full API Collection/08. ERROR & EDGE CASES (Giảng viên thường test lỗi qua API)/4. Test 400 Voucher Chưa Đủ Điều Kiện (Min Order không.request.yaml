@@ -1,0 +1,14 @@
+$kind: http-request
+name: 4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "GIAM20K",
+      "subtotal": 20000
+    }
+order: 4000

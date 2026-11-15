@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
@@ -102,10 +103,28 @@ export class OrdersService {
   }
 
   private async checkFirstOrderVoucher(code: string, userId?: string, client: Prisma.TransactionClient = this.prisma) {
-    if (code !== 'WELCOME10') return;
-    if (!userId) throw new BadRequestException('Vui lòng đăng nhập để sử dụng mã WELCOME10');
-    if (await client.order.count({ where: { userId } })) {
-      throw new BadRequestException('Mã WELCOME10 chỉ áp dụng cho đơn hàng đầu tiên');
+    if (!code) return;
+
+    if (code === 'WELCOME10') {
+      if (!userId) throw new BadRequestException('Vui lòng đăng nhập để sử dụng mã WELCOME10');
+      if (await client.order.count({ where: { userId } })) {
+        throw new BadRequestException('Mã WELCOME10 chỉ áp dụng cho đơn hàng đầu tiên');
+      }
+      return;
+    }
+
+    // Mỗi khuyến mãi chỉ được dùng 1 lần cho 1 tài khoản
+    if (userId) {
+      const usedCount = await client.order.count({
+        where: {
+          userId,
+          promotionCode: code,
+          status: { not: 'CANCELLED' },
+        },
+      });
+      if (usedCount > 0) {
+        throw new BadRequestException(`Bạn đã sử dụng mã khuyến mãi "${code}" rồi`);
+      }
     }
   }
 
@@ -506,6 +525,7 @@ export class OrdersService {
           discountAmount: totalDiscount,
           totalAmount,
           pointsEarned,
+          pointsUsed: pointsToDeduct,
           orderItems: {
             create: preparedItems.map((item) => ({
               productId: item.productId,
@@ -743,6 +763,23 @@ export class OrdersService {
     }
 
     return await this.prisma.$transaction(async (tx) => {
+      // KHI THANH TOÁN THÀNH CÔNG (PAID):
+      if (targetStatus === 'PAID' && currentStatus !== 'PAID') {
+        // Trừ tồn kho nguyên liệu nếu chưa trừ
+        if (!order.isInventoryDeducted) {
+          await this.deductOrderInventoryInTx(order.id, tx);
+        }
+        // Tích điểm thưởng cho khách hàng nếu có
+        if (order.userId && order.pointsEarned && order.pointsEarned > 0) {
+          await tx.user.update({
+            where: { id: order.userId },
+            data: {
+              loyaltyPoints: { increment: order.pointsEarned },
+            },
+          });
+        }
+      }
+
       // KHI HỦY ĐƠN HÀNG (CANCELLED):
       if (targetStatus === 'CANCELLED') {
         // HOÀN KHO NGUYÊN LIỆU THÔ (Restock Ingredients theo đúng BOM thực tế)
@@ -806,6 +843,16 @@ export class OrdersService {
             where: { id: order.userId },
             data: {
               loyaltyPoints: { decrement: order.pointsEarned },
+            },
+          });
+        }
+
+        // 4. Hoàn lại điểm tích lũy khách đã dùng (pointsUsed) nếu có
+        if (order.userId && order.pointsUsed && order.pointsUsed > 0) {
+          await tx.user.update({
+            where: { id: order.userId },
+            data: {
+              loyaltyPoints: { increment: order.pointsUsed },
             },
           });
         }
@@ -983,5 +1030,58 @@ export class OrdersService {
     });
 
     return { alreadyDeducted: false, order: updatedOrder };
+  }
+
+  /**
+   * Hủy đơn hàng (POST /orders/:id/cancel hoặc PATCH /orders/:id/cancel)
+   * Tuân thủ quy tắc:
+   * - CUSTOMER chỉ được hủy đơn của chính mình (chặn IDOR)
+   * - Hủy đơn nếu "chưa làm": Chỉ được hủy khi đơn ở trạng thái PENDING, PAYMENT_FAILED, hoặc PAID
+   *   Nếu đơn đã vào PREPARING, READY, hoặc COMPLETED -> Ném BadRequestException
+   * - Hoàn kho BOM nguyên liệu nếu đã trừ kho
+   * - Thu hồi điểm thưởng đã tích nếu có
+   * - Hoàn lại điểm thưởng đã sử dụng (pointsUsed) nếu có
+   */
+  async cancelOrder(
+    id: string,
+    currentUserId?: string,
+    userRole?: string,
+    reason?: string,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Không tìm thấy đơn hàng với ID "${id}"`);
+    }
+
+    // 1. Chống IDOR: Khách hàng chỉ được hủy đơn của chính mình
+    if (userRole === 'CUSTOMER' && order.userId && order.userId !== currentUserId) {
+      throw new ForbiddenException('Bạn không có quyền hủy đơn hàng của người khác');
+    }
+
+    // 2. Chặn hủy nếu đơn đã kết thúc
+    if (order.status === 'CANCELLED') {
+      throw new BadRequestException('Đơn hàng này đã được hủy trước đó.');
+    }
+    if (order.status === 'COMPLETED') {
+      throw new BadRequestException('Đơn hàng đã hoàn thành, không thể hủy đơn.');
+    }
+
+    // 3. Quy tắc "Hủy đơn nếu chưa làm":
+    // Nếu không phải ADMIN, chỉ cho phép hủy khi đơn chưa bắt đầu pha chế (PENDING, PAYMENT_FAILED, PAID)
+    const allowedCancelStatuses = ['PENDING', 'PAYMENT_FAILED', 'PAID'];
+    if (userRole !== 'ADMIN' && !allowedCancelStatuses.includes(order.status)) {
+      throw new BadRequestException(
+        `Đơn hàng đang ở trạng thái "${order.status}" (đã đưa vào pha chế hoặc sẵn sàng nhận), không thể hủy đơn hàng.`,
+      );
+    }
+
+    const cancelReason =
+      reason || (userRole === 'CUSTOMER' ? 'Khách hàng yêu cầu hủy đơn' : 'Nhân viên hủy đơn');
+    const changedBy = currentUserId || userRole || 'CUSTOMER';
+
+    return this.updateStatus(id, 'CANCELLED', cancelReason, changedBy);
   }
 }

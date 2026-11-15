@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/{{currentPaymentId}}/qr"
+method: GET
+order: 4000

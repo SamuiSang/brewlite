@@ -112,6 +112,7 @@ model Order {
   discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
   totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
   pointsEarned    Int?     @default(0) @map("points_earned")
+  pointsUsed      Int?     @default(0) @map("points_used")
   isInventoryDeducted Boolean   @default(false) @map("is_inventory_deducted")
   inventoryDeductedAt DateTime? @map("inventory_deducted_at")
   createdAt       DateTime @default(now()) @map("created_at")

@@ -152,9 +152,4 @@ CLAUDE.md
 AGENTS.md
 **/AGENTS.md
 
-postman/
-.postman/
-
-**/.postman/
-
 .playwright-mcp/

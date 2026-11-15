@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useTransition, useCallback } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MapPin, Plus, Check, X, RefreshCw, Coffee, AlertCircle } from 'lucide-react';
 import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 import FloatingCartBar from '@/components/FloatingCartBar';
+import DrinkCustomizeModal from '@/components/DrinkCustomizeModal';
 import {
   fetchProducts,
   fetchCategories,
@@ -54,9 +54,10 @@ export default function MenuContent() {
   const [isError, setIsError] = useState<boolean>(false);
   const [isApiConnected, setIsApiConnected] = useState<boolean>(true);
 
-  // Hiệu ứng tương tác thêm nhanh
+  // Hiệu ứng tương tác thêm nhanh & Modal tùy chỉnh
   const [addedId, setAddedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [customizingProduct, setCustomizingProduct] = useState<NormalizedProduct | null>(null);
   const [, startTransition] = useTransition();
 
   const addItem = useCartStore((state) => state.addItem);
@@ -385,9 +386,10 @@ export default function MenuContent() {
                   }`}
                 >
                   {/* Ảnh món */}
-                  <Link
-                    href={`/customize/${product.id}`}
-                    className="relative w-full aspect-[16/10] overflow-hidden bg-[#e8e2d8] block"
+                  <button
+                    type="button"
+                    onClick={() => setCustomizingProduct(product)}
+                    className="relative w-full aspect-[16/10] overflow-hidden bg-[#e8e2d8] block cursor-pointer text-left"
                   >
                     <ProductImageWithFallback
                       src={product.image}
@@ -399,7 +401,7 @@ export default function MenuContent() {
                         BÁN CHẠY
                       </span>
                     )}
-                  </Link>
+                  </button>
 
                   {/* Thông tin món */}
                   <div className="p-5 flex-1 flex flex-col justify-between">
@@ -415,11 +417,15 @@ export default function MenuContent() {
                           </span>
                         )}
                       </div>
-                      <Link href={`/customize/${product.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => setCustomizingProduct(product)}
+                        className="text-left cursor-pointer"
+                      >
                         <h3 className="font-serif text-lg font-bold text-[#14241b] hover:text-[#163d2c] transition-colors leading-snug">
                           {product.name}
                         </h3>
-                      </Link>
+                      </button>
                       <p className="text-xs text-[#708076] mt-1.5 mb-4 line-clamp-2">
                         {product.subtitle || product.description}
                       </p>
@@ -431,16 +437,17 @@ export default function MenuContent() {
                       </span>
 
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/customize/${product.id}`}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                        <button
+                          type="button"
+                          onClick={() => setCustomizingProduct(product)}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                             isOutOfStock
                               ? 'text-[#7e8b83] bg-[#ece8df] hover:bg-[#e2ded5]'
                               : 'text-[#546b5a] hover:text-[#163d2c] bg-[#f4f1ea] hover:bg-[#ece6db]'
                           }`}
                         >
                           {isOutOfStock ? 'Xem chi tiết' : 'Tùy chỉnh'}
-                        </Link>
+                        </button>
 
                         {/* Vô hiệu hóa nút Thêm nhanh khi món hết hàng */}
                         <button
@@ -473,6 +480,21 @@ export default function MenuContent() {
         {/* Thanh xem giỏ hàng nổi phía dưới */}
         <FloatingCartBar />
       </div>
+
+      {/* Modal tùy chỉnh topping dạng hình chữ nhật đứng với nền mờ */}
+      <DrinkCustomizeModal
+        drinkId={customizingProduct?.id ?? null}
+        initialProduct={customizingProduct}
+        onClose={() => setCustomizingProduct(null)}
+        onConfirm={(item) => {
+          addItem(item);
+          setAddedId(item.drinkId);
+          setToastMessage(`Đã thêm ${item.quantity} ${item.name} vào giỏ hàng`);
+          setCustomizingProduct(null);
+          setTimeout(() => setAddedId(null), 1200);
+          setTimeout(() => setToastMessage(null), 2500);
+        }}
+      />
     </div>
   );
 }

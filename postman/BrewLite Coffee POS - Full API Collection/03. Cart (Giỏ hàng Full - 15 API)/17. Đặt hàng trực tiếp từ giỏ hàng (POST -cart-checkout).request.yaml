@@ -1,0 +1,32 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/checkout"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "deliveryAddress": "123 Nguyễn Văn Cừ, Q.5, TP.HCM",
+      "notes": "Đặt từ giỏ hàng",
+      "useLoyaltyPoints": 0
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Order created and cartCleared is true', function () {
+        pm.expect(res.cartCleared).to.eql(true);
+        pm.expect(res.order).to.be.an('object');
+        pm.expect(res.order.status).to.eql('PENDING');
+        pm.expect(Number(res.order.totalAmount)).to.eql(88000);
+      });
+      if (res.order?.id) {
+        pm.collectionVariables.set('cartOrderId', res.order.id);
+        pm.environment.set('cartOrderId', res.order.id);
+      }
+    language: text/javascript
+order: 17000

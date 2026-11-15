@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/validate-cart"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "items": [
+        {
+          "productId": "p1111111-1111-1111-1111-222222222222",
+          "size": "M",
+          "quantity": 2
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Cart BOM check returns isValid and items', function () {
+        pm.expect(res).to.have.property('isValid');
+        pm.expect(res.items).to.be.an('array').that.is.not.empty;
+      });
+    language: text/javascript
+order: 2000

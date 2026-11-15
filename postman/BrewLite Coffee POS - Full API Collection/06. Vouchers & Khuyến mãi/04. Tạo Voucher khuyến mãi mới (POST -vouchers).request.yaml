@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenAdmin}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "{{testVoucherCode}}",
+      "discountType": "FIXED_AMOUNT",
+      "discountValue": 30000,
+      "minOrderAmount": 90000,
+      "maxDiscountAmount": 30000,
+      "validUntil": "2027-12-31T23:59:59.000Z",
+      "isActive": true
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const code = `TEST_${Date.now().toString().slice(-6)}`;
+      pm.environment.set('testVoucherCode', code);
+      pm.collectionVariables.set('testVoucherCode', code);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Created voucher with expected value', function () {
+        pm.expect(res.voucher.code).to.eql(pm.environment.get('testVoucherCode') || pm.collectionVariables.get('testVoucherCode'));
+        pm.expect(res.voucher.discountValue).to.eql(30000);
+      });
+    language: text/javascript
+order: 4000

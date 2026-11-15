@@ -1,0 +1,38 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/ingredients"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenAdmin}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "{{tempIngredientName}}",
+      "unit": "ml",
+      "initialStock": 1000,
+      "minimumStock": 200,
+      "costPerUnit": 150
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const ts = Date.now();
+      pm.environment.set('tempIngredientName', `Syrup Test ${ts}`);
+      pm.collectionVariables.set('tempIngredientName', `Syrup Test ${ts}`);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Ingredient created with initialStock 1000', function () {
+        pm.expect(res).to.have.property('id');
+        pm.expect(Number(res.currentStock)).to.eql(1000);
+      });
+      if (res.id) {
+        pm.collectionVariables.set('tempIngredientId', res.id);
+        pm.environment.set('tempIngredientId', res.id);
+      }
+    language: text/javascript
+order: 7000

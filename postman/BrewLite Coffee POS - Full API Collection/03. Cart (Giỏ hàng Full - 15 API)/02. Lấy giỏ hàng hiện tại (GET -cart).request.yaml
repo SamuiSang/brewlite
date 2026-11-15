@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: GET
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Cart structure includes items and summary', function () {
+        pm.expect(res).to.have.property('id');
+        pm.expect(res.items).to.be.an('array');
+        pm.expect(res.summary).to.be.an('object');
+        pm.expect(res.summary).to.have.all.keys('totalItems', 'subtotal', 'appliedVoucher', 'voucherDiscount', 'voucherError', 'availableLoyaltyPoints', 'useLoyaltyPoints', 'pointsUsed', 'pointsDiscount', 'totalDiscount', 'finalTotal', 'estimatedPointsEarned');
+      });
+    language: text/javascript
+order: 2000

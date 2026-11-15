@@ -289,10 +289,12 @@ model OrderStatusHistory {
 
 // 16. Bảng Giỏ hàng theo User (Carts)
 model Cart {
-  id        String   @id @default(uuid())
-  userId    String   @unique @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  voucherCode      String?  @map("voucher_code")
+  useLoyaltyPoints Boolean  @default(false) @map("use_loyalty_points")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   // Relationships
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)

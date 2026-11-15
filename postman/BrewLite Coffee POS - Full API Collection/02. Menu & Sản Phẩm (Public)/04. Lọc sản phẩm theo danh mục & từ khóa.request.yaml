@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/products?categoryId={{firstCategoryId}}&search=Cà phê"
+method: GET
+queryParams:
+  categoryId: "{{firstCategoryId}}"
+  search: Cà phê
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Filtered products match categoryId and search term', function () {
+        pm.expect(res).to.be.an('array').that.is.not.empty;
+        res.forEach(p => pm.expect(p.categoryId).to.eql(pm.environment.get('firstCategoryId') || pm.collectionVariables.get('firstCategoryId')));
+      });
+    language: text/javascript
+order: 4000

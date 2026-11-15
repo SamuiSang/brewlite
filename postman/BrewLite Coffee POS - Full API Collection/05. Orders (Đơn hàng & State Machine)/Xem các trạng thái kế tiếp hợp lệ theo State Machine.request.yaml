@@ -1,4 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions"
-method: GET
-order: 6000

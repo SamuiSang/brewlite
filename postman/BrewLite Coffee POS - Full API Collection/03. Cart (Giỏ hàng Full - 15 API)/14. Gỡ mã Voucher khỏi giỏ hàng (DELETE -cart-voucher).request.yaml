@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/voucher"
+method: DELETE
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Voucher removed from cart', function () {
+        pm.expect(res.voucherCode).to.be.null;
+        pm.expect(res.summary.voucherDiscount).to.eql(0);
+      });
+    language: text/javascript
+order: 14000

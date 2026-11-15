@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/me"
+method: GET
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Profile contains id, email, loyaltyPoints', function () {
+        pm.expect(res).to.have.property('id');
+        pm.expect(res).to.have.property('email');
+        pm.expect(res.loyaltyPoints).to.be.a('number');
+      });
+    language: text/javascript
+order: 5000

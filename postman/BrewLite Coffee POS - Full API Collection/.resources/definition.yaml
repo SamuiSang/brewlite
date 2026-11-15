@@ -1,9 +1,33 @@
 $kind: collection
-description: Bộ sưu tập toàn bộ API hệ thống BrewLite (Auth, Menu, Cart, Orders, Payments, Inventory & BOM, Test Lỗi Giảng Viên)
+description: "Bộ sưu tập toàn bộ API hệ thống BrewLite (Health, Auth, Menu, Cart 15 APIs, Inventory & BOM, Orders & State Machine, Vouchers, Payments & VNPAY, Error & Edge Cases) kèm đầy đủ Pre-request & Test Scripts."
 variables:
-  baseUrl: http://localhost:3001
-  tokenCustomer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJlbWFpbCI6ImtoYWNoaGFuZ0BnbWFpbC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3OTQzMjg0NDUsImV4cCI6MTc5NDQxNDg0NX0.LCvChKUtgQVaP0vamXUDEZksQ291cBhz7wwLp9avRec"
-  tokenBarista: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJlbWFpbCI6ImJhcmlzdGFAYnJld2xpdGUudm4iLCJyb2xlIjoiQkFSSVNUQSIsImlhdCI6MTc5NDMyODQ1MSwiZXhwIjoxNzk0NDE0ODUxfQ.0q04lzVyZ_MZvdqK6NZUWeGjH-9uUAWKnH-CDczhHfA"
-  tokenAdmin: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQGJyZXdsaXRlLnZuIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzk0MzI4NDUxLCJleHAiOjE3OTQ0MTQ4NTF9.XbHUoCnxQKvipjlvJCbkYWMEiZPHmuKFfsrnA67Ii8Q"
+  baseUrl: "http://localhost:3001"
+  tokenCustomer: ""
+  tokenBarista: ""
+  tokenAdmin: ""
+  customerUserId: ""
+  testRegisterEmail: ""
+  firstCategoryId: ""
+  firstToppingId: ""
+  firstProductId: p1111111-1111-1111-1111-222222222222
+  secondProductId: p1111111-1111-1111-1111-333333333333
+  currentCartItemId: ""
+  secondCartItemId: ""
+  cartOrderId: ""
+  tempIngredientId: ""
+  tempIngredientName: ""
   currentOrderId: ""
+  currentOrderCode: ""
+  otherUserOrderId: ""
+  cancelOrderId: ""
+  cancelPatchOrderId: ""
+  errorPendingOrderId: ""
+  testVoucherCode: ""
+  paymentOrderId: ""
   currentPaymentId: ""
+  lastIdempotencyKey: ""
+  vnpayOrderId: ""
+  vnpayPaymentId: ""
+  vnpayAmountX100: ""
+  vnpaySecureHash: ""
+  vnpHashSecret: GJZGJZTKHBYBESRSLCLSPZXGFPEXVPGF

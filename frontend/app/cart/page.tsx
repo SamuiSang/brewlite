@@ -4,10 +4,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket, Loader2 } from 'lucide-react';
-import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
+import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket, Loader2, SlidersHorizontal } from 'lucide-react';
+import { useCartStore, AVAILABLE_VOUCHERS, CartItem } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 import { getEligibleVoucherCodes } from '@/lib/voucher-eligibility';
+import DrinkCustomizeModal from '@/components/DrinkCustomizeModal';
 
 
 
@@ -107,6 +108,7 @@ export default function CartPage() {
     profile,
     updateQuantity,
     setQuantity,
+    replaceItem,
     removeItem,
     applyVoucher,
     removeVoucher,
@@ -164,6 +166,8 @@ export default function CartPage() {
   const discount = mounted ? getDiscount() : 0;
   const baseTotal = mounted ? getTotal() : 0;
   const [voucherEligibility, setVoucherEligibility] = useState<{ subtotal: number; token: string | null; codes: string[] } | null>(null);
+  // Giữ state này sau `mounted` để không lệch thứ tự hook trong bài test
+  const [editingItem, setEditingItem] = useState<CartItem | null>(null);
 
   useEffect(() => {
     if (!mounted) return;
@@ -268,30 +272,49 @@ export default function CartPage() {
                       className="py-5 first:pt-0 last:pb-0 flex items-start gap-4"
                     >
                       {/* Thumbnail */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#e8e2d8] shrink-0 border border-[#eee8df]">
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem(item)}
+                        className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-[#e8e2d8] shrink-0 border border-[#eee8df] cursor-pointer"
+                        title="Tùy chỉnh món này"
+                      >
                         <Image
                           src={item.image}
                           alt={item.name}
                           fill
                           className="object-cover"
                         />
-                      </div>
+                      </button>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <Link href={`/customize/${item.drinkId}`}>
+                          <button
+                            type="button"
+                            onClick={() => setEditingItem(item)}
+                            className="text-left min-w-0 cursor-pointer"
+                          >
                             <h3 className="font-serif text-base sm:text-lg font-bold text-[#14241b] hover:text-[#163d2c] transition-colors truncate">
                               {item.name}
                             </h3>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="text-xs text-[#8a9990] hover:text-red-700 font-medium transition-colors cursor-pointer shrink-0"
-                          >
-                            xóa
                           </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setEditingItem(item)}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#163d2c] bg-[#edf3ec] hover:bg-[#dfeadc] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <SlidersHorizontal className="w-3 h-3" />
+                              <span>Tùy chỉnh</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.id)}
+                              className="text-xs text-[#8a9990] hover:text-red-700 font-medium transition-colors cursor-pointer"
+                            >
+                              xóa
+                            </button>
+                          </div>
                         </div>
 
                         <p className="text-xs text-[#708076] mt-0.5 mb-3">
@@ -689,6 +712,19 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal tùy chỉnh cho từng món trong giỏ hàng */}
+      <DrinkCustomizeModal
+        drinkId={editingItem?.drinkId ?? null}
+        editingCartItem={editingItem}
+        onClose={() => setEditingItem(null)}
+        onConfirm={(updated) => {
+          if (editingItem) {
+            replaceItem(editingItem.id, updated);
+          }
+          setEditingItem(null);
+        }}
+      />
     </div>
   );
 }

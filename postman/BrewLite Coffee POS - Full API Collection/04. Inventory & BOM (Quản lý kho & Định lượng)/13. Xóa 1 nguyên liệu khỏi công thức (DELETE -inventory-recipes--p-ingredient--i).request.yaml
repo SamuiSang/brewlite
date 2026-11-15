@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/inventory/recipes/p3333333-3333-3333-3333-333333333333/ingredient/ing-17?size=M"
+url: "{{baseUrl}}/inventory/recipes/prod-11/ingredient/ing-17?size=M"
 method: DELETE
 headers:
   Authorization: "Bearer {{tokenAdmin}}"

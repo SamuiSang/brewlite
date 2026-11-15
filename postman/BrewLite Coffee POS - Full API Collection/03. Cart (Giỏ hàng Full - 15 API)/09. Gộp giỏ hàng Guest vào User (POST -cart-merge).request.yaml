@@ -10,7 +10,7 @@ body:
     {
       "items": [
         {
-          "productId": "p1111111-1111-1111-1111-111111111111",
+          "productId": "prod-1",
           "size": "M",
           "quantity": 1,
           "milk": "Không đường",

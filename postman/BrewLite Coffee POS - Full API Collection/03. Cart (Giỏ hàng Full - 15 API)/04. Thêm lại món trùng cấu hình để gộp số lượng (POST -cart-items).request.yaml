@@ -8,13 +8,13 @@ body:
   type: text
   content: |-
     {
-      "productId": "p1111111-1111-1111-1111-222222222222",
+      "productId": "prod-2",
       "size": "M",
       "quantity": 1,
       "milk": "Sữa đặc",
       "note": "Ít đá",
       "toppings": [
-        "t1111111-1111-1111-1111-111111111111"
+        "top-1"
       ]
     }
 scripts:

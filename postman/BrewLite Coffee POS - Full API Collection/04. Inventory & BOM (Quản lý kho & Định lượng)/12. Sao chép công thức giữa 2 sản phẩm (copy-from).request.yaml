@@ -1,5 +1,5 @@
 $kind: http-request
-url: "{{baseUrl}}/inventory/recipes/p3333333-3333-3333-3333-333333333333/copy-from/p3333333-3333-3333-3333-222222222222"
+url: "{{baseUrl}}/inventory/recipes/prod-11/copy-from/prod-10"
 method: POST
 headers:
   Authorization: "Bearer {{tokenAdmin}}"

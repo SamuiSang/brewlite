@@ -9,8 +9,8 @@ variables:
   testRegisterEmail: ""
   firstCategoryId: ""
   firstToppingId: ""
-  firstProductId: p1111111-1111-1111-1111-222222222222
-  secondProductId: p1111111-1111-1111-1111-333333333333
+  firstProductId: prod-2
+  secondProductId: prod-3
   currentCartItemId: ""
   secondCartItemId: ""
   cartOrderId: ""

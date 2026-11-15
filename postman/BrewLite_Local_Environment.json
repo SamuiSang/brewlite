@@ -52,13 +52,13 @@
     },
     {
       "key": "firstProductId",
-      "value": "p1111111-1111-1111-1111-222222222222",
+      "value": "prod-2",
       "type": "default",
       "enabled": true
     },
     {
       "key": "secondProductId",
-      "value": "p1111111-1111-1111-1111-333333333333",
+      "value": "prod-3",
       "type": "default",
       "enabled": true
     },

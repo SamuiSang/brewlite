@@ -63,21 +63,32 @@ function SignUpInner() {
         return;
       }
 
-      // Đăng ký thành công → tự động đăng nhập để giữ phiên và tự động gộp giỏ hàng
-      try {
-        const loginRes = await fetch(`${apiUrl}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        if (loginRes.ok) {
-          const loginData = await loginRes.json();
-          await useCartStore.getState().setAuth(loginData.accessToken, loginData.user);
-          router.push(redirect || '/cart');
-          return;
+      // Đăng ký thành công → tự động đăng nhập dù giỏ hàng đang trống hay đã có món
+      let accessToken: string | undefined = data.accessToken;
+      let loggedInUser = data.user;
+
+      if (!accessToken || !loggedInUser) {
+        try {
+          const loginRes = await fetch(`${apiUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+          if (loginRes.ok) {
+            const loginData = await loginRes.json();
+            accessToken = loginData.accessToken;
+            loggedInUser = loginData.user;
+          }
+        } catch {
+          // Fallback nếu có lỗi tự động login
         }
-      } catch {
-        // Fallback nếu có lỗi tự động login
+      }
+
+      if (accessToken && loggedInUser) {
+        await useCartStore.getState().setAuth(accessToken, loggedInUser);
+        const hasCartItems = useCartStore.getState().items.length > 0;
+        router.push(redirect || (hasCartItems ? '/cart' : '/'));
+        return;
       }
 
       // Chuyển sang đăng nhập (kèm redirect nếu có)

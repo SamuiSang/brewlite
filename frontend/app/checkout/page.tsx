@@ -51,11 +51,12 @@ export default function CheckoutPage() {
   } | null>(null);
   const [webhookStatus, setWebhookStatus] = useState<string | null>(null);
 
-  // Task 10.2 — Idempotency key
-  // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments qua header
+  // Task 10.2 — Idempotency key & Submitting lock
+  // Sinh UUID 1 lần khi component mount. Gửi kèm POST /payments & POST /orders qua header
   // Idempotency-Key để backend nhận biết request trùng (double-click / retry)
   // và chỉ xử lý đúng 1 lần. Reset UUID mới sau khi thanh toán thất bại.
   const idempotencyKeyRef = useRef<string>('');
+  const isSubmittingRef = useRef<boolean>(false);
 
   const {
     items,
@@ -116,6 +117,8 @@ export default function CheckoutPage() {
 
   // Hủy giao dịch khi người dùng đóng modal (bấm X) hoặc hủy thanh toán
   const handleCancelPayment = async () => {
+    isSubmittingRef.current = false;
+    idempotencyKeyRef.current = crypto.randomUUID();
     if (!qrModal) return;
     const paymentId = qrModal.paymentId;
     const orderId = qrModal.orderId;
@@ -164,10 +167,13 @@ export default function CheckoutPage() {
               updateProfile({ points: Math.max(0, profile.points - pointsUsed) });
             }
             setTimeout(() => {
+              isSubmittingRef.current = false;
               setQrModal(null);
               router.push(`/order-success?orderId=${qrModal.orderId}`);
             }, 800);
           } else if (data.status === 'FAILED') {
+            isSubmittingRef.current = false;
+            idempotencyKeyRef.current = crypto.randomUUID();
             clearInterval(interval);
             setQrModal(null);
             router.push(`/payment-failed?orderId=${qrModal.orderId}&code=99`);
@@ -191,6 +197,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Chặn double click và duplicate submit bằng ref đồng bộ
+    if (isSubmittingRef.current || isProcessing) {
+      return;
+    }
+    isSubmittingRef.current = true;
     setIsProcessing(true);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -240,6 +251,7 @@ export default function CheckoutPage() {
         });
 
         if (orderRes.status === 401) {
+          isSubmittingRef.current = false;
           setIsProcessing(false);
           router.push('/signin?redirect=/checkout');
           return;
@@ -248,6 +260,7 @@ export default function CheckoutPage() {
         const orderData = await orderRes.json();
 
         if (!orderRes.ok) {
+          isSubmittingRef.current = false;
           setIsProcessing(false);
           setOrderError(
             Array.isArray(orderData.message)
@@ -287,6 +300,7 @@ export default function CheckoutPage() {
       }
     } catch (err: any) {
       console.error('Lỗi kết nối API:', err);
+      isSubmittingRef.current = false;
       setIsProcessing(false);
       setOrderError('Lỗi kết nối máy chủ: ' + (err?.message || 'Vui lòng thử lại sau.'));
     }

@@ -229,6 +229,67 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
     });
   });
 
+  describe('1.1. Chống duplicate order & Idempotency Key (Task 6)', () => {
+    it('khi gửi cùng một Idempotency-Key 2 lần liên tiếp: chỉ tạo 1 đơn và trả về cùng kết quả', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.order.findFirst.mockResolvedValue({ orderCode: '#1042' });
+      prisma.product.updateMany.mockResolvedValue({ count: 1 });
+
+      const createdMockOrder = {
+        id: 'ord-dedup-1',
+        orderCode: '#1043',
+        status: 'PENDING',
+        totalAmount: 35000,
+      };
+      prisma.order.create.mockResolvedValue(createdMockOrder);
+
+      const dto = {
+        userId: 'user-dedup-1',
+        customerName: 'Nguyễn Văn Quang',
+        phone: '0901234567',
+        items: [{ productId: 'prod-1', size: 'S' as const, qty: 1 }],
+      };
+
+      const key = 'idem-order-key-999';
+      const res1 = await service.createOrder(dto, key);
+      const res2 = await service.createOrder(dto, key);
+
+      expect(res1).toEqual(createdMockOrder);
+      expect(res2).toEqual(createdMockOrder);
+      expect(prisma.order.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('khi cùng một user gửi 2 request trùng nhau trong tích tắc (double-click): tự động deduplicate', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.order.findFirst.mockResolvedValue({ orderCode: '#1042' });
+      prisma.product.updateMany.mockResolvedValue({ count: 1 });
+
+      const createdMockOrder = {
+        id: 'ord-dedup-2',
+        orderCode: '#1044',
+        status: 'PENDING',
+        totalAmount: 35000,
+      };
+      prisma.order.create.mockResolvedValue(createdMockOrder);
+
+      const dto = {
+        userId: 'user-double-click-2',
+        customerName: 'Nguyễn Văn Quang',
+        phone: '0901234567',
+        items: [{ productId: 'prod-1', size: 'S' as const, qty: 1 }],
+      };
+
+      const [orderA, orderB] = await Promise.all([
+        service.createOrder(dto),
+        service.createOrder(dto),
+      ]);
+
+      expect(orderA).toEqual(createdMockOrder);
+      expect(orderB).toEqual(createdMockOrder);
+      expect(prisma.order.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('2. Kiểm tra định mức nguyên liệu công thức món (BOM - Bill of Materials)', () => {
     it('từ chối đặt hàng và báo rõ nguyên liệu thiếu khi tồn kho nguyên liệu không đủ', async () => {
       prisma.product.findMany.mockResolvedValue([mockProductA]);

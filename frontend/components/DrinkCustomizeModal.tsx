@@ -26,15 +26,19 @@ const SIZES: SizeConfig[] = [
   { size: 'L', label: 'Large', name: 'Lớn', extra: 10000 },
 ];
 
-interface MilkOption {
+interface SugarOption {
   id: string;
   label: string;
+  hint: string;
   shortLabel: string;
 }
 
-const MILK_OPTIONS: MilkOption[] = [
-  { id: 'dairy', label: 'Sữa tươi thanh trùng (Dairy milk)', shortLabel: 'Sữa tươi thanh trùng' },
-  { id: 'oat', label: 'Sữa yến mạch nguyên chất (Oat milk)', shortLabel: 'Sữa yến mạch nguyên chất' },
+const SUGAR_OPTIONS: SugarOption[] = [
+  { id: '0%', label: '0%', hint: 'Không', shortLabel: '0% đường' },
+  { id: '30%', label: '30%', hint: 'Ít', shortLabel: '30% đường' },
+  { id: '50%', label: '50%', hint: 'Vừa', shortLabel: '50% đường' },
+  { id: '70%', label: '70%', hint: 'Nhẹ', shortLabel: '70% đường' },
+  { id: '100%', label: '100%', hint: 'Chuẩn', shortLabel: '100% đường' },
 ];
 
 export interface DrinkCustomizeModalProps {
@@ -60,7 +64,7 @@ export default function DrinkCustomizeModal({
   const [imageError, setImageError] = useState<boolean>(false);
 
   const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L'>('S');
-  const [selectedMilk, setSelectedMilk] = useState<string | null>('dairy');
+  const [selectedSugar, setSelectedSugar] = useState<string>('100%');
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [drinkNote, setDrinkNote] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
@@ -73,14 +77,15 @@ export default function DrinkCustomizeModal({
     setProduct(initialProduct || null);
 
     if (editingCartItem) {
+      const hasValidSugar = SUGAR_OPTIONS.some((s) => s.id === editingCartItem.milk);
       setSelectedSize(editingCartItem.size || 'S');
-      setSelectedMilk(editingCartItem.milk || null);
+      setSelectedSugar(hasValidSugar ? editingCartItem.milk : '100%');
       setSelectedToppings(editingCartItem.toppings || []);
       setDrinkNote(editingCartItem.note || '');
       setQuantity(editingCartItem.quantity || 1);
     } else {
       setSelectedSize('S');
-      setSelectedMilk('dairy');
+      setSelectedSugar('100%');
       setSelectedToppings([]);
       setDrinkNote('');
       setQuantity(1);
@@ -192,15 +197,12 @@ export default function DrinkCustomizeModal({
   const handleSubmit = () => {
     if (isOutOfStock) return;
 
-    const milkOption = selectedMilk ? MILK_OPTIONS.find((m) => m.id === selectedMilk) : null;
+    const sugarOption = SUGAR_OPTIONS.find((s) => s.id === selectedSugar) || SUGAR_OPTIONS[4];
     const toppingsLabels = selectedToppings
       .map((tId) => availableToppings.find((t) => t.id === tId)?.name)
       .filter(Boolean) as string[];
 
-    const optionsLabelParts = [`${sizeOption.size} (${sizeOption.label})`];
-    if (milkOption) {
-      optionsLabelParts.push(milkOption.shortLabel);
-    }
+    const optionsLabelParts = [`${sizeOption.size} (${sizeOption.label})`, sugarOption.shortLabel];
     if (toppingsLabels.length > 0) {
       optionsLabelParts.push(...toppingsLabels);
     }
@@ -212,8 +214,8 @@ export default function DrinkCustomizeModal({
       image: product?.image || editingCartItem?.image || '/images/drinks/hero-drink.png',
       size: selectedSize,
       sizeLabel: sizeOption.label,
-      milk: selectedMilk || '',
-      milkLabel: milkOption?.label || 'Mặc định',
+      milk: sugarOption.id,
+      milkLabel: sugarOption.shortLabel,
       toppings: [...selectedToppings],
       toppingsLabels,
       note: drinkNote.trim(),
@@ -346,46 +348,35 @@ export default function DrinkCustomizeModal({
             </div>
           </div>
 
-          {/* 2. Loại sữa */}
+          {/* 2. Mức đường (% đường) */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-[11px] font-bold text-[#163d2c] uppercase tracking-wider">
-                Loại sữa pha chế
+                Mức đường (% đường)
               </label>
-              <span className="text-[11px] text-[#708076]">Tùy chọn</span>
+              <span className="text-[11px] text-[#708076]">
+                {SUGAR_OPTIONS.find((s) => s.id === selectedSugar)?.shortLabel || '100% đường'}
+              </span>
             </div>
-            <div className="space-y-2">
-              {MILK_OPTIONS.map((m) => {
-                const isSelected = !isOutOfStock && selectedMilk === m.id;
+            <div className="grid grid-cols-5 gap-2">
+              {SUGAR_OPTIONS.map((s) => {
+                const isSelected = !isOutOfStock && selectedSugar === s.id;
                 return (
                   <button
-                    key={m.id}
+                    key={s.id}
                     type="button"
                     disabled={isOutOfStock}
-                    onClick={() =>
-                      !isOutOfStock && setSelectedMilk((prev) => (prev === m.id ? null : m.id))
-                    }
-                    className={`w-full p-2.5 rounded-xl border flex items-center justify-between transition-all text-left ${
+                    onClick={() => !isOutOfStock && setSelectedSugar(s.id)}
+                    className={`py-2 px-1 rounded-xl border text-center transition-all flex flex-col items-center ${
                       isOutOfStock
                         ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
                         : isSelected
-                        ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c] cursor-pointer'
+                        ? 'bg-[#e4ede3] border-[#163d2c] text-[#163d2c] font-bold shadow-2xs cursor-pointer ring-1 ring-[#163d2c]/20'
                         : 'bg-[#faf8f4] border-[#e8e2d7] text-[#55695c] hover:bg-[#f3eee5] cursor-pointer'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'border-[#163d2c] bg-[#163d2c]'
-                            : 'border-[#94a399] bg-white'
-                        }`}
-                      >
-                        {isSelected && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
-                      </span>
-                      <span className="text-xs font-semibold">{m.label}</span>
-                    </div>
-                    <span className="text-[10px] text-[#708076] font-medium shrink-0">Bao gồm</span>
+                    <span className="text-xs font-bold leading-tight">{s.label}</span>
+                    <span className="text-[10px] text-[#708076] font-normal mt-0.5">{s.hint}</span>
                   </button>
                 );
               })}

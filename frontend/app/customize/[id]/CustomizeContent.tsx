@@ -27,15 +27,18 @@ const SIZES: SizeConfig[] = [
   { size: 'L', label: 'Large', name: 'Lớn', extra: 10000 },
 ];
 
-interface MilkOption {
+interface SugarOption {
   id: string;
   label: string;
   extra: number;
 }
 
-const MILK_OPTIONS: MilkOption[] = [
-  { id: 'dairy', label: 'Sữa tươi thanh trùng (Dairy milk)', extra: 0 },
-  { id: 'oat', label: 'Sữa yến mạch nguyên chất (Oat milk)', extra: 0 },
+const SUGAR_OPTIONS: SugarOption[] = [
+  { id: '0%', label: '0% đường (Không đường)', extra: 0 },
+  { id: '30%', label: '30% đường (Ít ngọt)', extra: 0 },
+  { id: '50%', label: '50% đường (Vừa)', extra: 0 },
+  { id: '70%', label: '70% đường', extra: 0 },
+  { id: '100%', label: '100% đường (Mặc định)', extra: 0 },
 ];
 
 export default function CustomizeContent({ drinkId }: { drinkId: string }) {
@@ -168,7 +171,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
     if (!selectedSize) return;
 
     const activeSizeOption = SIZES.find((s) => s.size === selectedSize) || SIZES[0];
-    const milkOption = selectedMilk ? MILK_OPTIONS.find((m) => m.id === selectedMilk) : null;
+    const sugarOption = selectedMilk ? SUGAR_OPTIONS.find((m) => m.id === selectedMilk) : null;
     const toppingsLabels = selectedToppings
       .map((tId) => availableToppings.find((t) => t.id === tId)?.name)
       .filter(Boolean) as string[];
@@ -176,8 +179,8 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
     const optionsLabelParts = [
       `${activeSizeOption.size} (${activeSizeOption.label})`,
     ];
-    if (milkOption) {
-      optionsLabelParts.push(milkOption.label.split('(')[0].trim());
+    if (sugarOption) {
+      optionsLabelParts.push(sugarOption.label.split('(')[0].trim());
     }
     if (toppingsLabels.length > 0) {
       optionsLabelParts.push(...toppingsLabels);
@@ -190,8 +193,8 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
       image: product.image,
       size: selectedSize,
       sizeLabel: activeSizeOption.label,
-      milk: selectedMilk || '',
-      milkLabel: milkOption?.label || 'Mặc định',
+      milk: selectedMilk || '100%',
+      milkLabel: sugarOption?.label.split('(')[0].trim() || '100% đường',
       toppings: selectedToppings,
       toppingsLabels,
       note: drinkNote,
@@ -411,8 +414,8 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                   </span>
                   <span className="inline-block bg-[#1a4432] px-2.5 py-1 rounded-md">
                     {selectedMilk
-                      ? `✓ Tùy chỉnh ${MILK_OPTIONS.find((m) => m.id === selectedMilk)?.label.split('(')[0].trim().toLowerCase() || 'sữa'}`
-                      : '✓ Tùy chỉnh sữa theo yêu cầu'}
+                      ? `✓ Mức ngọt: ${SUGAR_OPTIONS.find((m) => m.id === selectedMilk)?.label.split('(')[0].trim() || '100% đường'}`
+                      : '✓ Tùy chỉnh % đường theo yêu cầu'}
                   </span>
                 </div>
               </div>
@@ -472,50 +475,38 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
               </div>
             </div>
 
-            {/* 2. TÙY CHỌN SỮA (Milk Preference) */}
+            {/* 2. TÙY CHỌN MỨC ĐƯỜNG (% đường) */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-3">
-                Loại sữa pha chế {isOutOfStock ? (
+                Mức đường (% đường) {isOutOfStock ? (
                   <span className="text-[11px] text-rose-600 font-normal normal-case">(Hết hàng)</span>
                 ) : !selectedMilk ? (
                   <span className="text-[11px] text-[#708076] font-normal normal-case">(Tùy chọn)</span>
                 ) : null}
               </label>
-              <div className="space-y-2.5">
-                {MILK_OPTIONS.map((m) => {
+              <div className="grid grid-cols-5 gap-2">
+                {SUGAR_OPTIONS.map((m) => {
                   const isSelected = !isOutOfStock && selectedMilk === m.id;
                   return (
-                    <div
+                    <button
                       key={m.id}
+                      type="button"
+                      disabled={isOutOfStock}
                       onClick={() => {
                         if (!isOutOfStock) {
                           setSelectedMilk((prev) => (prev === m.id ? null : m.id));
                         }
                       }}
-                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                      className={`py-2.5 px-2 rounded-xl border text-center transition-all ${
                         isOutOfStock
                           ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c] cursor-pointer'
+                          ? 'bg-[#e4ede3] border-[#24523c] text-[#163d2c] font-bold cursor-pointer'
                           : 'bg-[#faf8f4] border-[#e8e2d7] text-[#55695c] hover:bg-[#f3eee5] cursor-pointer'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                            isOutOfStock
-                              ? 'border-gray-300 bg-gray-200'
-                              : isSelected
-                              ? 'border-[#163d2c] bg-[#163d2c]'
-                              : 'border-[#94a399] bg-white'
-                          }`}
-                        >
-                          {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <span className={`text-xs font-semibold ${isOutOfStock ? 'text-gray-400' : ''}`}>{m.label}</span>
-                      </div>
-                      <span className="text-[11px] text-[#708076] font-medium">Bao gồm</span>
-                    </div>
+                      <span className={`text-xs font-bold ${isOutOfStock ? 'text-gray-400' : ''}`}>{m.id}</span>
+                    </button>
                   );
                 })}
               </div>

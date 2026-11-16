@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, ShoppingBag, LogOut, User, ChevronDown, Coffee } from 'lucide-react';
+import { Search, ShoppingBag, LogOut, User, ChevronDown, Ticket } from 'lucide-react';
 import { useCartStore } from '@/lib/store';
 
 export default function Navbar() {
@@ -34,7 +34,7 @@ export default function Navbar() {
   const navLinks = [
     { name: 'Thực đơn', href: '/' },
     { name: 'Câu chuyện', href: '/story' },
-    { name: 'Phần thưởng', href: '/rewards' },
+    { name: 'Ưu đãi', href: '/rewards' },
     { name: 'Đơn hàng', href: '/orders' },
   ];
 
@@ -143,14 +143,22 @@ export default function Navbar() {
 
               {/* Dropdown menu */}
               {showUserMenu && (
-                <div className="absolute right-0 top-full mt-2 w-44 bg-[#163d2c] border border-[#234d39] rounded-2xl shadow-xl overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-[#163d2c] border border-[#234d39] rounded-2xl shadow-xl overflow-hidden z-50">
                   <Link
-                    href="/rewards"
+                    href="/account"
                     onClick={() => setShowUserMenu(false)}
                     className="flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#c2d1c7] hover:bg-[#1d4e38] hover:text-white transition-colors"
                   >
-                    <User className="w-3.5 h-3.5" />
-                    <span>Tài khoản & Điểm thưởng</span>
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span>Thông tin tài khoản</span>
+                  </Link>
+                  <Link
+                    href="/rewards"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#c2d1c7] hover:bg-[#1d4e38] hover:text-white transition-colors border-t border-[#234d39]"
+                  >
+                    <Ticket className="w-3.5 h-3.5 shrink-0 text-[#d6955b]" />
+                    <span>Ưu đãi & Điểm thưởng</span>
                   </Link>
                   <div className="border-t border-[#234d39]" />
                   <button
@@ -158,7 +166,7 @@ export default function Navbar() {
                     id="navbar-logout-button"
                     className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-[#e8a07a] hover:bg-[#1d4e38] hover:text-[#d6955b] transition-colors cursor-pointer"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="w-3.5 h-3.5 shrink-0" />
                     <span>Đăng xuất</span>
                   </button>
                 </div>

@@ -615,6 +615,14 @@ export const useCartStore = create<CartStore>()(
       updateProfile: (updated) => {
         set((state) => ({
           profile: { ...state.profile, ...updated },
+          authUser: state.authUser
+            ? {
+                ...state.authUser,
+                ...(updated.name !== undefined ? { fullName: updated.name } : {}),
+                ...(updated.phone !== undefined ? { phone: updated.phone } : {}),
+                ...(updated.points !== undefined ? { loyaltyPoints: updated.points } : {}),
+              }
+            : null,
         }));
       },
 

@@ -13,7 +13,7 @@ function SignInInner() {
   const { setAuth } = useCartStore();
 
   const justRegistered = searchParams.get('registered') === '1' || searchParams.get('registered') === 'demo';
-  const redirectTo = searchParams.get('redirect') || '/rewards';
+  const redirectTo = searchParams.get('redirect') || '/account';
   const isFromCheckout = searchParams.get('redirect') === '/checkout';
 
   const [email, setEmail] = useState('');
@@ -49,7 +49,7 @@ function SignInInner() {
       // Lưu token & thông tin user vào Zustand store (persist vào localStorage)
       await setAuth(data.accessToken, data.user);
 
-      // Điều hướng sau khi đăng nhập thành công (về trang trước đó hoặc rewards)
+      // Điều hướng sau khi đăng nhập thành công (về trang trước đó hoặc tài khoản)
       router.push(redirectTo);
     } catch {
       // Không kết nối được Backend → fallback demo mode

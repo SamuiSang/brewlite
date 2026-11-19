@@ -9,62 +9,7 @@ import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
 import { formatVND } from '@/lib/data';
 import { getEligibleVoucherCodes } from '@/lib/voucher-eligibility';
 
-function CartItemQuantityInput({
-  itemId,
-  quantity,
-  setQuantity,
-}: {
-  itemId: string;
-  quantity: number;
-  setQuantity: (id: string, qty: number) => void;
-}) {
-  const [val, setVal] = useState(String(quantity));
 
-  useEffect(() => {
-    setVal(String(quantity));
-  }, [quantity]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '');
-    setVal(raw);
-    const parsed = parseInt(raw, 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      setQuantity(itemId, Math.min(parsed, 9999));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      (e.target as HTMLInputElement).blur();
-    }
-  };
-
-  const handleBlur = () => {
-    const parsed = parseInt(val, 10);
-    if (isNaN(parsed) || parsed < 1) {
-      setVal('1');
-      setQuantity(itemId, 1);
-    } else {
-      const clamped = Math.min(parsed, 9999);
-      setVal(String(clamped));
-      setQuantity(itemId, clamped);
-    }
-  };
-
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      value={val}
-      onChange={handleChange}
-      onKeyDown={handleKeyDown}
-      onBlur={handleBlur}
-      className="w-12 text-center text-xs font-bold text-[#14241b] bg-white border border-[#d8cfbe] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#163d2c] shadow-2xs mx-1 cursor-text"
-      title="Nhập số lượng trực tiếp"
-      aria-label="Số lượng món"
-    />
-  );
-}
 
 function CartItemQuantityInput({
   itemId,

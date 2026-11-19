@@ -35,7 +35,7 @@ export const AVAILABLE_VOUCHERS: Voucher[] = [
     discountType: 'percentage',
     minOrderAmount: 40000,
     maxDiscountAmount: 20000,
-    description: 'Giảm 10% (tối đa 20.000đ) cho đơn từ 40.000đ',
+    description: 'Chỉ đơn hàng đầu tiên: giảm 10% (tối đa 20.000đ), đơn từ 40.000đ',
   },
   {
     code: 'GIAM20K',
@@ -57,9 +57,9 @@ export const AVAILABLE_VOUCHERS: Voucher[] = [
     code: 'BREW5',
     discount: 5000,
     discountType: 'fixed',
-    minOrderAmount: 0,
+    minOrderAmount: 30000,
     maxDiscountAmount: 5000,
-    description: 'Ưu đãi thành viên giảm 5.000đ trực tiếp',
+    description: 'Giảm 5.000đ cho đơn từ 30.000đ',
   },
 ];
 
@@ -307,7 +307,7 @@ export const useCartStore = create<CartStore>()(
 
           const res = await fetch(`${apiUrl}/orders/validate-voucher`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(get().authToken ? { Authorization: `Bearer ${get().authToken}` } : {}) },
             body: JSON.stringify({ code: trimmed, subtotal }),
             signal: controller.signal,
           });
@@ -341,26 +341,8 @@ export const useCartStore = create<CartStore>()(
             return false;
           }
         } catch {
-          // Fallback sang danh sách mã tĩnh
-          const found = AVAILABLE_VOUCHERS.find((v) => v.code.toUpperCase() === trimmed);
-          if (!found) {
-            set({ voucherError: `Mã khuyến mãi "${trimmed}" không hợp lệ hoặc đã hết hạn.` });
-            return false;
-          }
-
-          if (found.minOrderAmount && subtotal < found.minOrderAmount) {
-            set({
-              voucherError: `Đơn hàng cần tối thiểu ${found.minOrderAmount.toLocaleString('vi-VN')}đ để áp dụng mã "${found.code}".`,
-            });
-            return false;
-          }
-
-          set({
-            voucherCode: found.code,
-            appliedVoucher: found,
-            voucherError: null,
-          });
-          return true;
+          set({ voucherError: 'Không thể kiểm tra mã khuyến mãi. Vui lòng thử lại.' });
+          return false;
         }
       },
 

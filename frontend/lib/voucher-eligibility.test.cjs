@@ -13,7 +13,7 @@ vm.runInNewContext(source, {
   exports: exportsForTest,
   fetch: async (url, options) => {
     const payload = JSON.parse(options.body);
-    calls.push({ url, ...payload });
+    calls.push({ url, headers: options.headers, ...payload });
     if (payload.code === 'OFFLINE') throw Error('offline');
     return { ok: payload.code === 'WELCOME10' && payload.subtotal >= 40000 };
   },
@@ -22,7 +22,10 @@ vm.runInNewContext(source, {
   const codes = ['WELCOME10', 'BREW5', 'OFFLINE'];
   assert.deepEqual(Array.from(await exportsForTest.getEligibleVoucherCodes('http://localhost:3001', codes, 50000)), ['WELCOME10']);
   assert.deepEqual(Array.from(await exportsForTest.getEligibleVoucherCodes('http://localhost:3001', codes, 10000)), []);
-  assert.equal(calls.length, 6);
+  await exportsForTest.getEligibleVoucherCodes('http://localhost:3001', ['WELCOME10'], 50000, 'user-token');
+  assert.equal(calls[6].headers.Authorization, 'Bearer user-token');
+  assert.equal(calls[0].headers.Authorization, undefined);
+  assert.equal(calls.length, 7);
   assert.ok(calls.every((call) => call.url === 'http://localhost:3001/orders/validate-voucher'));
   console.log('Voucher eligibility checks passed');
 })();

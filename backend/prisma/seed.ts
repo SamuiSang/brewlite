@@ -272,6 +272,22 @@ async function main() {
       isActive: true,
     },
     {
+      code: 'BREWLITE',
+      discountType: 'PERCENTAGE',
+      discountValue: 15,
+      minOrderAmount: 100000,
+      maxDiscountAmount: 50000,
+      isActive: true,
+    },
+    {
+      code: 'BREW5',
+      discountType: 'FIXED_AMOUNT',
+      discountValue: 5000,
+      minOrderAmount: 30000,
+      maxDiscountAmount: 5000,
+      isActive: true,
+    },
+    {
       code: 'FREESHIP',
       discountType: 'FIXED_AMOUNT',
       discountValue: 15000,

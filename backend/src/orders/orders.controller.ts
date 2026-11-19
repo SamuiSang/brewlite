@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard, OptionalJwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('orders')
 export class OrdersController {
@@ -22,9 +22,10 @@ export class OrdersController {
    * API Kiểm tra mã voucher và tính toán giảm giá
    * POST /orders/validate-voucher
    */
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('validate-voucher')
-  validateVoucher(@Body() dto: ValidateVoucherDto) {
-    return this.ordersService.validateVoucher(dto);
+  validateVoucher(@Body() dto: ValidateVoucherDto, @Req() req: any) {
+    return this.ordersService.validateVoucher(dto, req.user?.sub || req.user?.id);
   }
 
   /**

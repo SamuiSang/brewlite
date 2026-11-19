@@ -7,6 +7,64 @@ import { useRouter } from 'next/navigation';
 import { Minus, Plus, MapPin, ArrowRight, ArrowLeft, Check, AlertCircle, Ticket, Loader2 } from 'lucide-react';
 import { useCartStore, AVAILABLE_VOUCHERS } from '@/lib/store';
 import { formatVND } from '@/lib/data';
+import { getEligibleVoucherCodes } from '@/lib/voucher-eligibility';
+
+function CartItemQuantityInput({
+  itemId,
+  quantity,
+  setQuantity,
+}: {
+  itemId: string;
+  quantity: number;
+  setQuantity: (id: string, qty: number) => void;
+}) {
+  const [val, setVal] = useState(String(quantity));
+
+  useEffect(() => {
+    setVal(String(quantity));
+  }, [quantity]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setVal(raw);
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setQuantity(itemId, Math.min(parsed, 9999));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed < 1) {
+      setVal('1');
+      setQuantity(itemId, 1);
+    } else {
+      const clamped = Math.min(parsed, 9999);
+      setVal(String(clamped));
+      setQuantity(itemId, clamped);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={val}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      className="w-12 text-center text-xs font-bold text-[#14241b] bg-white border border-[#d8cfbe] rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#163d2c] shadow-2xs mx-1 cursor-text"
+      title="Nhập số lượng trực tiếp"
+      aria-label="Số lượng món"
+    />
+  );
+}
 
 function CartItemQuantityInput({
   itemId,
@@ -160,6 +218,18 @@ export default function CartPage() {
   const subtotal = mounted ? getSubtotal() : 0;
   const discount = mounted ? getDiscount() : 0;
   const baseTotal = mounted ? getTotal() : 0;
+  const [voucherEligibility, setVoucherEligibility] = useState<{ subtotal: number; token: string | null; codes: string[] } | null>(null);
+
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    void getEligibleVoucherCodes(apiUrl, AVAILABLE_VOUCHERS.map((voucher) => voucher.code), subtotal, authToken)
+      .then((codes) => {
+        if (!cancelled) setVoucherEligibility({ subtotal, token: authToken, codes });
+      });
+    return () => { cancelled = true; };
+  }, [mounted, subtotal, authToken]);
 
   // Tính điểm thưởng tích lũy (Loyalty Points)
   const availablePoints = mounted ? (profile?.points ?? 129) : 129;
@@ -169,6 +239,10 @@ export default function CartPage() {
   const finalTotal = Math.max(0, baseTotal - pointsDiscount);
 
   const isVoucherEligible = !appliedVoucher?.minOrderAmount || subtotal >= appliedVoucher.minOrderAmount;
+
+  useEffect(() => {
+    if (mounted && appliedVoucher && !isVoucherEligible) removeVoucher();
+  }, [mounted, appliedVoucher, isVoucherEligible, removeVoucher]);
 
   const handleCheckout = () => {
     if (!authToken || !authUser) {
@@ -469,7 +543,7 @@ export default function CartPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {AVAILABLE_VOUCHERS.map((v) => {
                       const isSelected = appliedVoucher?.code === v.code;
-                      const canUse = subtotal >= (v.minOrderAmount || 0);
+                      const canUse = voucherEligibility?.subtotal === subtotal && voucherEligibility.token === authToken && voucherEligibility.codes.includes(v.code);
                       return (
                         <button
                           key={v.code}
@@ -477,13 +551,14 @@ export default function CartPage() {
                           disabled={isSelected || isApplyingVoucher}
                           onClick={() => handleApplyVoucher(undefined, v.code)}
                           className={`text-[11px] px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                            isSelected
+                            isSelected && canUse
                               ? 'bg-[#163d2c] text-white border-[#163d2c] font-bold cursor-default'
                               : canUse
                               ? 'bg-[#f4efe7] hover:bg-[#eae2d5] text-[#14241b] border-[#e2dacf] font-semibold active:scale-95'
                               : 'bg-[#faf7f2] text-[#93a499] border-[#ede7dc] hover:border-[#dfd6c8]'
                           }`}
                           title={v.description}
+                          aria-label={`${v.code}: ${v.description}`}
                         >
                           <span className="font-bold">{v.code}</span>
                           <span className="text-[10px] opacity-80">

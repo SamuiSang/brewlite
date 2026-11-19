@@ -104,12 +104,14 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         update: jest.fn<any>(),
       },
       order: {
+        count: jest.fn<any>().mockResolvedValue(0),
         findFirst: jest.fn<any>(),
         findUnique: jest.fn<any>(),
         findMany: jest.fn<any>(),
         create: jest.fn<any>(),
         update: jest.fn<any>(),
       },
+      $queryRaw: jest.fn<any>().mockResolvedValue([]),
       $transaction: jest.fn((callback: any) => callback(prisma)),
     };
 
@@ -276,6 +278,50 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
   });
 
   describe('3. Voucher / Promotion Calculation', () => {
+    it('WELCOME10 từ chối khách chưa đăng nhập', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      await expect(service.validateVoucher({ code: 'WELCOME10', subtotal: 100000 }))
+        .rejects.toThrow(/đăng nhập/);
+    });
+
+    it('WELCOME10 từ chối tài khoản đã từng đặt đơn', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.validateVoucher({ code: 'WELCOME10', subtotal: 100000 }, 'user-1'))
+        .rejects.toThrow(/đơn hàng đầu tiên/);
+    });
+
+    it('từ chối áp dụng voucher nếu tài khoản đã từng sử dụng mã đó trước đây', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionFixed);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.validateVoucher({ code: 'GIAM20K', subtotal: 100000 }, 'user-1'))
+        .rejects.toThrow(/đã sử dụng mã khuyến mãi/);
+    });
+
+    it('không thể bỏ qua điều kiện WELCOME10 khi tạo đơn trực tiếp', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.createOrder({
+        userId: 'user-1', customerName: 'Quang', phone: '0901234567',
+        promotionCode: 'WELCOME10',
+        items: [{ productId: 'prod-1', size: 'S', qty: 2 }],
+      })).rejects.toThrow(/đơn hàng đầu tiên/);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
+    it('kiểm tra lại đơn đầu trong transaction trước khi ghi đơn', async () => {
+      prisma.product.findMany.mockResolvedValue([mockProductA]);
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);
+      prisma.order.count.mockResolvedValueOnce(0).mockResolvedValueOnce(1);
+      await expect(service.createOrder({
+        userId: 'user-1', customerName: 'Quang', phone: '0901234567',
+        promotionCode: 'WELCOME10',
+        items: [{ productId: 'prod-1', size: 'S', qty: 2 }],
+      })).rejects.toThrow(/đơn hàng đầu tiên/);
+      expect(prisma.order.create).not.toHaveBeenCalled();
+    });
+
     it('tính giảm giá theo % kèm trần maxDiscountAmount chính xác', () => {
       const discount = service.calculatePromotionDiscount(
         mockPromotionPercent,
@@ -315,7 +361,7 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       const result = await service.validateVoucher({
         code: 'WELCOME10',
         subtotal: 100000,
-      });
+      }, 'user-1');
 
       expect(result.code).toBe('WELCOME10');
       expect(result.discountAmount).toBe(10000);
@@ -491,6 +537,65 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
 
     it('ném lỗi BadRequestException nếu không có userId', async () => {
       await expect(service.findMyOrders('')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('Cancel Order API & Rules (cancelOrder)', () => {
+    it('cho phép Customer hủy đơn khi đơn ở trạng thái PENDING hoặc PAID', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-1',
+        status: 'PENDING',
+        userId: 'user-1',
+        orderItems: [],
+      });
+      prisma.order.update.mockResolvedValue({
+        id: 'ord-cancel-1',
+        status: 'CANCELLED',
+      });
+
+      await service.cancelOrder('ord-cancel-1', 'user-1', 'CUSTOMER', 'Đổi ý không mua nữa');
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ord-cancel-1' },
+          data: { status: 'CANCELLED' },
+        }),
+      );
+    });
+
+    it('chặn Customer hủy đơn của người khác (IDOR Protection)', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-2',
+        status: 'PENDING',
+        userId: 'user-999',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-2', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('Bạn không có quyền hủy đơn hàng của người khác');
+    });
+
+    it('chặn Customer hủy đơn nếu đơn đã vào làm (PREPARING, READY, COMPLETED)', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-3',
+        status: 'PREPARING',
+        userId: 'user-1',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-3', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('đã đưa vào pha chế hoặc sẵn sàng nhận');
+    });
+
+    it('chặn hủy đơn nếu đơn đã CANCELLED trước đó', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-4',
+        status: 'CANCELLED',
+        userId: 'user-1',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-4', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('Đơn hàng này đã được hủy trước đó');
     });
   });
 });

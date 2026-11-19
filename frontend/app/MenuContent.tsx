@@ -14,6 +14,33 @@ import {
   NormalizedProduct,
 } from '@/lib/api';
 
+function ProductImageWithFallback({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  const [imgSrc, setImgSrc] = useState(src);
+
+  useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+
+  return (
+    <Image
+      src={imgSrc || '/images/drinks/hero-drink.png'}
+      alt={alt}
+      fill
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+      className="object-cover group-hover:scale-105 transition-transform duration-300"
+      onError={() => {
+        setImgSrc('/images/drinks/hero-drink.png');
+      }}
+    />
+  );
+}
+
 export default function MenuContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -362,12 +389,9 @@ export default function MenuContent() {
                     href={`/customize/${product.id}`}
                     className="relative w-full aspect-[16/10] overflow-hidden bg-[#e8e2d8] block"
                   >
-                    <Image
+                    <ProductImageWithFallback
                       src={product.image}
                       alt={product.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     {/* Huy hiệu Bán chạy (chỉ hiện khi còn hàng) */}
                     {!isOutOfStock && product.bestseller && (

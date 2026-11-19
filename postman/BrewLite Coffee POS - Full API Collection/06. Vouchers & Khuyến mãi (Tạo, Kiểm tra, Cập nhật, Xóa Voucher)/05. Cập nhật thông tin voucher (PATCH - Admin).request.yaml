@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers/SUMMER50"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenAdmin}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "discountValue": 40,
+      "maxDiscountAmount": 35000,
+      "isActive": true
+    }
+order: 5000

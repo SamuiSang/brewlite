@@ -40,3 +40,12 @@ export class JwtAuthGuard implements CanActivate {
     return type === 'Bearer' ? token : undefined;
   }
 }
+
+@Injectable()
+export class OptionalJwtAuthGuard extends JwtAuthGuard {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<Request>();
+    if (!request.headers.authorization) return true;
+    return super.canActivate(context);
+  }
+}

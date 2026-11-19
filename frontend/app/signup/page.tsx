@@ -183,9 +183,9 @@ function SignUpInner() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8aa193] hover:text-[#163d2c] transition-colors cursor-pointer"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
                       <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
                     )}
                   </button>
                 </div>
@@ -218,9 +218,9 @@ function SignUpInner() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#8aa193] hover:text-[#163d2c] transition-colors cursor-pointer"
                   >
                     {showConfirm ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
                       <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
                     )}
                   </button>
                 </div>

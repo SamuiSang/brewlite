@@ -1,0 +1,12 @@
+$kind: http-request
+name: ""
+url: http://localhost:3001/auth/test-order
+method: POST
+body:
+  type: json
+  content: ""
+auth:
+  type: bearer
+  credentials:
+    token: ""
+order: 1000

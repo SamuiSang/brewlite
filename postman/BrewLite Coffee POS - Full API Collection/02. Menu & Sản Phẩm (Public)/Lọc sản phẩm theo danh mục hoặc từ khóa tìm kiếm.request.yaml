@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/products?search=Cà phê"
+method: GET
+queryParams:
+  search: Cà phê
+order: 4000

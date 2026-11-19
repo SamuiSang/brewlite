@@ -1,0 +1,19 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: GET
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 200 OK", function () {
+          pm.response.to.have.status(200);
+      });
+      pm.test("Response has id, userId and items array", function () {
+          const res = pm.response.json();
+          pm.expect(res).to.have.property('id');
+          pm.expect(res).to.have.property('userId');
+          pm.expect(res.items).to.be.an('array');
+      });
+    language: text/javascript
+order: 1000

@@ -1,0 +1,2503 @@
+{
+  "info": {
+    "_postman_id": "brewlite-api-collection-2026",
+    "name": "BrewLite Coffee POS - Full API Collection",
+    "description": "Bộ sưu tập toàn bộ API hệ thống BrewLite (Auth, Menu, Cart, Orders, Payments, Inventory & BOM, Test Lỗi Giảng Viên)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "tokenCustomer",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJlbWFpbCI6ImtoYWNoaGFuZ0BnbWFpbC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3OTQzMjg0NDUsImV4cCI6MTc5NDQxNDg0NX0.LCvChKUtgQVaP0vamXUDEZksQ291cBhz7wwLp9avRec",
+      "type": "string"
+    },
+    {
+      "key": "tokenBarista",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJlbWFpbCI6ImJhcmlzdGFAYnJld2xpdGUudm4iLCJyb2xlIjoiQkFSSVNUQSIsImlhdCI6MTc5NDMyODQ1MSwiZXhwIjoxNzk0NDE0ODUxfQ.0q04lzVyZ_MZvdqK6NZUWeGjH-9uUAWKnH-CDczhHfA",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQGJyZXdsaXRlLnZuIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzk0MzI4NDUxLCJleHAiOjE3OTQ0MTQ4NTF9.XbHUoCnxQKvipjlvJCbkYWMEiZPHmuKFfsrnA67Ii8Q",
+      "type": "string"
+    },
+    {
+      "key": "currentOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentPaymentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Auth & Users",
+      "item": [
+        {
+          "name": "Đăng nhập Khách hàng (Lưu tokenCustomer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenCustomer', res.accessToken);",
+                  "    pm.environment.set('tokenCustomer', res.accessToken);",
+                  "    pm.globals.set('tokenCustomer', res.accessToken);",
+                  "    console.log('Saved tokenCustomer successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"khachhang@gmail.com\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng nhập Barista (Lưu tokenBarista)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenBarista', res.accessToken);",
+                  "    pm.environment.set('tokenBarista', res.accessToken);",
+                  "    pm.globals.set('tokenBarista', res.accessToken);",
+                  "    console.log('Saved tokenBarista successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"barista@brewlite.vn\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng nhập Admin (Lưu tokenAdmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "    pm.collectionVariables.set('tokenAdmin', res.accessToken);",
+                  "    pm.environment.set('tokenAdmin', res.accessToken);",
+                  "    pm.globals.set('tokenAdmin', res.accessToken);",
+                  "    console.log('Saved tokenAdmin successfully');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@brewlite.vn\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Đăng ký tài khoản mới",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test_customer_new@gmail.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"Trần Văn Test\",\n  \"phone\": \"0912345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy thông tin tài khoản hiện tại (Profile & Loyalty)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cập nhật Profile cá nhân",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nguyễn Văn A (Đã đổi tên)\",\n  \"phone\": \"0909999888\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Menu & Sản Phẩm (Public)",
+      "item": [
+        {
+          "name": "Lấy danh mục sản phẩm (Categories)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách Topping kèm giá & tồn kho",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/toppings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "toppings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách món (Tất cả)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lọc sản phẩm theo danh mục hoặc từ khóa tìm kiếm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products?search=Cà phê",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Cà phê"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy chi tiết 1 sản phẩm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/products/p1111111-1111-1111-1111-222222222222",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "p1111111-1111-1111-1111-222222222222"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Cart (Giỏ hàng)",
+      "item": [
+        {
+          "name": "Lấy giỏ hàng của User hiện tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response has id, userId and items array\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res).to.have.property('userId');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Đồng bộ (Lưu) giỏ hàng",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2,\n      \"toppings\": [\"t1111111-1111-1111-1111-111111111111\"],\n      \"note\": \"Ít đá 50%\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cart items synchronized successfully\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Xóa sạch giỏ hàng",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Returns clear cart message\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.equal(\"Đã xóa toàn bộ giỏ hàng\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thêm sản phẩm vào giỏ hàng (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Response contains cart id, userId and items array\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res).to.have.property('userId');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"toppings\": [\n        \"t1111111-1111-1111-1111-111111111111\"\n      ],\n      \"note\": \"Ít ngọt 70%\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Thêm sản phẩm đã có trong giỏ - Tăng số lượng (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cart sync request processed successfully\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 3,\n      \"toppings\": [\n        \"t1111111-1111-1111-1111-111111111111\"\n      ],\n      \"note\": \"Ít ngọt 70%\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Cập nhật số lượng sản phẩm trong giỏ (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cart quantity updated\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2,\n      \"toppings\": [\n        \"t1111111-1111-1111-1111-111111111111\"\n      ],\n      \"note\": \"Ít ngọt 70%\"\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Xóa một sản phẩm khỏi giỏ hàng (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cart updated after removing an item\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"S\",\n      \"quantity\": 1,\n      \"toppings\": []\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra giỏ hàng trống sau khi xóa (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Cart items is an array\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tính tổng số lượng và tổng tiền nhiều món (Positive & Calculation Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Calculates total quantity and total price correctly\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('id');",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"S\",\n      \"quantity\": 2,\n      \"toppings\": []\n    },\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"toppings\": []\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Số lượng bằng 0 (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Validation error specifies minimum quantity is 1\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(JSON.stringify(res.message)).to.include(\"Số lượng tối thiểu là 1\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 0\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Số lượng âm (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Validation error specifies minimum quantity is 1\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(JSON.stringify(res.message)).to.include(\"Số lượng tối thiểu là 1\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": -5\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Size không hợp lệ (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Size validation rejected\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(JSON.stringify(res.message)).to.include(\"size must be one of the following values: S, M, L\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"XL\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra tồn kho BOM vượt quá số lượng cho phép (Boundary & Inventory Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Cart validation detects stock limit exceeded\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.isValid).to.be.false;",
+                  "    pm.expect(res.items[0].status).to.be.oneOf([\"OUT_OF_STOCK\", \"INSUFFICIENT_QUANTITY\"]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/validate-cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "validate-cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 9999\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra sản phẩm không tồn tại trong giỏ (Negative & Inventory Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Flags non-existent product as invalid\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.isValid).to.be.false;",
+                  "    pm.expect(res.items[0].message).to.equal(\"Sản phẩm không tồn tại\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/inventory/validate-cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "validate-cart"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p9999999-9999-9999-9999-999999999999\",\n      \"size\": \"M\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra đặt hàng với sản phẩm ngừng kinh doanh (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});",
+                  "pm.test(\"Rejects order containing discontinued product\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(JSON.stringify(res.message)).to.match(/ngừng kinh doanh|ngừng bán|không tồn tại/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p0000000-0000-0000-0000-000000000000\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 401 - Truy cập giỏ hàng không có Token (Security Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Unauthorized error returned\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.statusCode).to.equal(401);",
+                  "    pm.expect(res.error).to.equal(\"Unauthorized\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Test 401 - Xóa giỏ hàng không có Token (Security Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test(\"Unauthorized error returned\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.statusCode).to.equal(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cart"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Inventory & BOM (Quản lý kho & Định lượng)",
+      "item": [
+        {
+          "name": "Lấy danh sách 17 nguyên liệu kho & mức an toàn",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/ingredients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "ingredients"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra tính khả dụng giỏ hàng với BOM tồn kho (validate-cart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/validate-cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "validate-cart"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tính số ly tối đa có thể pha theo nguyên liệu kho",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/availability/p1111111-1111-1111-1111-222222222222?size=M",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "availability",
+                "p1111111-1111-1111-1111-222222222222"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "M"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tổng quan công thức tất cả sản phẩm & COGS",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/recipes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "recipes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Chi tiết công thức định lượng (BOM) 1 sản phẩm",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/recipes/p1111111-1111-1111-1111-222222222222",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "recipes",
+                "p1111111-1111-1111-1111-222222222222"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lịch sử giao dịch kho (Audit Log)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inventory/transactions?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "transactions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nhập kho nguyên liệu (Hỗ trợ quy đổi đơn vị kg->g)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier\": \"Nha cung cap Dak Lak\",\n  \"notes\": \"Nhap kho ca phe dau thang\",\n  \"items\": [\n    {\n      \"ingredientId\": \"ing-1\",\n      \"quantity\": 2,\n      \"unit\": \"kg\",\n      \"unitPrice\": 250000\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "receipts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Điều chỉnh tồn kho thủ công (Kiểm kê/Hao hụt)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actualStock\": 3500,\n  \"reason\": \"Kiem ke dinh ky cuoi ngay\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/inventory/ingredients/ing-1/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "inventory",
+                "ingredients",
+                "ing-1",
+                "adjust"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Orders (Đơn hàng & State Machine)",
+      "item": [
+        {
+          "name": "Kiểm tra mã Voucher (validate-voucher)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 58000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo đơn hàng mới (Tự động trừ kho theo BOM & lưu currentOrderId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) {",
+                  "    pm.collectionVariables.set('currentOrderId', res.id);",
+                  "    pm.environment.set('currentOrderId', res.id);",
+                  "    pm.globals.set('currentOrderId', res.id);",
+                  "    console.log('Saved currentOrderId:', res.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"deliveryAddress\": \"123 Nguyễn Văn Cừ, Q.5, TP.HCM\",\n  \"notes\": \"Giao nhanh giúp mình\",\n  \"promotionCode\": \"WELCOME10\",\n  \"useLoyaltyPoints\": 0,\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 2,\n      \"toppingIds\": [\"t1111111-1111-1111-1111-111111111111\"]\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách đơn hàng của tôi (Khách hàng)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy danh sách đơn hàng hệ thống (Barista/Admin xem)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tra cứu đơn hàng theo Order Code (VD: #1001 hoặc 1001)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/code/1001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "code",
+                "1001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Xem các trạng thái kế tiếp hợp lệ theo State Machine",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "allowed-transitions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy chi tiết đơn hàng (Kiểm tra quyền)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cập nhật trạng thái đơn (State Machine: PENDING -> PREPARING)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\",\n  \"reason\": \"Barista bat dau pha che mon\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Payments & VNPAY (Thanh toán)",
+      "item": [
+        {
+          "name": "Lấy cấu hình test & số thẻ VNPAY Sandbox",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "vnpay",
+                "config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tạo URL thanh toán VNPAY Sandbox",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"bankCode\": \"NCB\",\n  \"language\": \"vn\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/create-url",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "vnpay",
+                "create-url"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Thanh toán Mock (Kèm Idempotency-Key chống trùng lặp)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.payment && res.payment.id) {",
+                  "    pm.collectionVariables.set('currentPaymentId', res.payment.id);",
+                  "    pm.environment.set('currentPaymentId', res.payment.id);",
+                  "    pm.globals.set('currentPaymentId', res.payment.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "order-pay-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true,\n  \"twoStep\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lấy mã VietQR & QR Base64 thanh toán",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/{{currentPaymentId}}/qr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "{{currentPaymentId}}",
+                "qr"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Giả lập Webhook thanh toán thành công",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"{{currentPaymentId}}\",\n  \"outcome\": \"SUCCESS\",\n  \"transactionRef\": \"BANK_MOCK_TRANS_999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "webhook"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. ERROR & EDGE CASES (Giảng viên thường test lỗi qua API)",
+      "item": [
+        {
+          "name": "1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Test 400 Validation Error (Thiếu trường bắt buộc, sai định dạng)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"\",\n  \"phone\": \"\",\n  \"items\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Test 400 BOM Tồn Kho (Đặt 9999 ly vượt quá nguyên liệu kho)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Test Vuot Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 20000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"reason\": \"Cố tình nhảy cóc trạng thái\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. Test 403 IDOR (Khách hàng cố tình xem đơn hàng của người khác)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "o1111111-1111-1111-1111-111111111111"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "order-pay-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Promotions & Vouchers (Khuyến mãi)",
+      "item": [
+        {
+          "name": "Kiểm tra Voucher giảm tiền cố định đang hoạt động - GIAM20K (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"GIAM20K discount applied correctly (20.000đ)\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.code).to.equal(\"GIAM20K\");",
+                  "    pm.expect(res.discountType).to.equal(\"FIXED_AMOUNT\");",
+                  "    pm.expect(res.discountAmount).to.equal(20000);",
+                  "    pm.expect(res.subtotal).to.equal(70000);",
+                  "    pm.expect(res.finalAmount).to.equal(50000);",
+                  "    pm.expect(res.finalAmount).to.equal(res.subtotal - res.discountAmount);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 70000\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra Voucher giảm theo % đang hoạt động - BREWLITE 15% (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"BREWLITE 15% discount applied correctly\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.code).to.equal(\"BREWLITE\");",
+                  "    pm.expect(res.discountType).to.equal(\"PERCENTAGE\");",
+                  "    pm.expect(res.discountValue).to.equal(15);",
+                  "    pm.expect(res.discountAmount).to.equal(18000); // 15% của 120.000đ",
+                  "    pm.expect(res.finalAmount).to.equal(102000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BREWLITE\",\n  \"subtotal\": 120000\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra Voucher giảm giá 5K - BREW5 (Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"BREW5 discount applied correctly (5.000đ)\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.code).to.equal(\"BREW5\");",
+                  "    pm.expect(res.discountAmount).to.equal(5000);",
+                  "    pm.expect(res.finalAmount).to.equal(30000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BREW5\",\n  \"subtotal\": 35000\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra Voucher đơn hàng đầu tiên - WELCOME10 (Positive Test - Có Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created or 400 if customer already has orders\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                  "});",
+                  "pm.test(\"WELCOME10 validates first order eligibility according to business rules\", function () {",
+                  "    const res = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(res.code).to.equal(\"WELCOME10\");",
+                  "        pm.expect(res.discountAmount).to.equal(5000); // 10% của 50.000đ",
+                  "        pm.expect(res.finalAmount).to.equal(45000);",
+                  "    } else {",
+                  "        pm.expect(res.message).to.include(\"chỉ áp dụng cho đơn hàng đầu tiên\");",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 50000\n}"
+            }
+          }
+        },
+        {
+          "name": "Boundary Test - Đơn hàng đạt ĐÚNG giá trị tối thiểu minOrderAmount (Boundary Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Accepted when subtotal exactly equals minOrderAmount (60.000đ)\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.discountAmount).to.equal(20000);",
+                  "    pm.expect(res.finalAmount).to.equal(40000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 60000\n}"
+            }
+          }
+        },
+        {
+          "name": "Boundary Test - Mức giảm vượt ngưỡng chạm trần tối đa maxDiscountAmount (Boundary Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Discount capped at maxDiscountAmount (50.000đ)\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.maxDiscountAmount).to.equal(50000);",
+                  "    pm.expect(res.discountAmount).to.equal(50000); // 15% của 500k = 75k -> cap 50k",
+                  "    pm.expect(res.finalAmount).to.equal(450000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BREWLITE\",\n  \"subtotal\": 500000\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Đơn hàng chưa đạt giá trị tối thiểu minOrderAmount (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error message mentions minimum order requirement\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"cần tối thiểu 60.000đ\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 59999\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Mã khuyến mãi đã hết hạn sử dụng - EXPIRED_VOUCHER (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error indicates voucher is expired\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"đã quá hạn sử dụng\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"EXPIRED_VOUCHER\",\n  \"subtotal\": 50000\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Mã khuyến mãi đang tạm ngưng hoạt động - INACTIVE_VOUCHER (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error indicates voucher is inactive\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"hiện không hoạt động\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"INACTIVE_VOUCHER\",\n  \"subtotal\": 50000\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 404 - Mã khuyến mãi không tồn tại trong hệ thống (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test(\"Error indicates voucher does not exist\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"không tồn tại\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"INVALID_CODE_999\",\n  \"subtotal\": 100000\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Mã WELCOME10 khi chưa đăng nhập (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error requires login for WELCOME10\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"Vui lòng đăng nhập để sử dụng mã WELCOME10\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 50000\n}"
+            }
+          }
+        },
+        {
+          "name": "Áp dụng mã khuyến mãi vào Đơn hàng thành công (Integration Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created or 400 if voucher was already used\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                  "});",
+                  "pm.test(\"Promotion applied on first use or rejected if already used\", function () {",
+                  "    const res = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(res.promotionCode).to.equal(\"GIAM20K\");",
+                  "        pm.expect(Number(res.discountAmount)).to.equal(20000);",
+                  "        pm.expect(Number(res.totalAmount)).to.equal(Number(res.subtotal) - Number(res.discountAmount));",
+                  "    } else {",
+                  "        pm.expect(res.message).to.include(\"đã sử dụng mã khuyến mãi\");",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"M\",\n      \"qty\": 2\n    },\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ],\n  \"promotionCode\": \"GIAM20K\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Test 400 - Từ chối dùng lại voucher đã sử dụng trên cùng tài khoản (Negative Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error message indicates voucher has already been used by this account\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.message).to.include(\"đã sử dụng mã khuyến mãi\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 70000\n}"
+            }
+          }
+        },
+        {
+          "name": "Đặt đơn hàng không áp dụng khuyến mãi hoặc Hủy mã (Integration Positive Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Order created without discount\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(Number(res.discountAmount)).to.equal(0);",
+                  "    pm.expect(Number(res.totalAmount)).to.equal(Number(res.subtotal));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"S\",\n      \"qty\": 1\n    }\n  ],\n  \"promotionCode\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Kiểm tra chênh lệch tổng tiền trước và sau khi áp dụng khuyến mãi (Calculation Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Subtotal minus discount equals finalAmount\", function () {",
+                  "    const res = pm.response.json();",
+                  "    pm.expect(res.subtotal).to.equal(200000);",
+                  "    pm.expect(res.discountAmount).to.equal(30000); // 15% của 200k = 30k",
+                  "    pm.expect(res.finalAmount).to.equal(170000);",
+                  "    pm.expect(res.finalAmount).to.equal(res.subtotal - res.discountAmount);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/validate-voucher",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "validate-voucher"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BREWLITE\",\n  \"subtotal\": 200000\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "GIAM20K",
+      "subtotal": 59999
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+      pm.test("Error message mentions minimum order requirement", function () {
+          const res = pm.response.json();
+          pm.expect(res.message).to.include("cần tối thiểu 60.000đ");
+      });
+    language: text/javascript
+order: 7000

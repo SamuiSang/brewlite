@@ -1,0 +1,27 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "BREWLITE",
+      "subtotal": 200000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Subtotal minus discount equals finalAmount", function () {
+          const res = pm.response.json();
+          pm.expect(res.subtotal).to.equal(200000);
+          pm.expect(res.discountAmount).to.equal(30000); // 15% của 200k = 30k
+          pm.expect(res.finalAmount).to.equal(170000);
+          pm.expect(res.finalAmount).to.equal(res.subtotal - res.discountAmount);
+      });
+    language: text/javascript
+order: 15000

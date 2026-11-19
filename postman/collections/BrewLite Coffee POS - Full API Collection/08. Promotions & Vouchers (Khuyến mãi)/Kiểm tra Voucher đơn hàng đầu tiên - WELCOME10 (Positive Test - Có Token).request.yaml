@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "WELCOME10",
+      "subtotal": 50000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created or 400 if customer already has orders", function () {
+          pm.expect(pm.response.code).to.be.oneOf([201, 400]);
+      });
+      pm.test("WELCOME10 validates first order eligibility according to business rules", function () {
+          const res = pm.response.json();
+          if (pm.response.code === 201) {
+              pm.expect(res.code).to.equal("WELCOME10");
+              pm.expect(res.discountAmount).to.equal(5000); // 10% của 50.000đ
+              pm.expect(res.finalAmount).to.equal(45000);
+          } else {
+              pm.expect(res.message).to.include("chỉ áp dụng cho đơn hàng đầu tiên");
+          }
+      });
+    language: text/javascript
+order: 4000

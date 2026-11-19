@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/availability/p1111111-1111-1111-1111-222222222222?size=M"
+method: GET
+queryParams:
+  size: M
+order: 3000

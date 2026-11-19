@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "WELCOME10",
+      "subtotal": 50000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+      pm.test("Error requires login for WELCOME10", function () {
+          const res = pm.response.json();
+          pm.expect(res.message).to.include("Vui lòng đăng nhập để sử dụng mã WELCOME10");
+      });
+    language: text/javascript
+order: 11000

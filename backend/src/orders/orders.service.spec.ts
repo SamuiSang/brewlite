@@ -291,6 +291,13 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
         .rejects.toThrow(/đơn hàng đầu tiên/);
     });
 
+    it('từ chối áp dụng voucher nếu tài khoản đã từng sử dụng mã đó trước đây', async () => {
+      prisma.promotion.findUnique.mockResolvedValue(mockPromotionFixed);
+      prisma.order.count.mockResolvedValue(1);
+      await expect(service.validateVoucher({ code: 'GIAM20K', subtotal: 100000 }, 'user-1'))
+        .rejects.toThrow(/đã sử dụng mã khuyến mãi/);
+    });
+
     it('không thể bỏ qua điều kiện WELCOME10 khi tạo đơn trực tiếp', async () => {
       prisma.product.findMany.mockResolvedValue([mockProductA]);
       prisma.promotion.findUnique.mockResolvedValue(mockPromotionPercent);

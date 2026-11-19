@@ -1,0 +1,13 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "WELCOME10",
+      "subtotal": 58000
+    }
+order: 1000

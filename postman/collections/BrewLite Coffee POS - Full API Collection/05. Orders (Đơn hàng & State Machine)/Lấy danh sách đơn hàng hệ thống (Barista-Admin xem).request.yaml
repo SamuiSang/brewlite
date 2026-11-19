@@ -1,0 +1,9 @@
+$kind: http-request
+name: Lấy danh sách đơn hàng hệ thống (Barista/Admin xem)
+url: "{{baseUrl}}/orders?status=PENDING"
+method: GET
+headers:
+  Authorization: Bearer {{tokenBarista}}
+queryParams:
+  status: PENDING
+order: 4000

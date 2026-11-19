@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/vnpay/create-url"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": "{{currentOrderId}}",
+      "bankCode": "NCB",
+      "language": "vn"
+    }
+order: 2000

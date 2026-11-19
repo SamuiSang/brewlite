@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "INACTIVE_VOUCHER",
+      "subtotal": 50000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 400 Bad Request", function () {
+          pm.response.to.have.status(400);
+      });
+      pm.test("Error indicates voucher is inactive", function () {
+          const res = pm.response.json();
+          pm.expect(res.message).to.include("hiện không hoạt động");
+      });
+    language: text/javascript
+order: 9000

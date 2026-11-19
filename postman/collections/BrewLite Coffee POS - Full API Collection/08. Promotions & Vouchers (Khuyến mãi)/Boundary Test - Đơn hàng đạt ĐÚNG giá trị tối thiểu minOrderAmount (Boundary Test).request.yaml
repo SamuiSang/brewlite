@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/validate-voucher"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "code": "GIAM20K",
+      "subtotal": 60000
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code is 201 Created", function () {
+          pm.response.to.have.status(201);
+      });
+      pm.test("Accepted when subtotal exactly equals minOrderAmount (60.000đ)", function () {
+          const res = pm.response.json();
+          pm.expect(res.discountAmount).to.equal(20000);
+          pm.expect(res.finalAmount).to.equal(40000);
+      });
+    language: text/javascript
+order: 5000

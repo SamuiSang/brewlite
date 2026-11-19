@@ -1,0 +1,36 @@
+$kind: http-request
+name: Tạo đơn hàng mới (Tự động trừ kho theo BOM & lưu currentOrderId)
+url: "{{baseUrl}}/orders"
+method: POST
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "customerName": "Nguyễn Văn A",
+      "phone": "0903334444",
+      "deliveryAddress": "123 Nguyễn Văn Cừ, Q.5, TP.HCM",
+      "notes": "Giao nhanh giúp mình",
+      "promotionCode": "WELCOME10",
+      "useLoyaltyPoints": 0,
+      "items": [
+        {
+          "productId": "p1111111-1111-1111-1111-222222222222",
+          "size": "M",
+          "qty": 2,
+          "toppingIds": ["t1111111-1111-1111-1111-111111111111"]
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      const res = pm.response.json();
+      if (res.id) {
+          pm.collectionVariables.set('currentOrderId', res.id);
+          console.log('Saved currentOrderId:', res.id);
+      }
+    language: text/javascript
+order: 2000

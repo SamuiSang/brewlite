@@ -30,6 +30,8 @@ scripts:
       const res = pm.response.json();
       if (res.id) {
           pm.collectionVariables.set('currentOrderId', res.id);
+          pm.environment.set('currentOrderId', res.id);
+          pm.globals.set('currentOrderId', res.id);
           console.log('Saved currentOrderId:', res.id);
       }
     language: text/javascript

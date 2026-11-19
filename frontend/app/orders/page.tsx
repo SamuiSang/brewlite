@@ -18,6 +18,12 @@ export default function OrdersPage() {
   const authToken = useCartStore((state) => state.authToken);
   const authUser = useCartStore((state) => state.authUser);
   const fetchMyOrders = useCartStore((state) => state.fetchMyOrders);
+  const cancelOrder = useCartStore((state) => state.cancelOrder);
+
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -42,7 +48,12 @@ export default function OrdersPage() {
     if (filter === 'All') return true;
 
     if (filter === 'In progress') {
-      return order.status === 'PAID' || order.status === 'PREPARING';
+      return (
+        order.status === 'PENDING' ||
+        order.status === 'PAID' ||
+        order.status === 'PREPARING' ||
+        order.status === 'READY'
+      );
     }
 
     if (filter === 'Completed') {
@@ -50,13 +61,48 @@ export default function OrdersPage() {
     }
 
     if (filter === 'Cancelled') {
-      return order.status === 'CANCELLED';
+      return order.status === 'CANCELLED' || order.status === 'PAYMENT_FAILED';
     }
 
     return true;
   });
 
   const activeOrder = orders.find((o) => o.active);
+
+  const handleExecuteCancel = async () => {
+    if (!cancelModalOrder) return;
+    setCancellingId(cancelModalOrder.id);
+    setCancelError(null);
+    const res = await cancelOrder(cancelModalOrder.id, cancelReason);
+    setCancellingId(null);
+    if (res.success) {
+      setCancelModalOrder(null);
+      setCancelReason('');
+    } else {
+      setCancelError(res.message || 'Không thể hủy đơn hàng');
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return { label: 'Chờ thanh toán', bg: 'bg-amber-100 text-amber-900 border border-amber-300' };
+      case 'PAID':
+        return { label: 'Đã thanh toán', bg: 'bg-[#24523c] text-[#d6ede0]' };
+      case 'PAYMENT_FAILED':
+        return { label: 'Thanh toán lỗi / Đã hủy', bg: 'bg-rose-100 text-rose-800 border border-rose-300' };
+      case 'PREPARING':
+        return { label: 'Đang pha chế', bg: 'bg-blue-900 text-blue-100' };
+      case 'READY':
+        return { label: 'Đã xong · Sẵn sàng lấy', bg: 'bg-teal-700 text-teal-100' };
+      case 'COMPLETED':
+        return { label: 'Hoàn thành', bg: 'bg-[#ede7dc] text-[#55695c]' };
+      case 'CANCELLED':
+        return { label: 'Đã hủy đơn', bg: 'bg-rose-100 text-rose-800 border border-rose-200' };
+      default:
+        return { label: status, bg: 'bg-[#ede7dc] text-[#55695c]' };
+    }
+  };
 
   if (mounted && !isLoggedIn) {
     return (
@@ -144,6 +190,8 @@ export default function OrdersPage() {
               filteredOrders.map((order) => {
                 const isActiveOrder = order.active;
                 const displayCode = order.orderCode || `#${order.id.slice(0, 8)}`;
+                const badge = getStatusBadge(order.status);
+                const canCancel = ['PENDING', 'PAYMENT_FAILED', 'PAID'].includes(order.status);
 
                 if (isActiveOrder) {
                   return (
@@ -166,8 +214,8 @@ export default function OrdersPage() {
                             <h3 className="font-serif text-2xl font-bold text-white">
                               {displayCode}
                             </h3>
-                            <span className="bg-[#24523c] text-[#d6ede0] text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
-                              {order.status}
+                            <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${badge.bg}`}>
+                              {badge.label}
                             </span>
                           </div>
 
@@ -182,13 +230,28 @@ export default function OrdersPage() {
                           <span className="font-serif text-lg font-bold text-[#d6955b]">
                             {formatVND(order.total)}
                           </span>
-                          <Link
-                            href={`/orders/${order.id}`}
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-[#d6955b] transition-colors"
-                          >
-                            <span>Theo dõi đơn hàng</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </Link>
+                          <div className="flex items-center gap-3">
+                            {canCancel && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCancelModalOrder(order);
+                                  setCancelReason('');
+                                  setCancelError(null);
+                                }}
+                                className="text-xs font-semibold text-rose-300 hover:text-white underline cursor-pointer"
+                              >
+                                Hủy đơn
+                              </button>
+                            )}
+                            <Link
+                              href={`/orders/${order.id}`}
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-white hover:text-[#d6955b] transition-colors"
+                            >
+                              <span>Theo dõi đơn hàng</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -196,7 +259,6 @@ export default function OrdersPage() {
                 }
 
                 // Standard Completed/Cancelled orders
-                const isCancelled = order.status === 'CANCELLED';
                 return (
                   <div
                     key={order.id}
@@ -217,14 +279,8 @@ export default function OrdersPage() {
                           <h3 className="font-serif text-xl font-bold text-[#14241b]">
                             {displayCode}
                           </h3>
-                          <span
-                            className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${
-                              isCancelled
-                                ? 'bg-[#fce9e5] text-[#b33e2a]'
-                                : 'bg-[#ede7dc] text-[#55695c]'
-                            }`}
-                          >
-                            {order.status}
+                          <span className={`text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full ${badge.bg}`}>
+                            {badge.label}
                           </span>
                         </div>
 
@@ -239,13 +295,28 @@ export default function OrdersPage() {
                         <span className="font-serif text-base font-bold text-[#14241b]">
                           {formatVND(order.total)}
                         </span>
-                        <Link
-                          href={`/orders/${order.id}`}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#163d2c] hover:underline"
-                        >
-                          <span>Xem chi tiết</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
+                        <div className="flex items-center gap-3">
+                          {canCancel && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCancelModalOrder(order);
+                                setCancelReason('');
+                                setCancelError(null);
+                              }}
+                              className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+                            >
+                              Hủy đơn
+                            </button>
+                          )}
+                          <Link
+                            href={`/orders/${order.id}`}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#163d2c] hover:underline"
+                          >
+                            <span>Xem chi tiết</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -306,6 +377,58 @@ export default function OrdersPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Hủy Đơn Hàng */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e8e2d7]">
+            <h3 className="font-serif text-xl font-bold text-[#14241b] mb-2">
+              Xác nhận hủy đơn hàng {cancelModalOrder.orderCode || `#${cancelModalOrder.id.slice(0, 8)}`}
+            </h3>
+            <p className="text-xs text-[#6e8074] mb-4">
+              Bạn có chắc chắn muốn hủy đơn hàng này không? Lưu ý: Chỉ có thể hủy khi đơn hàng chưa được đưa vào pha chế.
+            </p>
+
+            {cancelError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {cancelError}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-[#14241b] mb-1.5">
+                Lý do hủy đơn (không bắt buộc):
+              </label>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ví dụ: Đổi ý, đặt nhầm món, bận việc gấp..."
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#d6cfc4] focus:outline-hidden focus:border-[#163d2c]"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setCancelModalOrder(null)}
+                disabled={Boolean(cancellingId)}
+                className="px-4 py-2.5 rounded-xl border border-[#d6cfc4] text-xs font-semibold text-[#526359] hover:bg-[#f7f4ee] cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteCancel}
+                disabled={Boolean(cancellingId)}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {cancellingId ? 'Đang xử lý...' : 'Xác nhận hủy đơn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,38 +5,6 @@
     "description": "Bộ sưu tập toàn bộ API hệ thống BrewLite (Auth, Menu, Cart, Orders, Payments, Inventory & BOM, Test Lỗi Giảng Viên)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3001",
-      "type": "string"
-    },
-    {
-      "key": "tokenCustomer",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MjIyMjIyMi0yMjIyLTIyMjItMjIyMi0yMjIyMjIyMjIyMjIiLCJlbWFpbCI6ImtoYWNoaGFuZ0BnbWFpbC5jb20iLCJyb2xlIjoiQ1VTVE9NRVIiLCJpYXQiOjE3OTQzMjg0NDUsImV4cCI6MTc5NDQxNDg0NX0.LCvChKUtgQVaP0vamXUDEZksQ291cBhz7wwLp9avRec",
-      "type": "string"
-    },
-    {
-      "key": "tokenBarista",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MzMzMzMzMy0zMzMzLTMzMzMtMzMzMy0zMzMzMzMzMzMzMzMiLCJlbWFpbCI6ImJhcmlzdGFAYnJld2xpdGUudm4iLCJyb2xlIjoiQkFSSVNUQSIsImlhdCI6MTc5NDMyODQ1MSwiZXhwIjoxNzk0NDE0ODUxfQ.0q04lzVyZ_MZvdqK6NZUWeGjH-9uUAWKnH-CDczhHfA",
-      "type": "string"
-    },
-    {
-      "key": "tokenAdmin",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJlbWFpbCI6ImFkbWluQGJyZXdsaXRlLnZuIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzk0MzI4NDUxLCJleHAiOjE3OTQ0MTQ4NTF9.XbHUoCnxQKvipjlvJCbkYWMEiZPHmuKFfsrnA67Ii8Q",
-      "type": "string"
-    },
-    {
-      "key": "currentOrderId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "currentPaymentId",
-      "value": "",
-      "type": "string"
-    }
-  ],
   "item": [
     {
       "name": "01. Auth & Users",
@@ -1271,7 +1239,7 @@
       "name": "05. Orders (Đơn hàng & State Machine)",
       "item": [
         {
-          "name": "Kiểm tra mã Voucher (validate-voucher)",
+          "name": "01. Kiểm tra mã Voucher (validate-voucher)",
           "request": {
             "method": "POST",
             "header": [
@@ -1297,7 +1265,7 @@
           }
         },
         {
-          "name": "Tạo đơn hàng mới (Tự động trừ kho theo BOM & lưu currentOrderId)",
+          "name": "02. Tạo đơn hàng mới (Chờ thanh toán: PENDING) [Lưu currentOrderId]",
           "event": [
             {
               "listen": "test",
@@ -1343,7 +1311,241 @@
           }
         },
         {
-          "name": "Lấy danh sách đơn hàng của tôi (Khách hàng)",
+          "name": "03. Xem các trạng thái kế tiếp hợp lệ theo State Machine",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "allowed-transitions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "04. Chuyển trạng thái: Đã thanh toán (PAID) [Trừ kho BOM + Tích điểm]",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\",\n  \"reason\": \"Khách thanh toán thành công tại quầy/VNPAY\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "05. Chuyển trạng thái: Thanh toán lỗi / Hủy thanh toán (PAYMENT_FAILED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAYMENT_FAILED\",\n  \"reason\": \"Khách hủy thanh toán hoặc giao dịch ngân hàng thất bại\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "06. Chuyển trạng thái: Bắt đầu làm đơn (PAID -> PREPARING)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\",\n  \"reason\": \"Barista bắt đầu pha chế món\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "07. Chuyển trạng thái: Đã làm xong đơn (PREPARING -> READY)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READY\",\n  \"reason\": \"Pha chế hoàn tất, để tại quầy chờ khách lấy\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "08. Chuyển trạng thái: Khách tới lấy và hoàn thành (READY -> COMPLETED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"reason\": \"Khách đã tới quầy nhận đồ uống thành công\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "09. HỦY ĐƠN HÀNG nếu chưa làm (POST /orders/:id/cancel) [Hoàn kho & hoàn điểm]",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Khách hàng đổi ý muốn hủy đơn khi chưa pha chế\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "10. HỦY ĐƠN HÀNG nếu chưa làm (PATCH /orders/:id/cancel)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Khách hàng hủy đơn qua PATCH\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. Lấy danh sách đơn hàng của tôi (Khách hàng)",
           "request": {
             "method": "GET",
             "header": [
@@ -1365,7 +1567,7 @@
           }
         },
         {
-          "name": "Lấy danh sách đơn hàng hệ thống (Barista/Admin xem)",
+          "name": "12. Lấy danh sách đơn hàng hệ thống (Barista/Admin xem)",
           "request": {
             "method": "GET",
             "header": [
@@ -1392,41 +1594,24 @@
           }
         },
         {
-          "name": "Tra cứu đơn hàng theo Order Code (VD: #1001 hoặc 1001)",
+          "name": "13. Tra cứu đơn hàng theo Order Code (VD: #1042 hoặc 1042)",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/orders/code/1001",
+              "raw": "{{baseUrl}}/orders/code/1042",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "orders",
                 "code",
-                "1001"
+                "1042"
               ]
             }
           }
         },
         {
-          "name": "Xem các trạng thái kế tiếp hợp lệ theo State Machine",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{currentOrderId}}",
-                "allowed-transitions"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Lấy chi tiết đơn hàng (Kiểm tra quyền)",
+          "name": "14. Lấy chi tiết đơn hàng (Kiểm tra quyền)",
           "request": {
             "method": "GET",
             "header": [
@@ -1446,15 +1631,77 @@
               ]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "06. Vouchers & Khuyến mãi (CRUD Quản lý Voucher)",
+      "item": [
+        {
+          "name": "01. Lấy danh sách tất cả Voucher (vouchers)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ]
+            }
+          }
         },
         {
-          "name": "Cập nhật trạng thái đơn (State Machine: PENDING -> PREPARING)",
+          "name": "02. Lấy chi tiết 1 Voucher theo mã code",
           "request": {
-            "method": "PATCH",
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/WELCOME10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "WELCOME10"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03. Kiểm tra tính hợp lệ & số tiền giảm (validate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subtotal\": 60000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "validate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "04. Tạo voucher khuyến mãi mới (Admin/Barista)",
+          "request": {
+            "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{tokenBarista}}"
+                "value": "Bearer {{tokenAdmin}}"
               },
               {
                 "key": "Content-Type",
@@ -1463,17 +1710,97 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"PREPARING\",\n  \"reason\": \"Barista bat dau pha che mon\"\n}"
+              "raw": "{\n  \"code\": \"GIAM30K\",\n  \"discountType\": \"FIXED_AMOUNT\",\n  \"discountValue\": 30000,\n  \"minOrderAmount\": 80000,\n  \"maxDiscountAmount\": 30000,\n  \"validUntil\": \"2026-12-31T23:59:59.000Z\",\n  \"isActive\": true\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "raw": "{{baseUrl}}/vouchers",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "orders",
-                "{{currentOrderId}}",
-                "status"
+                "vouchers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "05. Cập nhật thông tin voucher (Method PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discountValue\": 35000,\n  \"minOrderAmount\": 90000,\n  \"maxDiscountAmount\": 35000,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/GIAM30K",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "GIAM30K"
+              ]
+            }
+          }
+        },
+        {
+          "name": "06. Cập nhật thông tin voucher (Method PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discountType\": \"FIXED_AMOUNT\",\n  \"discountValue\": 35000,\n  \"minOrderAmount\": 90000,\n  \"maxDiscountAmount\": 35000,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/GIAM30K",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "GIAM30K"
+              ]
+            }
+          }
+        },
+        {
+          "name": "07. Xóa hoặc vô hiệu hóa voucher",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/GIAM30K",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "GIAM30K"
               ]
             }
           }
@@ -1481,10 +1808,10 @@
       ]
     },
     {
-      "name": "06. Payments & VNPAY (Thanh toán)",
+      "name": "07. Payments & VNPAY (Thanh toán & Cổng Sandbox)",
       "item": [
         {
-          "name": "Lấy cấu hình test & số thẻ VNPAY Sandbox",
+          "name": "01. Lấy cấu hình test & số thẻ VNPAY Sandbox",
           "request": {
             "method": "GET",
             "url": {
@@ -1501,7 +1828,7 @@
           }
         },
         {
-          "name": "Tạo URL thanh toán VNPAY Sandbox",
+          "name": "02. Tạo URL thanh toán VNPAY Sandbox",
           "request": {
             "method": "POST",
             "header": [
@@ -1523,6 +1850,56 @@
                 "payments",
                 "vnpay",
                 "create-url"
+              ]
+            }
+          }
+        },
+        {
+          "name": "03. Tiếp nhận IPN Webhook trực tiếp từ VNPAY",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/ipn?vnp_ResponseCode=00",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "vnpay",
+                "ipn"
+              ],
+              "query": [
+                {
+                  "key": "vnp_ResponseCode",
+                  "value": "00"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "04. Nhận kết quả thanh toán từ VNPAY (Return URL)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay/return?format=json&vnp_ResponseCode=00",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments",
+                "vnpay",
+                "return"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "json"
+                },
+                {
+                  "key": "vnp_ResponseCode",
+                  "value": "00"
+                }
               ]
             }
           }
@@ -1618,195 +1995,7 @@
       ]
     },
     {
-      "name": "07. ERROR & EDGE CASES (Giảng viên thường test lỗi qua API)",
-      "item": [
-        {
-          "name": "1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/orders/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "me"
-              ]
-            }
-          }
-        },
-        {
-          "name": "2. Test 400 Validation Error (Thiếu trường bắt buộc, sai định dạng)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenCustomer}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerName\": \"\",\n  \"phone\": \"\",\n  \"items\": []\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
-            }
-          }
-        },
-        {
-          "name": "3. Test 400 BOM Tồn Kho (Đặt 9999 ly vượt quá nguyên liệu kho)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenCustomer}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Test Vuot Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
-            }
-          }
-        },
-        {
-          "name": "4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 20000\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/orders/validate-voucher",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "validate-voucher"
-              ]
-            }
-          }
-        },
-        {
-          "name": "5. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenBarista}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"reason\": \"Cố tình nhảy cóc trạng thái\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{currentOrderId}}",
-                "status"
-              ]
-            }
-          }
-        },
-        {
-          "name": "6. Test 403 IDOR (Khách hàng cố tình xem đơn hàng của người khác)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{tokenCustomer}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "o1111111-1111-1111-1111-111111111111"
-              ]
-            }
-          }
-        },
-        {
-          "name": "7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Idempotency-Key",
-                "value": "order-pay-key-001"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/payments",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "payments"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "08. Promotions & Vouchers (Khuyến mãi)",
+      "name": "08. Promotions & Vouchers (Kiểm tra nghiệp vụ & Áp dụng)",
       "item": [
         {
           "name": "Kiểm tra Voucher giảm tiền cố định đang hoạt động - GIAM20K (Positive Test)",
@@ -2494,6 +2683,345 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"code\": \"BREWLITE\",\n  \"subtotal\": 200000\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. ERROR & EDGE CASES (Giảng viên thường test lỗi qua API)",
+      "item": [
+        {
+          "name": "1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Test 400 Validation Error (Thiếu trường bắt buộc, sai định dạng)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"\",\n  \"phone\": \"\",\n  \"items\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Test 400 BOM Tồn Kho (Đặt 9999 ly vượt quá nguyên liệu kho)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerName\": \"Test Vuot Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"GIAM20K\",\n  \"subtotal\": 20000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers",
+                "validate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Test 409 Conflict (Tạo voucher trùng mã code đã tồn tại)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. Test 400 Bad Request (Tạo voucher phần trăm sai: discountValue > 100)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SUPER150\",\n  \"discountType\": \"PERCENTAGE\",\n  \"discountValue\": 150\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vouchers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vouchers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenBarista}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\",\n  \"reason\": \"Cố tình nhảy cóc trạng thái\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Test 403 IDOR (Khách hàng cố tình xem đơn hàng của người khác)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "o1111111-1111-1111-1111-111111111111"
+              ]
+            }
+          }
+        },
+        {
+          "name": "9. Test 400 Chặn Hủy Đơn khi Đã Pha Chế (PREPARING/READY/COMPLETED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cố tình hủy khi đơn đã pha chế\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "10. Test 403 IDOR Chặn Hủy Đơn của người khác",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Cố tình hủy đơn của tài khoản khác\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "o1111111-1111-1111-1111-111111111111",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "11. Test 400 Chặn Hủy Đơn 2 lần (Đơn đã CANCELLED trước đó)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCustomer}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Hủy lại đơn đã hủy trước đó\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{currentOrderId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{currentOrderId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "order-pay-key-001"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{currentOrderId}}\",\n  \"method\": \"MOMO\",\n  \"mockSuccess\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payments"
+              ]
             }
           }
         }

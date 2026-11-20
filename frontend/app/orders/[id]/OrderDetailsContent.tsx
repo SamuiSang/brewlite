@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, MapPin, ArrowRight } from 'lucide-react';
+import { Check, MapPin, ArrowRight, AlertCircle, X } from 'lucide-react';
 import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 
@@ -13,8 +13,15 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const authToken = useCartStore((state) => state.authToken);
   const authUser = useCartStore((state) => state.authUser);
   const profile = useCartStore((state) => state.profile);
+  const cancelOrder = useCartStore((state) => state.cancelOrder);
+  const fetchMyOrders = useCartStore((state) => state.fetchMyOrders);
+
   const [apiOrder, setApiOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -28,16 +35,21 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
         if (authToken) {
           headers['Authorization'] = `Bearer ${authToken}`;
         }
-        const res = await fetch(`${apiUrl}/orders/code/${encodeURIComponent(code)}`, {
+        let res = await fetch(`${apiUrl}/orders/code/${encodeURIComponent(code)}`, {
           headers,
         });
+        if (!res.ok) {
+          res = await fetch(`${apiUrl}/orders/${encodeURIComponent(orderId)}`, {
+            headers,
+          });
+        }
 
         if (res.ok) {
           const o = await res.json();
           if (o && o.id) {
             const total = Number(o.totalAmount || o.subtotal || 0);
             setApiOrder({
-              id: code,
+              id: o.id,
               orderCode: o.orderCode || `#${code}`,
               customerName: o.user?.fullName || o.customerName || profile?.name || authUser?.fullName || 'bạn',
               status: o.status,
@@ -49,10 +61,12 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                   : o.status === 'PREPARING'
                   ? 'Đang pha chế'
                   : o.status === 'READY'
-                  ? 'Sẵn sàng'
+                  ? 'Đã sẵn sàng lấy'
                   : o.status === 'CANCELLED'
-                  ? 'Đã hủy'
-                  : 'Đang chờ',
+                  ? 'Đã hủy đơn'
+                  : o.status === 'PAYMENT_FAILED'
+                  ? 'Thanh toán lỗi / Đã hủy'
+                  : 'Chờ thanh toán',
               date: new Date(o.createdAt).toLocaleDateString('vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -92,6 +106,32 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
 
   const orderFromStore = mounted ? getOrderById(orderId) : undefined;
   const order = apiOrder || orderFromStore;
+
+  const handleCancel = async () => {
+    if (!order?.id) return;
+    setCancelling(true);
+    setCancelError(null);
+    const res = await cancelOrder(order.id, cancelReason);
+    setCancelling(false);
+    if (res.success) {
+      setShowCancelModal(false);
+      setCancelReason('');
+      setApiOrder((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              status: 'CANCELLED',
+              statusLabel: 'Đã hủy đơn',
+              active: false,
+            }
+          : prev,
+      );
+    } else {
+      setCancelError(res.message || 'Không thể hủy đơn hàng');
+    }
+  };
+
+  const canCancel = order && ['PENDING', 'PAYMENT_FAILED', 'PAID'].includes(order.status);
 
   if (!order && loading) {
     return (
@@ -185,126 +225,158 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
                 <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
                   Theo dõi đơn hàng
                 </h3>
-                <span className="bg-[#d5e3d4] text-[#163d2c] text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full">
+                <span
+                  className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full ${
+                    order.status === 'CANCELLED' || order.status === 'PAYMENT_FAILED'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                      : order.status === 'PENDING'
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-[#d5e3d4] text-[#163d2c]'
+                  }`}
+                >
                   {order.statusLabel || 'Đang xử lý'}
                 </span>
               </div>
 
-              {/* Progress Steps */}
-              <div className="grid grid-cols-5 gap-2 pt-2">
-                {/* Step 1 */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-[#163d2c] text-white flex items-center justify-center mb-2 shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3]" />
+              {order.status === 'CANCELLED' ? (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-sm text-rose-900">Đơn hàng đã được hủy</h4>
+                    <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                      Đơn hàng này đã bị hủy. Hệ thống đã tự động hoàn trả số lượng nguyên liệu về kho và hoàn lại điểm tích lũy (nếu bạn có sử dụng điểm khi đặt đơn).
+                    </p>
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-[#546b5a]">
-                    ĐANG CHỜ
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
-                    Đã ghi nhận
-                  </span>
                 </div>
-
-                {/* Step 2 */}
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
-                      ['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status)
-                        ? 'bg-[#163d2c] text-white'
-                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
-                    }`}
-                  >
-                    {['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
-                    )}
+              ) : order.status === 'PAYMENT_FAILED' ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-sm text-amber-900">Thanh toán không thành công</h4>
+                    <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                      Giao dịch thanh toán chưa hoàn tất hoặc đã bị hủy. Bạn có thể nhấn nút Hủy đơn hàng bên dưới nếu không muốn tiếp tục.
+                    </p>
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-[#546b5a]">
-                    ĐÃ THANH TOÁN
-                  </span>
-                  <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
-                    Đã nhận tiền
-                  </span>
                 </div>
+              ) : (
+                <>
+                  {/* Progress Steps */}
+                  <div className="grid grid-cols-5 gap-2 pt-2">
+                    {/* Step 1 */}
+                    <div className="flex flex-col items-center text-center">
+                      <div className="w-8 h-8 rounded-full bg-[#163d2c] text-white flex items-center justify-center mb-2 shadow-xs">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#546b5a]">
+                        ĐANG CHỜ
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
+                        Đã ghi nhận
+                      </span>
+                    </div>
 
-                {/* Step 3 */}
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
-                      ['PREPARING', 'READY', 'COMPLETED'].includes(order.status)
-                        ? 'bg-[#163d2c] text-white'
-                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
-                    }`}
-                  >
-                    {['PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
-                    )}
+                    {/* Step 2 */}
+                    <div className="flex flex-col items-center text-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                          ['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status)
+                            ? 'bg-[#163d2c] text-white'
+                            : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                        }`}
+                      >
+                        {['PAID', 'PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#546b5a]">
+                        ĐÃ THANH TOÁN
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#14241b] mt-0.5">
+                        Đã nhận tiền
+                      </span>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="flex flex-col items-center text-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                          ['PREPARING', 'READY', 'COMPLETED'].includes(order.status)
+                            ? 'bg-[#163d2c] text-white'
+                            : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                        }`}
+                      >
+                        {['PREPARING', 'READY', 'COMPLETED'].includes(order.status) ? (
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
+                        ĐANG CHUẨN BỊ
+                      </span>
+                      <span className="text-[11px] font-medium text-[#708076] mt-0.5">
+                        Đang pha chế
+                      </span>
+                    </div>
+
+                    {/* Step 4 */}
+                    <div className="flex flex-col items-center text-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                          ['READY', 'COMPLETED'].includes(order.status)
+                            ? 'bg-[#163d2c] text-white'
+                            : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                        }`}
+                      >
+                        {['READY', 'COMPLETED'].includes(order.status) ? (
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
+                        SẴN SÀNG
+                      </span>
+                      <span className="text-[11px] font-medium text-[#708076] mt-0.5">
+                        Chờ nhận
+                      </span>
+                    </div>
+
+                    {/* Step 5 */}
+                    <div className="flex flex-col items-center text-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
+                          order.status === 'COMPLETED'
+                            ? 'bg-[#163d2c] text-white'
+                            : 'border-2 border-[#b5c7bc] text-[#8aa193]'
+                        }`}
+                      >
+                        {order.status === 'COMPLETED' ? (
+                          <Check className="w-4 h-4 stroke-[3]" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
+                        HOÀN TẤT
+                      </span>
+                      <span className="text-[11px] font-medium text-[#708076] mt-0.5">
+                        Thưởng thức
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
-                    ĐANG CHUẨN BỊ
-                  </span>
-                  <span className="text-[11px] font-medium text-[#708076] mt-0.5">
-                    Đang pha chế
-                  </span>
-                </div>
 
-                {/* Step 4 */}
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
-                      ['READY', 'COMPLETED'].includes(order.status)
-                        ? 'bg-[#163d2c] text-white'
-                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
-                    }`}
-                  >
-                    {['READY', 'COMPLETED'].includes(order.status) ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
-                    )}
-                  </div>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
-                    SẴN SÀNG
-                  </span>
-                  <span className="text-[11px] font-medium text-[#708076] mt-0.5">
-                    Chờ nhận
-                  </span>
-                </div>
-
-                {/* Step 5 */}
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 shadow-xs ${
-                      order.status === 'COMPLETED'
-                        ? 'bg-[#163d2c] text-white'
-                        : 'border-2 border-[#b5c7bc] text-[#8aa193]'
-                    }`}
-                  >
-                    {order.status === 'COMPLETED' ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-[#b5c7bc]" />
-                    )}
-                  </div>
-                  <span className="text-[9px] font-bold tracking-wider uppercase text-[#88998e]">
-                    HOÀN TẤT
-                  </span>
-                  <span className="text-[11px] font-medium text-[#708076] mt-0.5">
-                    Thưởng thức
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-[#708076] pt-3 border-t border-[#f2eee7]">
-                {order.status === 'READY'
-                  ? 'Đơn hàng đã sẵn sàng! Mời bạn tới quầy nhận đồ uống.'
-                  : order.status === 'COMPLETED'
-                  ? 'Đơn hàng đã hoàn tất. Chúc bạn một ngày tràn đầy năng lượng!'
-                  : 'Đơn hàng đang được chuẩn bị. Chúng tôi sẽ cập nhật trạng thái khi bạn có thể đến nhận hàng.'}
-              </p>
+                  <p className="text-xs text-[#708076] pt-3 border-t border-[#f2eee7]">
+                    {order.status === 'READY'
+                      ? 'Đơn hàng đã sẵn sàng! Mời bạn tới quầy nhận đồ uống.'
+                      : order.status === 'COMPLETED'
+                      ? 'Đơn hàng đã hoàn tất. Chúc bạn một ngày tràn đầy năng lượng!'
+                      : 'Đơn hàng đang được chuẩn bị. Chúng tôi sẽ cập nhật trạng thái khi bạn có thể đến nhận hàng.'}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* See You at the Counter Card */}
@@ -423,6 +495,20 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-3">
+              {canCancel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCancelModal(true);
+                    setCancelError(null);
+                  }}
+                  className="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Hủy đơn hàng</span>
+                </button>
+              )}
+
               <Link
                 href="/orders"
                 className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98] text-center"
@@ -441,6 +527,58 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Modal Hủy Đơn Hàng */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e8e2d7]">
+            <h3 className="font-serif text-xl font-bold text-[#14241b] mb-2">
+              Xác nhận hủy đơn hàng {order.orderCode || `#${order.id}`}
+            </h3>
+            <p className="text-xs text-[#6e8074] mb-4">
+              Bạn có chắc chắn muốn hủy đơn hàng này không? Lưu ý: Đơn hàng chỉ có thể hủy khi chưa được đưa vào pha chế.
+            </p>
+
+            {cancelError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {cancelError}
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-[#14241b] mb-1.5">
+                Lý do hủy đơn (không bắt buộc):
+              </label>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Ví dụ: Đổi ý, đặt nhầm món, bận việc gấp..."
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#d6cfc4] focus:outline-hidden focus:border-[#163d2c]"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={cancelling}
+                className="px-4 py-2.5 rounded-xl border border-[#d6cfc4] text-xs font-semibold text-[#526359] hover:bg-[#f7f4ee] cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {cancelling ? 'Đang xử lý...' : 'Xác nhận hủy đơn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

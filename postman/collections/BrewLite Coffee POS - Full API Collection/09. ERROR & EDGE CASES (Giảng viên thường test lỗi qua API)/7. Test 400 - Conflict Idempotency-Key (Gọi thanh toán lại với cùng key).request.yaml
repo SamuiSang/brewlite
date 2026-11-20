@@ -1,0 +1,3 @@
+name: "7. Test 400 / Conflict Idempotency-Key (Gọi thanh toán lại với cùng key)"
+method: POST
+url: "{{baseUrl}}/payments"

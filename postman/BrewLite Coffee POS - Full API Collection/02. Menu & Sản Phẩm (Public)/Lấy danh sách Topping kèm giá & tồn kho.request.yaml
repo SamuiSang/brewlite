@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/toppings"
+method: GET
+order: 2000

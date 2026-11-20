@@ -1,0 +1,3 @@
+name: "1. Test 401 Unauthorized (Gọi API cần đăng nhập mà không có Token)"
+method: GET
+url: "{{baseUrl}}/orders/me"

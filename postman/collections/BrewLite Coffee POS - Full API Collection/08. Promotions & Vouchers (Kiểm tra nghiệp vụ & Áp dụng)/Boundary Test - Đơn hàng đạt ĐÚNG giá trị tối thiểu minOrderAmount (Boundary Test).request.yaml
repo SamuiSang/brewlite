@@ -1,0 +1,3 @@
+name: "Boundary Test - Đơn hàng đạt ĐÚNG giá trị tối thiểu minOrderAmount (Boundary Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

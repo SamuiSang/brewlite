@@ -1,0 +1,3 @@
+name: "7. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)"
+method: PATCH
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"

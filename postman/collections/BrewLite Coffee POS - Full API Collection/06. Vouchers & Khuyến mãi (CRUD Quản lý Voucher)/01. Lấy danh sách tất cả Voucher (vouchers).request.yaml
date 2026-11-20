@@ -1,0 +1,3 @@
+name: "01. Lấy danh sách tất cả Voucher (vouchers)"
+method: GET
+url: "{{baseUrl}}/vouchers"

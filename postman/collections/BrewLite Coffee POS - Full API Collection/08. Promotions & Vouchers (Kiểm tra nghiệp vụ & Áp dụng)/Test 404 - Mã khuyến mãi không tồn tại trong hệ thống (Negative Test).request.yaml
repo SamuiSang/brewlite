@@ -1,0 +1,3 @@
+name: "Test 404 - Mã khuyến mãi không tồn tại trong hệ thống (Negative Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

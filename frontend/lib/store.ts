@@ -76,7 +76,7 @@ export interface Order {
   orderCode?: string;
   date: string;
   title: string;
-  status: 'PENDING' | 'PAID' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'PAID' | 'PAYMENT_FAILED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
   statusLabel: string;
   total: number;
   subtotal: number;
@@ -156,6 +156,7 @@ interface CartStore {
   clearAuth: () => void;
   fetchProfile: () => Promise<void>;
   fetchMyOrders: () => Promise<void>;
+  cancelOrder: (orderId: string, reason?: string) => Promise<{ success: boolean; message?: string }>;
 
   // Profile actions
   updateProfile: (updated: Partial<UserProfileState>) => void;
@@ -537,9 +538,11 @@ export const useCartStore = create<CartStore>()(
                     : 'Đơn hàng BrewLite';
 
               let statusLabel = 'Đang xử lý';
-              if (bo.status === 'PAID') statusLabel = 'Đã thanh toán · Chờ pha chế';
+              if (bo.status === 'PENDING') statusLabel = 'Chờ thanh toán';
+              else if (bo.status === 'PAID') statusLabel = 'Đã thanh toán · Chờ pha chế';
+              else if (bo.status === 'PAYMENT_FAILED') statusLabel = 'Thanh toán lỗi / Đã hủy';
               else if (bo.status === 'PREPARING') statusLabel = 'Đang pha chế';
-              else if (bo.status === 'READY') statusLabel = 'Đã sẵn sàng lấy';
+              else if (bo.status === 'READY') statusLabel = 'Đã làm xong · Sẵn sàng lấy';
               else if (bo.status === 'COMPLETED') statusLabel = 'Đã hoàn thành';
               else if (bo.status === 'CANCELLED') statusLabel = 'Đã hủy đơn';
 
@@ -559,7 +562,11 @@ export const useCartStore = create<CartStore>()(
                 orderNote: bo.notes || '',
                 items: itemsList,
                 pointsEarned: bo.pointsEarned || 0,
-                active: bo.status === 'PAID' || bo.status === 'PREPARING',
+                active:
+                  bo.status === 'PENDING' ||
+                  bo.status === 'PAID' ||
+                  bo.status === 'PREPARING' ||
+                  bo.status === 'READY',
               };
             });
 
@@ -567,6 +574,41 @@ export const useCartStore = create<CartStore>()(
           }
         } catch (e) {
           console.error('Lỗi gọi /orders/me:', e);
+        }
+      },
+
+      cancelOrder: async (orderId: string, reason?: string) => {
+        const { authToken } = get();
+        if (!authToken) {
+          return { success: false, message: 'Vui lòng đăng nhập để thực hiện' };
+        }
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const res = await fetch(`${apiUrl}/orders/${orderId}/cancel`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ reason }),
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            await get().fetchMyOrders();
+            await get().fetchProfile();
+            return { success: true };
+          } else {
+            return {
+              success: false,
+              message: data.message || 'Không thể hủy đơn hàng',
+            };
+          }
+        } catch (e: any) {
+          return {
+            success: false,
+            message: e.message || 'Lỗi kết nối khi hủy đơn hàng',
+          };
         }
       },
 

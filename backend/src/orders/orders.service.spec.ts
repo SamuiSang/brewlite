@@ -539,4 +539,63 @@ describe('OrdersService (Task 10 - Optimistic Lock, Voucher, Loyalty, State Mach
       await expect(service.findMyOrders('')).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('Cancel Order API & Rules (cancelOrder)', () => {
+    it('cho phép Customer hủy đơn khi đơn ở trạng thái PENDING hoặc PAID', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-1',
+        status: 'PENDING',
+        userId: 'user-1',
+        orderItems: [],
+      });
+      prisma.order.update.mockResolvedValue({
+        id: 'ord-cancel-1',
+        status: 'CANCELLED',
+      });
+
+      await service.cancelOrder('ord-cancel-1', 'user-1', 'CUSTOMER', 'Đổi ý không mua nữa');
+      expect(prisma.order.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'ord-cancel-1' },
+          data: { status: 'CANCELLED' },
+        }),
+      );
+    });
+
+    it('chặn Customer hủy đơn của người khác (IDOR Protection)', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-2',
+        status: 'PENDING',
+        userId: 'user-999',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-2', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('Bạn không có quyền hủy đơn hàng của người khác');
+    });
+
+    it('chặn Customer hủy đơn nếu đơn đã vào làm (PREPARING, READY, COMPLETED)', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-3',
+        status: 'PREPARING',
+        userId: 'user-1',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-3', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('đã đưa vào pha chế hoặc sẵn sàng nhận');
+    });
+
+    it('chặn hủy đơn nếu đơn đã CANCELLED trước đó', async () => {
+      prisma.order.findUnique.mockResolvedValue({
+        id: 'ord-cancel-4',
+        status: 'CANCELLED',
+        userId: 'user-1',
+      });
+
+      await expect(
+        service.cancelOrder('ord-cancel-4', 'user-1', 'CUSTOMER'),
+      ).rejects.toThrow('Đơn hàng này đã được hủy trước đó');
+    });
+  });
 });

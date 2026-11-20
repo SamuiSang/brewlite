@@ -1,0 +1,3 @@
+name: "13. Tra cứu đơn hàng theo Order Code (VD: #1042 hoặc 1042)"
+method: GET
+url: "{{baseUrl}}/orders/code/1042"

@@ -1,4 +1,3 @@
-$kind: http-request
-url: "{{baseUrl}}/inventory/recipes"
+name: "Tổng quan công thức tất cả sản phẩm & COGS"
 method: GET
-order: 4000
+url: "{{baseUrl}}/inventory/recipes"

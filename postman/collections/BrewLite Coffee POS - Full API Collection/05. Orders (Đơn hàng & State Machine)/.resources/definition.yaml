@@ -1,2 +1,1 @@
-$kind: collection
-order: 5000
+name: "05. Orders (Đơn hàng & State Machine)"

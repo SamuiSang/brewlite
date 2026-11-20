@@ -1,0 +1,3 @@
+name: "Nhập kho nguyên liệu (Hỗ trợ quy đổi đơn vị kg->g)"
+method: POST
+url: "{{baseUrl}}/inventory/receipts"

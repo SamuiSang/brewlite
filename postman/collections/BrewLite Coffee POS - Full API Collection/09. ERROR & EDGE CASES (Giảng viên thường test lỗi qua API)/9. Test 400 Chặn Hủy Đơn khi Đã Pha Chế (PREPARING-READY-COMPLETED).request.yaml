@@ -1,0 +1,3 @@
+name: "9. Test 400 Chặn Hủy Đơn khi Đã Pha Chế (PREPARING/READY/COMPLETED)"
+method: POST
+url: "{{baseUrl}}/orders/{{currentOrderId}}/cancel"

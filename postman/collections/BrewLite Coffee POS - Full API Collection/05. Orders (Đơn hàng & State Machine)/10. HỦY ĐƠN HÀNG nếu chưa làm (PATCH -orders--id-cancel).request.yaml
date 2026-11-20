@@ -1,0 +1,3 @@
+name: "10. HỦY ĐƠN HÀNG nếu chưa làm (PATCH /orders/:id/cancel)"
+method: PATCH
+url: "{{baseUrl}}/orders/{{currentOrderId}}/cancel"

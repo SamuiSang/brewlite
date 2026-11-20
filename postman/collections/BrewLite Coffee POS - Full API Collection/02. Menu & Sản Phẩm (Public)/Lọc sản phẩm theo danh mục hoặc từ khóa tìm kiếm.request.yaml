@@ -1,6 +1,3 @@
-$kind: http-request
-url: "{{baseUrl}}/products?search=Cà phê"
+name: "Lọc sản phẩm theo danh mục hoặc từ khóa tìm kiếm"
 method: GET
-queryParams:
-  search: Cà phê
-order: 4000
+url: "{{baseUrl}}/products?search=Cà phê"

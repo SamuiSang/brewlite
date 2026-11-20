@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, ArrowRight, Check, AlertCircle, Coffee } from 'lucide-react';
+import { Minus, Plus, Check, AlertCircle, Coffee } from 'lucide-react';
 import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
 import {
@@ -56,11 +56,11 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
     return cartItems.find((it) => it.drinkId === drinkId);
   }, [cartItems, drinkId]);
 
-  // Các tùy chọn người dùng đã chọn
-  const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L'>('L');
-  const [selectedMilk, setSelectedMilk] = useState<string>('oat');
+  // Các tùy chọn người dùng đã chọn (mặc định chưa chọn để khách tự do chọn theo sở thích)
+  const [selectedSize, setSelectedSize] = useState<'S' | 'M' | 'L' | null>(null);
+  const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
   const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
-  const [drinkNote, setDrinkNote] = useState<string>('Ít ngọt, nhiều đá');
+  const [drinkNote, setDrinkNote] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
 
   // Nạp thông tin sản phẩm và toppings từ API (Task 4)
@@ -98,7 +98,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   useEffect(() => {
     if (existingCartItem) {
       setSelectedSize(existingCartItem.size);
-      setSelectedMilk(existingCartItem.milk || 'dairy');
+      setSelectedMilk(existingCartItem.milk || null);
       setSelectedToppings(existingCartItem.toppings || []);
       setDrinkNote(existingCartItem.note || '');
       setQuantity(existingCartItem.quantity || 1);
@@ -108,12 +108,23 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
   // TÍNH TOÁN GIÁ TIỀN THỜI GIAN THỰC (Realtime Pricing Calculation)
   const basePrice = product ? product.basePrice : 0;
 
-  // Chốt chặn tồn kho: Kiểm tra món hết hàng khi stock <= 0
-  const isOutOfStock = Boolean(product && (product.stock ?? 0) <= 0);
+  // Danh sách nguyên liệu không đủ tồn kho để pha chế ít nhất 1 ly (stock < amount)
+  const outOfStockIngredients = useMemo(() => {
+    if (!product?.recipeItems || product.recipeItems.length === 0) return [];
+    return product.recipeItems.filter((item) => {
+      if (!item.ingredient) return false;
+      return (item.ingredient.stock ?? 0) < item.amount;
+    });
+  }, [product]);
 
-  // Phụ thu Size
-  const sizeOption = SIZES.find((s) => s.size === selectedSize) || SIZES[0];
-  const sizeExtra = sizeOption.extra;
+  // Chốt chặn tồn kho: Hết hàng khi product.stock <= 0 HOẶC có nguyên liệu cấu thành bị hết
+  const isOutOfStock = Boolean(
+    product && ((product.stock ?? 0) <= 0 || outOfStockIngredients.length > 0)
+  );
+
+  // Phụ thu Size (chỉ tính phụ thu khi khách đã chọn kích cỡ)
+  const sizeOption = selectedSize ? SIZES.find((s) => s.size === selectedSize) : null;
+  const sizeExtra = sizeOption ? sizeOption.extra : 0;
 
   // Phụ thu Toppings
   const toppingsExtra = useMemo(() => {
@@ -152,15 +163,21 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
     // Không cho thêm vào giỏ nếu món đã hết hàng
     if (isOutOfStock) return;
 
-    const milkOption = MILK_OPTIONS.find((m) => m.id === selectedMilk);
+    // Bắt buộc phải chọn kích cỡ ly (Size) trước khi thêm vào giỏ
+    if (!selectedSize) return;
+
+    const activeSizeOption = SIZES.find((s) => s.size === selectedSize) || SIZES[0];
+    const milkOption = selectedMilk ? MILK_OPTIONS.find((m) => m.id === selectedMilk) : null;
     const toppingsLabels = selectedToppings
       .map((tId) => availableToppings.find((t) => t.id === tId)?.name)
       .filter(Boolean) as string[];
 
     const optionsLabelParts = [
-      `${sizeOption.size} (${sizeOption.label})`,
-      milkOption?.label.split('(')[0].trim() || 'Sữa tiêu chuẩn',
+      `${activeSizeOption.size} (${activeSizeOption.label})`,
     ];
+    if (milkOption) {
+      optionsLabelParts.push(milkOption.label.split('(')[0].trim());
+    }
     if (toppingsLabels.length > 0) {
       optionsLabelParts.push(...toppingsLabels);
     }
@@ -171,9 +188,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
       subtitle: product.subtitle,
       image: product.image,
       size: selectedSize,
-      sizeLabel: sizeOption.label,
-      milk: selectedMilk,
-      milkLabel: milkOption?.label || 'Sữa tươi tiêu chuẩn',
+      sizeLabel: activeSizeOption.label,
+      milk: selectedMilk || '',
+      milkLabel: milkOption?.label || 'Mặc định',
       toppings: selectedToppings,
       toppingsLabels,
       note: drinkNote,
@@ -288,15 +305,92 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                   {product.name}
                 </h2>
 
-                {/* Khung cảnh báo khi hết hàng hoặc thiếu nguyên liệu */}
+                {/* Khung cảnh báo khi hết hàng hoặc thiếu nguyên liệu cấu thành */}
                 {isOutOfStock && (
                   <div className="bg-[#261514] border border-rose-500/50 rounded-2xl p-4 flex items-start gap-3 text-xs text-rose-200 mb-5 shadow-sm">
                     <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-sm text-rose-300">Món này hiện đang tạm hết hàng</p>
-                      <p className="text-[11px] text-rose-200/85 mt-1 leading-relaxed">
-                        Quán hiện tại đã hết nguyên liệu pha chế cho món này. Quý khách vui lòng chọn món khác trong thực đơn nhé!
+                      <p className="text-[11px] text-rose-200/90 mt-1 leading-relaxed">
+                        {outOfStockIngredients.length > 0 ? (
+                          <>
+                            Kho hiện tại không đủ nguyên liệu:{' '}
+                            <strong className="text-white underline decoration-rose-400">
+                              {outOfStockIngredients.map((i) => i.ingredient?.name || 'Nguyên liệu').join(', ')}
+                            </strong>
+                            . Quán tạm thời chưa thể pha chế món này, quý khách vui lòng chọn món khác trong thực đơn nhé!
+                          </>
+                        ) : (
+                          'Quán hiện tại đã hết nguyên liệu pha chế cho món này. Quý khách vui lòng chọn món khác trong thực đơn nhé!'
+                        )}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Khối Hiển thị Định lượng nguyên liệu pha chế cho 1 ly (VD: 20g Hạt cà phê · 30ml Sữa đặc · 1 Ly nhựa) */}
+                {product.recipeItems && product.recipeItems.length > 0 && (
+                  <div className="bg-[#123023] border border-[#234d39] rounded-2xl p-4 mb-5 shadow-xs">
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <Coffee className="w-4 h-4 text-[#d6955b]" />
+                        <span className="text-xs font-bold text-[#e4ede3] uppercase tracking-wider">
+                          Định lượng nguyên liệu pha chế (1 ly)
+                        </span>
+                      </div>
+                      {outOfStockIngredients.length > 0 ? (
+                        <span className="text-[10px] font-semibold text-rose-300 bg-rose-950/70 border border-rose-500/40 px-2 py-0.5 rounded-full">
+                          Thiếu {outOfStockIngredients.length} nguyên liệu
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-[#a3b8ab] bg-[#1a4432] px-2 py-0.5 rounded-full">
+                          Chuẩn công thức quầy
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#d6ede0]">
+                      {product.recipeItems.map((item, index) => {
+                        const isMissing = item.ingredient && (item.ingredient.stock ?? 0) < item.amount;
+                        const ingName = item.ingredient?.name || 'Nguyên liệu';
+                        const unitStr = (item.ingredient?.unit || '').trim();
+                        const isLast = index === product.recipeItems!.length - 1;
+
+                        // Việt hóa đơn vị 'piece' từ database backend thành 'cái'
+                        const normalizedUnit = unitStr.toLowerCase() === 'piece' ? 'cái' : unitStr;
+
+                        // Định dạng số lượng và đơn vị: 20g, 120ml viết liền; nhưng 1 cái, 1 ly có khoảng trắng tránh dính chữ
+                        const formattedAmount = ['g', 'ml', 'kg', 'l', 'oz'].includes(normalizedUnit.toLowerCase())
+                          ? `${item.amount}${normalizedUnit}`
+                          : normalizedUnit
+                          ? `${item.amount} ${normalizedUnit}`
+                          : `${item.amount}`;
+
+                        // Viết thường chữ cái đầu của nguyên liệu sau định lượng để câu văn liền mạch tự nhiên (VD: 18g hạt..., 1 cái ly...)
+                        const displayIngName = ingName ? ingName.charAt(0).toLowerCase() + ingName.slice(1) : '';
+
+                        return (
+                          <React.Fragment key={item.id || index}>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg transition-colors ${
+                                isMissing
+                                  ? 'bg-rose-950/80 border border-rose-500/50 text-rose-200 font-semibold'
+                                  : 'bg-[#1a4432] text-[#d6ede0] border border-[#234d39]'
+                              }`}
+                            >
+                              <span>
+                                <strong>{formattedAmount}</strong> {displayIngName}
+                              </span>
+                              {isMissing && (
+                                <span className="text-[10px] text-rose-400 font-bold ml-1">
+                                  (Hết)
+                                </span>
+                              )}
+                            </span>
+                            {!isLast && <span className="text-[#527764] select-none">·</span>}
+                          </React.Fragment>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -314,7 +408,9 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                     ✓ Pha chế tươi mới khi nhận đơn
                   </span>
                   <span className="inline-block bg-[#1a4432] px-2.5 py-1 rounded-md">
-                    ✓ Tùy chỉnh sữa yến mạch
+                    {selectedMilk
+                      ? `✓ Tùy chỉnh ${MILK_OPTIONS.find((m) => m.id === selectedMilk)?.label.split('(')[0].trim().toLowerCase() || 'sữa'}`
+                      : '✓ Tùy chỉnh sữa theo yêu cầu'}
                   </span>
                 </div>
               </div>
@@ -335,11 +431,15 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 1. CHỌN SIZE (S, M, L) - Task 4 */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-3">
-                Kích cỡ ly (Size) {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
+                Kích cỡ ly (Size) {isOutOfStock ? (
+                  <span className="text-[11px] text-rose-600 font-normal normal-case">(Hết hàng)</span>
+                ) : !selectedSize ? (
+                  <span className="text-[11px] text-[#b0783a] font-normal normal-case">(Chưa chọn)</span>
+                ) : null}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {SIZES.map((s) => {
-                  const isSelected = selectedSize === s.size;
+                  const isSelected = !isOutOfStock && selectedSize === s.size;
                   const itemPrice = product.basePrice + s.extra;
                   return (
                     <button
@@ -351,7 +451,7 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                         isOutOfStock
                           ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
                           : isSelected
-                          ? 'bg-[#163d2c] text-white border-[#163d2c] shadow-sm scale-[1.02] cursor-pointer'
+                          ? 'bg-[#163d2c] text-white border-[#163d2c] shadow-sm scale-[1.02] cursor-pointer ring-2 ring-[#163d2c]/20'
                           : 'bg-[#faf8f4] hover:bg-[#f0ebe1] text-[#33443a] border-[#e8e2d7] cursor-pointer'
                       }`}
                     >
@@ -373,15 +473,23 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 2. TÙY CHỌN SỮA (Milk Preference) */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-3">
-                Loại sữa pha chế {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
+                Loại sữa pha chế {isOutOfStock ? (
+                  <span className="text-[11px] text-rose-600 font-normal normal-case">(Hết hàng)</span>
+                ) : !selectedMilk ? (
+                  <span className="text-[11px] text-[#708076] font-normal normal-case">(Tùy chọn)</span>
+                ) : null}
               </label>
               <div className="space-y-2.5">
                 {MILK_OPTIONS.map((m) => {
-                  const isSelected = selectedMilk === m.id;
+                  const isSelected = !isOutOfStock && selectedMilk === m.id;
                   return (
                     <div
                       key={m.id}
-                      onClick={() => !isOutOfStock && setSelectedMilk(m.id)}
+                      onClick={() => {
+                        if (!isOutOfStock) {
+                          setSelectedMilk((prev) => (prev === m.id ? null : m.id));
+                        }
+                      }}
                       className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
                         isOutOfStock
                           ? 'bg-[#f4efe7] border-[#e8e2d7] opacity-50 cursor-not-allowed'
@@ -415,7 +523,11 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block">
-                  Thêm Topping ({selectedToppings.length} đã chọn)
+                  Thêm Topping {isOutOfStock ? (
+                    <span className="text-[11px] text-rose-600 font-normal normal-case">(Hết hàng)</span>
+                  ) : (
+                    `(${selectedToppings.length} đã chọn)`
+                  )}
                 </label>
                 <span className="text-[11px] text-[#708076]">Tùy chọn thêm</span>
               </div>
@@ -476,12 +588,12 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
             {/* 4. GHI CHÚ ĐỒ UỐNG (Drink note) */}
             <div className="mb-6">
               <label className="text-xs font-bold text-[#163d2c] uppercase tracking-wider block mb-2">
-                Ghi chú cho Barista (Tùy chọn) {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Tạm khóa)</span>}
+                Ghi chú cho Barista (Tùy chọn) {isOutOfStock && <span className="text-[11px] text-rose-600 font-normal normal-case">(Hết hàng)</span>}
               </label>
               <input
                 type="text"
                 disabled={isOutOfStock}
-                value={drinkNote}
+                value={isOutOfStock ? '' : drinkNote}
                 onChange={(e) => setDrinkNote(e.target.value)}
                 placeholder={isOutOfStock ? "Món này hiện đang tạm hết hàng..." : "VD: Ít đá, 50% đường, mang đi..."}
                 className="w-full text-xs px-4 py-3 rounded-xl border border-[#e8e2d7] bg-[#faf8f4] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#163d2c] text-[#163d2c] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -490,21 +602,21 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
 
             {/* 5. BẢNG TÍNH GIÁ CHI TIẾT (Price Breakdown) - Đúng chuẩn wireframe & Figma */}
             <div className={`bg-[#faf8f4] p-4 rounded-2xl border border-[#e8e2d7] space-y-2 mb-6 text-xs ${
-              isOutOfStock ? 'opacity-60' : ''
+              isOutOfStock ? 'opacity-75 bg-[#f7f4ee]' : ''
             }`}>
               <div className="flex justify-between text-[#6e7d73]">
                 <span>Giá gốc sản phẩm:</span>
                 <span className="font-semibold text-[#14241b]">{formatVND(basePrice)}</span>
               </div>
 
-              {sizeExtra > 0 && (
+              {!isOutOfStock && sizeOption && sizeOption.extra > 0 && (
                 <div className="flex justify-between text-[#6e7d73]">
                   <span>Phụ thu Size {sizeOption.size} ({sizeOption.label}):</span>
-                  <span className="font-semibold text-[#163d2c]">+{formatVND(sizeExtra)}</span>
+                  <span className="font-semibold text-[#163d2c]">+{formatVND(sizeOption.extra)}</span>
                 </div>
               )}
 
-              {toppingsExtra > 0 && (
+              {!isOutOfStock && toppingsExtra > 0 && (
                 <div className="flex justify-between text-[#6e7d73]">
                   <span>Phụ thu Toppings ({selectedToppings.length} loại):</span>
                   <span className="font-semibold text-[#163d2c]">+{formatVND(toppingsExtra)}</span>
@@ -513,7 +625,13 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
 
               <div className="flex justify-between text-[#163d2c] pt-2 border-t border-[#eae5dc] font-bold">
                 <span>Đơn giá 1 ly:</span>
-                <span>{formatVND(unitPrice)}</span>
+                {isOutOfStock ? (
+                  <span className="text-rose-600 font-semibold">Tạm ngưng phục vụ</span>
+                ) : !selectedSize ? (
+                  <span className="text-[#6e7d73] font-normal">{formatVND(unitPrice)} <span className="text-[10px] text-[#b0783a] font-normal">(chưa chọn size)</span></span>
+                ) : (
+                  <span>{formatVND(unitPrice)}</span>
+                )}
               </div>
             </div>
 
@@ -560,26 +678,30 @@ export default function CustomizeContent({ drinkId }: { drinkId: string }) {
                 </button>
               </div>
 
-              {/* Nút Thêm vào giỏ hàng (căn giữa chữ và ẩn 0đ khi hết hàng) */}
+              {/* Nút Thêm vào giỏ hàng (căn giữa chữ và ẩn 0đ khi hết hàng hoặc chưa chọn size) */}
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={isOutOfStock}
+                disabled={isOutOfStock || !selectedSize}
                 className={`flex-1 py-3.5 px-6 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center ${
                   isOutOfStock
                     ? 'bg-neutral-400 text-neutral-100 cursor-not-allowed justify-center shadow-none'
+                    : !selectedSize
+                    ? 'bg-[#d8e2dc] text-[#55695c] cursor-not-allowed justify-center shadow-none'
                     : 'bg-[#163d2c] hover:bg-[#1a4734] text-white cursor-pointer justify-between active:scale-[0.99]'
                 }`}
               >
                 <span>
                   {isOutOfStock
                     ? 'Món này tạm hết hàng'
+                    : !selectedSize
+                    ? 'Vui lòng chọn Size ly'
                     : existingCartItem
                     ? 'Cập nhật giỏ hàng'
                     : 'Thêm vào giỏ'}
                 </span>
-                {/* Chỉ hiện giá tiền khi món CÒN HÀNG */}
-                {!isOutOfStock && (
+                {/* Chỉ hiện giá tiền khi món CÒN HÀNG và ĐÃ CHỌN SIZE */}
+                {!isOutOfStock && selectedSize && (
                   <span className="font-serif font-bold text-base text-[#d6955b]">
                     {formatVND(totalPrice)}
                   </span>

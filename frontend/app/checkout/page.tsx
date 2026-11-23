@@ -233,6 +233,7 @@ export default function CheckoutPage() {
                       )?.id || it.drinkId || defaultProductId,
                     size: it.size,
                     qty: it.quantity,
+                    toppingIds: it.toppings && it.toppings.length > 0 ? it.toppings : undefined,
                   }))
                 : [{ productId: defaultProductId, size: 'M', qty: 1 }],
           }),

@@ -3,9 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, MapPin, ArrowRight, AlertCircle, X } from 'lucide-react';
+import { Check, MapPin, ArrowRight, AlertCircle, X, Copy } from 'lucide-react';
 import { formatVND } from '@/lib/data';
 import { useCartStore } from '@/lib/store';
+
+function formatPickupCode(id: string, orderCode?: string): string {
+  const raw = (orderCode || '').trim();
+  if (raw && raw.length < 20) {
+    return raw.startsWith('#') ? raw : `#${raw}`;
+  }
+  const compact = String(id || '').replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase();
+  return compact ? `#${compact}` : '#BREW';
+}
 
 export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const [mounted, setMounted] = useState(false);
@@ -22,6 +31,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -159,11 +169,20 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
   }
 
   const items = order.items || [];
+  const pickupCode = formatPickupCode(order.id, order.orderCode);
   const displayName = order.customerName
     ? order.customerName.trim().split(' ').pop()
     : profile?.name
     ? profile.name.trim().split(' ').pop()
     : 'bạn';
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(pickupCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1800);
+    } catch {}
+  };
 
   return (
     <div className="flex-1 py-8 sm:py-12">
@@ -174,7 +193,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
             Đơn hàng
           </Link>
           <span>/</span>
-          <span className="text-[#163d2c] font-semibold">#{order.id}</span>
+          <span className="text-[#163d2c] font-semibold">{pickupCode}</span>
         </div>
 
         {/* Title */}
@@ -193,23 +212,50 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Code, Timeline, Location */}
           <div className="lg:col-span-7 flex flex-col gap-6">
-            {/* Pickup Code Banner */}
-            <div className="bg-[#163d2c] text-white rounded-3xl overflow-hidden border border-[#234d39] shadow-sm flex flex-col sm:flex-row items-stretch">
-              <div className="p-6 sm:p-8 flex-1 flex flex-col justify-between">
-                <div>
-                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#d6955b] block mb-2">
+            {/* Pickup Code Banner - Gọn và dễ nhìn */}
+            <div className="bg-[#163d2c] text-white rounded-3xl border border-[#234d39] shadow-sm p-5 sm:p-6 flex items-center justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[#d6955b]">
                     MÃ NHẬN HÀNG
                   </span>
-                  <div className="font-serif text-5xl sm:text-6xl font-bold tracking-tight text-white mb-4">
-                    #{order.id}
-                  </div>
+                  <span className="text-[10px] font-medium text-[#a3b8ab] bg-[#1f4d38] px-2 py-0.5 rounded-full">
+                    Nhận tại quầy
+                  </span>
                 </div>
-                <p className="text-xs text-[#c2d1c7]">
-                  Vui lòng xuất trình mã này tại quầy khi đơn hàng sẵn sàng.
+
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="inline-flex items-center bg-[#102e21] border border-[#2b5b44] rounded-2xl px-4 py-2">
+                    <span className="font-mono text-2xl sm:text-3xl font-bold tracking-wider text-white tabular-nums">
+                      {pickupCode}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    title="Sao chép mã nhận hàng"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#d6ede0] hover:text-white bg-[#1f4d38] hover:bg-[#275c44] border border-[#2d664c] px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {copiedCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Đã chép</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Sao chép</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <p className="text-xs text-[#c2d1c7] mt-2.5">
+                  Xuất trình mã này tại quầy khi đơn hàng sẵn sàng.
                 </p>
               </div>
 
-              <div className="relative sm:w-52 h-44 sm:h-auto shrink-0 bg-[#224b37]">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden shrink-0 bg-[#224b37] border border-[#2b5b44] hidden sm:block">
                 <Image
                   src="/images/order-code-coffee.png"
                   alt="Specialty latte"
@@ -533,7 +579,7 @@ export default function OrderDetailsContent({ orderId }: { orderId: string }) {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#e8e2d7]">
             <h3 className="font-serif text-xl font-bold text-[#14241b] mb-2">
-              Xác nhận hủy đơn hàng {order.orderCode || `#${order.id}`}
+              Xác nhận hủy đơn hàng {pickupCode}
             </h3>
             <p className="text-xs text-[#6e8074] mb-4">
               Bạn có chắc chắn muốn hủy đơn hàng này không? Lưu ý: Đơn hàng chỉ có thể hủy khi chưa được đưa vào pha chế.

@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/vnpay/create-url"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "orderId": "{{vnpayOrderId}}",
+      "bankCode": "NCB",
+      "language": "vn"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('VNPAY URL created with paymentId and amount', function () {
+        pm.expect(res.vnpayUrl).to.include('vnp_SecureHash=');
+        pm.expect(res.paymentId).to.be.a('string');
+      });
+      pm.collectionVariables.set('vnpayPaymentId', res.paymentId);
+      pm.environment.set('vnpayPaymentId', res.paymentId);
+      pm.collectionVariables.set('vnpayAmountX100', String(Math.round(Number(res.amount) * 100)));
+      pm.environment.set('vnpayAmountX100', String(Math.round(Number(res.amount) * 100)));
+    language: text/javascript
+order: 8000

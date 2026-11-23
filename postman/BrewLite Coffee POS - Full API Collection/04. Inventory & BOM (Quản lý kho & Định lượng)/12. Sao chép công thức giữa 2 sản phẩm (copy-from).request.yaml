@@ -1,0 +1,16 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/recipes/p3333333-3333-3333-3333-333333333333/copy-from/p3333333-3333-3333-3333-222222222222"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenAdmin}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Recipe copied successfully', function () {
+        pm.expect(res).to.be.an('object');
+      });
+    language: text/javascript
+order: 12000

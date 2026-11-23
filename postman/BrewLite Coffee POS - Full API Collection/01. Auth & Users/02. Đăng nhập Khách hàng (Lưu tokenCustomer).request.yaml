@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "khachhang@gmail.com",
+      "password": "Password123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Has accessToken and CUSTOMER user', function () {
+        pm.expect(res.accessToken).to.be.a('string').and.not.be.empty;
+        pm.expect(res.user.role).to.eql('CUSTOMER');
+      });
+      if (res.accessToken) {
+        pm.collectionVariables.set('tokenCustomer', res.accessToken);
+        pm.environment.set('tokenCustomer', res.accessToken);
+        pm.collectionVariables.set('customerUserId', res.user.id);
+        pm.environment.set('customerUserId', res.user.id);
+      }
+    language: text/javascript
+order: 2000

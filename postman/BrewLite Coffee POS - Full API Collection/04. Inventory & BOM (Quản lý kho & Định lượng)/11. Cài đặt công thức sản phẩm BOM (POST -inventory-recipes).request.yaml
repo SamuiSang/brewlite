@@ -1,0 +1,49 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/recipes"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenAdmin}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "productId": "p3333333-3333-3333-3333-222222222222",
+      "recipes": [
+        {
+          "ingredientId": "ing-12",
+          "size": "M",
+          "amount": 15,
+          "wasteRate": 0
+        },
+        {
+          "ingredientId": "ing-17",
+          "size": "M",
+          "amount": 40,
+          "wasteRate": 0
+        },
+        {
+          "ingredientId": "ing-6",
+          "size": "M",
+          "amount": 150,
+          "wasteRate": 0
+        },
+        {
+          "ingredientId": "ing-7",
+          "size": "M",
+          "amount": 1,
+          "wasteRate": 0
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Recipe saved for Trà vải lài', function () {
+        pm.expect(res).to.be.an('object');
+      });
+    language: text/javascript
+order: 11000

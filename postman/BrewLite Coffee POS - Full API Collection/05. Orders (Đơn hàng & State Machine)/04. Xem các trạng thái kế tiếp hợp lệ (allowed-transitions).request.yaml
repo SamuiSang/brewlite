@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/orders/{{currentOrderId}}/allowed-transitions"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('PENDING allows PAID, PAYMENT_FAILED, CANCELLED', function () {
+        pm.expect(res.currentStatus).to.eql('PENDING');
+        pm.expect(res.allowedNextStatuses).to.include.members(['PAID', 'PAYMENT_FAILED', 'CANCELLED']);
+      });
+    language: text/javascript
+order: 4000

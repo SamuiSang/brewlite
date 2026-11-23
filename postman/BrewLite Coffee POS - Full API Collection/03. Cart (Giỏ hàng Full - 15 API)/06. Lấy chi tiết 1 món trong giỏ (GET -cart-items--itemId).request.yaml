@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/items/{{currentCartItemId}}"
+method: GET
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Returns requested cart item details', function () {
+        pm.expect(res.id).to.eql(pm.environment.get('currentCartItemId') || pm.collectionVariables.get('currentCartItemId'));
+        pm.expect(res.toppingDetails).to.be.an('array').that.is.not.empty;
+      });
+    language: text/javascript
+order: 6000

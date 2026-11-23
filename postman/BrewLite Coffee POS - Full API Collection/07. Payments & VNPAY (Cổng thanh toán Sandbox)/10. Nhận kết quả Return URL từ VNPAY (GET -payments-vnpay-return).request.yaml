@@ -1,0 +1,55 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/vnpay/return?format=json&vnp_Amount={{vnpayAmountX100}}&vnp_BankCode=NCB&vnp_Command=pay&vnp_CurrCode=VND&vnp_OrderInfo=Thanh%20toan%20don%20hang&vnp_PayDate=20261123103000&vnp_ResponseCode=00&vnp_TmnCode=8VXIB1MM&vnp_TransactionNo=14000001&vnp_TransactionStatus=00&vnp_TxnRef={{vnpayPaymentId}}&vnp_Version=2.1.0&vnp_SecureHash={{vnpaySecureHash}}"
+method: GET
+queryParams:
+  format: json
+  vnp_Amount: "{{vnpayAmountX100}}"
+  vnp_BankCode: NCB
+  vnp_Command: pay
+  vnp_CurrCode: VND
+  vnp_OrderInfo: "Thanh%20toan%20don%20hang"
+  vnp_PayDate: "20261123103000"
+  vnp_ResponseCode: "00"
+  vnp_TmnCode: 8VXIB1MM
+  vnp_TransactionNo: "14000001"
+  vnp_TransactionStatus: "00"
+  vnp_TxnRef: "{{vnpayPaymentId}}"
+  vnp_Version: 2.1.0
+  vnp_SecureHash: "{{vnpaySecureHash}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const secret = pm.environment.get('vnpHashSecret') || 'GJZGJZTKHBYBESRSLCLSPZXGFPEXVPGF';
+      const txnRef = pm.environment.get('vnpayPaymentId') || pm.collectionVariables.get('vnpayPaymentId');
+      const amount = pm.environment.get('vnpayAmountX100') || pm.collectionVariables.get('vnpayAmountX100');
+      const params = {
+        vnp_Amount: String(amount),
+        vnp_BankCode: 'NCB',
+        vnp_Command: 'pay',
+        vnp_CurrCode: 'VND',
+        vnp_OrderInfo: 'Thanh toan don hang',
+        vnp_PayDate: '20261123103000',
+        vnp_ResponseCode: '00',
+        vnp_TmnCode: '8VXIB1MM',
+        vnp_TransactionNo: '14000001',
+        vnp_TransactionStatus: '00',
+        vnp_TxnRef: String(txnRef),
+        vnp_Version: '2.1.0'
+      };
+      const sortedKeys = Object.keys(params).sort();
+      const signData = sortedKeys.map(k => `${k}=${encodeURIComponent(params[k]).replace(/%20/g, '+')}`).join('&');
+      const hash = CryptoJS.HmacSHA512(signData, secret).toString(CryptoJS.enc.Hex);
+      pm.environment.set('vnpaySecureHash', hash);
+      pm.collectionVariables.set('vnpaySecureHash', hash);
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('VNPAY Return returns success true and code 00', function () {
+        pm.expect(res.success).to.eql(true);
+        pm.expect(res.code).to.eql('00');
+      });
+    language: text/javascript
+order: 10000

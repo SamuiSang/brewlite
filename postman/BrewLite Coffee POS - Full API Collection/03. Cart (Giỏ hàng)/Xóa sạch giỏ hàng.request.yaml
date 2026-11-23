@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/cart"
+method: DELETE
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+order: 3000

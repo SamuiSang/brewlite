@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{baseUrl}}/auth/me"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "fullName": "Nguyễn Văn A (Đã đổi tên)",
+      "phone": "0909999888"
+    }
+order: 6000

@@ -1,0 +1,7 @@
+$kind: http-request
+name: 6. Test 403 IDOR (Khách hàng cố tình xem đơn hàng của người khác)
+url: "{{baseUrl}}/orders/o1111111-1111-1111-1111-111111111111"
+method: GET
+headers:
+  Authorization: Bearer {{tokenCustomer}}
+order: 6000

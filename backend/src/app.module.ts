@@ -10,6 +10,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { AuthModule } from './auth/auth.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { CartModule } from './cart/cart.module';
+import { VouchersModule } from './vouchers/vouchers.module';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -22,6 +23,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
     InventoryModule,
     CartModule,
+    VouchersModule,
     ObserveModule.forRoot({
       appKey: 'YOUR_APP_KEY',
       appSecret: 'YOUR_APP_SECRET',

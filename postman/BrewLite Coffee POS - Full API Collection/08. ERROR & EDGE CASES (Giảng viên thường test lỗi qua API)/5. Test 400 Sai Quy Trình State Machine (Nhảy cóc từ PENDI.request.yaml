@@ -1,0 +1,15 @@
+$kind: http-request
+name: 5. Test 400 Sai Quy Trình State Machine (Nhảy cóc từ PENDING sang COMPLETED)
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"
+method: PATCH
+headers:
+  Authorization: Bearer {{tokenBarista}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "status": "COMPLETED",
+      "reason": "Cố tình nhảy cóc trạng thái"
+    }
+order: 5000

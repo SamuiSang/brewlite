@@ -1,0 +1,3 @@
+name: "Xóa sạch giỏ hàng"
+method: DELETE
+url: "{{baseUrl}}/cart"

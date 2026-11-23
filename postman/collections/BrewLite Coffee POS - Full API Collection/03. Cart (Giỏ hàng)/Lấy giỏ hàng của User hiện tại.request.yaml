@@ -1,0 +1,3 @@
+name: "Lấy giỏ hàng của User hiện tại"
+method: GET
+url: "{{baseUrl}}/cart"

@@ -1,0 +1,3 @@
+name: "Lấy thông tin tài khoản hiện tại (Profile & Loyalty)"
+method: GET
+url: "{{baseUrl}}/auth/me"

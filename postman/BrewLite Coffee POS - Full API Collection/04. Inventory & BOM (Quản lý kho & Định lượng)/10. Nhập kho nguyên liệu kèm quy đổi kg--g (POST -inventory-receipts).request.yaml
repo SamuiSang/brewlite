@@ -1,0 +1,33 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/receipts"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenBarista}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "supplier": "Nhà cung cấp Đắk Lắk",
+      "notes": "Nhập kho test API",
+      "items": [
+        {
+          "ingredientId": "ing-1",
+          "quantity": 1,
+          "unit": "kg",
+          "unitCost": 250000
+        }
+      ]
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Receipt created and totalCost calculated', function () {
+        pm.expect(res.receipt).to.have.property('receiptCode');
+        pm.expect(Number(res.receipt.totalCost)).to.eql(250000);
+      });
+    language: text/javascript
+order: 10000

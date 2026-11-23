@@ -1,0 +1,3 @@
+name: "Lịch sử giao dịch kho (Audit Log)"
+method: GET
+url: "{{baseUrl}}/inventory/transactions?limit=20"

@@ -1,0 +1,3 @@
+name: "5. Test 409 Conflict (Tạo voucher trùng mã code đã tồn tại)"
+method: POST
+url: "{{baseUrl}}/vouchers"

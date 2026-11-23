@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/inventory/ingredients/{{tempIngredientId}}/adjust"
+method: PATCH
+headers:
+  Authorization: "Bearer {{tokenBarista}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "quantityChange": 500,
+      "reason": "Kiểm kê định kỳ cuối ngày",
+      "notes": "Kiểm thử API điều chỉnh tồn kho"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Stock adjusted by +500', function () {
+        pm.expect(Number(res.ingredient?.currentStock ?? res.currentStock)).to.eql(1500);
+      });
+    language: text/javascript
+order: 9000

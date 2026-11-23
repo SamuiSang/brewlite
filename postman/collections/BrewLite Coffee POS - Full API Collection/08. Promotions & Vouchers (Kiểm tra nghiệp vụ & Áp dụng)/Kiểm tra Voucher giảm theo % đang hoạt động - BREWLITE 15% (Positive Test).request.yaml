@@ -1,0 +1,3 @@
+name: "Kiểm tra Voucher giảm theo % đang hoạt động - BREWLITE 15% (Positive Test)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

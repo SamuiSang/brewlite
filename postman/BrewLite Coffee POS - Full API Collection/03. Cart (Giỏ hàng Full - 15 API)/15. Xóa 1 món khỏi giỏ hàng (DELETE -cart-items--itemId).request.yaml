@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/items/{{secondCartItemId}}"
+method: DELETE
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      const deletedId = pm.environment.get('secondCartItemId') || pm.collectionVariables.get('secondCartItemId');
+      pm.test('Deleted specified item from cart', function () {
+        pm.expect(res.deletedItemId).to.eql(deletedId);
+        pm.expect(res.items.some(i => i.id === deletedId)).to.eql(false);
+      });
+    language: text/javascript
+order: 15000

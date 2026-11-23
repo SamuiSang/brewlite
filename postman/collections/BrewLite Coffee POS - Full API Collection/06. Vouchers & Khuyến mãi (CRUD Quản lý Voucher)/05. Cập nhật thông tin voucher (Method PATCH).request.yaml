@@ -1,0 +1,3 @@
+name: "05. Cập nhật thông tin voucher (Method PATCH)"
+method: PATCH
+url: "{{baseUrl}}/vouchers/GIAM30K"

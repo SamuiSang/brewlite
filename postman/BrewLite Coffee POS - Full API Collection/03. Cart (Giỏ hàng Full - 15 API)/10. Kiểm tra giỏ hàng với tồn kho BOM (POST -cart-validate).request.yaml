@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/validate"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 201', function () { pm.response.to.have.status(201); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('BOM validation reports valid and canCheckout true', function () {
+        pm.expect(res.isValid).to.eql(true);
+        pm.expect(res.canCheckout).to.eql(true);
+        pm.expect(res.items).to.be.an('array').that.is.not.empty;
+      });
+    language: text/javascript
+order: 10000

@@ -1,0 +1,3 @@
+name: "Điều chỉnh tồn kho thủ công (Kiểm kê/Hao hụt)"
+method: PATCH
+url: "{{baseUrl}}/inventory/ingredients/ing-1/adjust"

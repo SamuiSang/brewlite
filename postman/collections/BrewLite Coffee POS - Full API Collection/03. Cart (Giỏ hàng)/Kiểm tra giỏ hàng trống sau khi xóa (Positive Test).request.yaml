@@ -1,0 +1,3 @@
+name: "Kiểm tra giỏ hàng trống sau khi xóa (Positive Test)"
+method: GET
+url: "{{baseUrl}}/cart"

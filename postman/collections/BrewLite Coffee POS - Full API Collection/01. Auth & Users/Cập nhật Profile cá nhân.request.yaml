@@ -1,0 +1,3 @@
+name: "Cập nhật Profile cá nhân"
+method: PATCH
+url: "{{baseUrl}}/auth/me"

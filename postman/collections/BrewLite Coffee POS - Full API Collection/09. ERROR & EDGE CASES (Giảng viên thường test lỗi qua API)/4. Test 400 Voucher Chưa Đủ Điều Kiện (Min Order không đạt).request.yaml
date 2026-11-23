@@ -1,0 +1,3 @@
+name: "4. Test 400 Voucher Chưa Đủ Điều Kiện (Min Order không đạt)"
+method: POST
+url: "{{baseUrl}}/vouchers/validate"

@@ -68,13 +68,13 @@ export interface NormalizedProduct {
 
 // Dữ liệu topping dự phòng phong phú đúng theo CSDL backend
 export const FALLBACK_TOPPINGS: ApiTopping[] = [
-  { id: 't1111111-1111-1111-1111-111111111111', name: 'Trân châu đen', price: 10000 },
-  { id: 't2222222-2222-2222-2222-222222222222', name: 'Trân châu trắng 3Q', price: 10000 },
-  { id: 't3333333-3333-3333-3333-333333333333', name: 'Thạch cà phê', price: 10000 },
-  { id: 't4444444-4444-4444-4444-444444444444', name: 'Thạch củ năng', price: 10000 },
-  { id: 't5555555-5555-5555-5555-555555555555', name: 'Kem Macchiato phô mai', price: 12000 },
-  { id: 't6666666-6666-6666-6666-666666666666', name: 'Đào ngâm miếng', price: 12000 },
-  { id: 't7777777-7777-7777-7777-777777777777', name: 'Hạt sen tươi', price: 12000 },
+  { id: 'top-1', name: 'Trân châu đen', price: 10000 },
+  { id: 'top-2', name: 'Trân châu trắng 3Q', price: 10000 },
+  { id: 'top-3', name: 'Thạch cà phê', price: 10000 },
+  { id: 'top-4', name: 'Thạch củ năng', price: 10000 },
+  { id: 'top-5', name: 'Kem Macchiato phô mai', price: 12000 },
+  { id: 'top-6', name: 'Đào ngâm miếng', price: 12000 },
+  { id: 'top-7', name: 'Hạt sen tươi', price: 12000 },
   { id: 'extra-shot', name: 'Extra shot espresso', price: 10000 },
   { id: 'caramel-drizzle', name: 'Caramel drizzle', price: 5000 },
 ];

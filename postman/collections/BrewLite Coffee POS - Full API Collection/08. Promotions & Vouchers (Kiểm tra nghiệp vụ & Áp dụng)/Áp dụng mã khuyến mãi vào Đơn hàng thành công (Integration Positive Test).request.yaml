@@ -1,0 +1,3 @@
+name: "Áp dụng mã khuyến mãi vào Đơn hàng thành công (Integration Positive Test)"
+method: POST
+url: "{{baseUrl}}/orders"

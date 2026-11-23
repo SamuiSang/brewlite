@@ -1,0 +1,29 @@
+$kind: http-request
+url: "{{baseUrl}}/vouchers/{{testVoucherCode}}"
+method: PUT
+headers:
+  Authorization: "Bearer {{tokenAdmin}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "discountType": "PERCENTAGE",
+      "discountValue": 20,
+      "minOrderAmount": 100000,
+      "maxDiscountAmount": 50000,
+      "validUntil": "2027-12-31T23:59:59.000Z",
+      "isActive": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Voucher updated to PERCENTAGE 20%', function () {
+        pm.expect(res.voucher.discountType).to.eql('PERCENTAGE');
+        pm.expect(res.voucher.discountValue).to.eql(20);
+      });
+    language: text/javascript
+order: 6000

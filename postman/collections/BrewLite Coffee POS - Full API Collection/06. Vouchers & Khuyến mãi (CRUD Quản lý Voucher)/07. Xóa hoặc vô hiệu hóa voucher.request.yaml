@@ -1,0 +1,3 @@
+name: "07. Xóa hoặc vô hiệu hóa voucher"
+method: DELETE
+url: "{{baseUrl}}/vouchers/GIAM30K"

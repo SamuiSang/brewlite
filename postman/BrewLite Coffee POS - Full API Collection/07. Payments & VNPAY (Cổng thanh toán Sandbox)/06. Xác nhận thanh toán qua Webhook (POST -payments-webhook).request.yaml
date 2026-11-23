@@ -1,0 +1,26 @@
+$kind: http-request
+url: "{{baseUrl}}/payments/webhook"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "paymentId": "{{currentPaymentId}}",
+      "outcome": "SUCCESS",
+      "transactionRef": "SANDBOX_WEBHOOK_TEST"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Webhook marks payment SUCCESS and order PAID', function () {
+        pm.expect(res.success).to.eql(true);
+        pm.expect(res.payment.status).to.eql('SUCCESS');
+        pm.expect(res.order.status).to.eql('PAID');
+      });
+    language: text/javascript
+order: 6000

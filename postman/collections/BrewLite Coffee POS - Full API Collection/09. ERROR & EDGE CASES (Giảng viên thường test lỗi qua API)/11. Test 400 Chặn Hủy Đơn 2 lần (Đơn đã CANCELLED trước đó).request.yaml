@@ -1,0 +1,3 @@
+name: "11. Test 400 Chặn Hủy Đơn 2 lần (Đơn đã CANCELLED trước đó)"
+method: POST
+url: "{{baseUrl}}/orders/{{currentOrderId}}/cancel"

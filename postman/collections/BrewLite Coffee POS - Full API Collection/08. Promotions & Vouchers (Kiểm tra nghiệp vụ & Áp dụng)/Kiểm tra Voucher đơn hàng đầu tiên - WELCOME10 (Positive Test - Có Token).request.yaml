@@ -1,0 +1,3 @@
+name: "Kiểm tra Voucher đơn hàng đầu tiên - WELCOME10 (Positive Test - Có Token)"
+method: POST
+url: "{{baseUrl}}/orders/validate-voucher"

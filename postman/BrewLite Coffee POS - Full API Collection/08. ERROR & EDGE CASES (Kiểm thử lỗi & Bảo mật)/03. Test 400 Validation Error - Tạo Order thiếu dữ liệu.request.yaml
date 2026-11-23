@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/orders"
+method: POST
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "customerName": "",
+      "phone": "",
+      "items": []
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 400', function () { pm.response.to.have.status(400); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+    language: text/javascript
+order: 3000

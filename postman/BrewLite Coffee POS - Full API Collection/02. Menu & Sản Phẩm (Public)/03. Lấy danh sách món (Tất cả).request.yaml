@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/products"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Products is non-empty array with category', function () {
+        pm.expect(res).to.be.an('array').that.is.not.empty;
+        pm.expect(res[0]).to.have.property('basePrice');
+        pm.expect(res[0]).to.have.property('category');
+      });
+      if (res[0]?.id) {
+        pm.collectionVariables.set('firstProductId', res[0].id);
+        pm.environment.set('firstProductId', res[0].id);
+      }
+      if (res[1]?.id) {
+        pm.collectionVariables.set('secondProductId', res[1].id);
+        pm.environment.set('secondProductId', res[1].id);
+      }
+    language: text/javascript
+order: 3000

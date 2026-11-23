@@ -1,0 +1,3 @@
+name: "04. Chuyển trạng thái: Đã thanh toán (PAID) [Trừ kho BOM + Tích điểm]"
+method: PATCH
+url: "{{baseUrl}}/orders/{{currentOrderId}}/status"

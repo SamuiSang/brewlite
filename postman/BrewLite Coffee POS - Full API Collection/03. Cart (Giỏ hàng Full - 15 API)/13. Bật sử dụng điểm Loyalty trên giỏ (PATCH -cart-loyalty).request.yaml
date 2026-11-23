@@ -1,0 +1,25 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/loyalty"
+method: PATCH
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "useLoyaltyPoints": true
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      pm.test('Loyalty enabled and discount reflected in summary', function () {
+        pm.expect(res.useLoyaltyPoints).to.eql(true);
+        pm.expect(res.summary.useLoyaltyPoints).to.eql(true);
+        pm.expect(res.summary.finalTotal).to.be.at.most(res.summary.subtotal - res.summary.voucherDiscount);
+      });
+    language: text/javascript
+order: 13000

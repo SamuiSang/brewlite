@@ -1,0 +1,3 @@
+name: "Đăng nhập Barista (Lưu tokenBarista)"
+method: POST
+url: "{{baseUrl}}/auth/login"

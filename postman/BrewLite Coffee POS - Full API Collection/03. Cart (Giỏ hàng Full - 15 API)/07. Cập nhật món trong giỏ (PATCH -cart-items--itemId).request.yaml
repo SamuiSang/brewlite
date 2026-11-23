@@ -1,0 +1,31 @@
+$kind: http-request
+url: "{{baseUrl}}/cart/items/{{currentCartItemId}}"
+method: PATCH
+headers:
+  Authorization: "Bearer {{tokenCustomer}}"
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "size": "L",
+      "milk": "Sữa yến mạch",
+      "note": "Ít ngọt"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code is 200', function () { pm.response.to.have.status(200); });
+      pm.test('Response time is under 3000ms', function () { pm.expect(pm.response.responseTime).to.be.below(3000); });
+      const res = pm.response.json();
+      const targetId = pm.environment.get('currentCartItemId') || pm.collectionVariables.get('currentCartItemId');
+      const updated = res.items.find(i => i.id === targetId);
+      pm.test('Updated item size to L (extra +10k => unitPrice 49k)', function () {
+        pm.expect(updated).to.be.an('object');
+        pm.expect(updated.size).to.eql('L');
+        pm.expect(updated.milk).to.eql('Sữa yến mạch');
+        pm.expect(updated.note).to.eql('Ít ngọt');
+        pm.expect(updated.unitPrice).to.eql(49000);
+      });
+    language: text/javascript
+order: 7000

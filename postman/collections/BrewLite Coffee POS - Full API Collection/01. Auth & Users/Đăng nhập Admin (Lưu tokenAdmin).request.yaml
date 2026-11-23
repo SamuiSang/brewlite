@@ -1,0 +1,3 @@
+name: "Đăng nhập Admin (Lưu tokenAdmin)"
+method: POST
+url: "{{baseUrl}}/auth/login"

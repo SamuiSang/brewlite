@@ -1,0 +1,3 @@
+name: "Kiểm tra sản phẩm không tồn tại trong giỏ (Negative & Inventory Test)"
+method: POST
+url: "{{baseUrl}}/inventory/validate-cart"

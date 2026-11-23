@@ -1,0 +1,3 @@
+name: "Lọc sản phẩm theo danh mục hoặc từ khóa tìm kiếm"
+method: GET
+url: "{{baseUrl}}/products?search=Cà phê"

@@ -1,6 +1,0 @@
-$kind: http-request
-url: "{{baseUrl}}/vouchers/GIAM20K"
-method: GET
-headers:
-  Authorization: Bearer {{tokenAdmin}}
-order: 2000

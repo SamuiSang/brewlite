@@ -1,0 +1,3 @@
+name: "Đăng nhập Khách hàng (Lưu tokenCustomer)"
+method: POST
+url: "{{baseUrl}}/auth/login"

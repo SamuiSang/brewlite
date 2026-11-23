@@ -12,7 +12,7 @@ body:
       "phone": "0901112222",
       "items": [
         {
-          "productId": "p1111111-1111-1111-1111-222222222222",
+          "productId": "prod-2",
           "size": "L",
           "qty": 9999
         }

@@ -14,11 +14,11 @@ body:
       "notes": "Đơn test State Machine",
       "items": [
         {
-          "productId": "p1111111-1111-1111-1111-222222222222",
+          "productId": "prod-2",
           "size": "M",
           "qty": 2,
           "toppingIds": [
-            "t1111111-1111-1111-1111-111111111111"
+            "top-1"
           ]
         }
       ]

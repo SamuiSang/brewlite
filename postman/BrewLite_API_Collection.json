@@ -48,12 +48,12 @@
     },
     {
       "key": "firstProductId",
-      "value": "p1111111-1111-1111-1111-222222222222",
+      "value": "prod-2",
       "type": "string"
     },
     {
       "key": "secondProductId",
-      "value": "p1111111-1111-1111-1111-333333333333",
+      "value": "prod-3",
       "type": "string"
     },
     {
@@ -846,7 +846,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n  \"size\": \"M\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa đặc\",\n  \"note\": \"Ít đá\",\n  \"toppings\": [\n    \"t1111111-1111-1111-1111-111111111111\"\n  ]\n}"
+              "raw": "{\n  \"productId\": \"prod-2\",\n  \"size\": \"M\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa đặc\",\n  \"note\": \"Ít đá\",\n  \"toppings\": [\n    \"top-1\"\n  ]\n}"
             }
           }
         },
@@ -895,7 +895,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n  \"size\": \"M\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa đặc\",\n  \"note\": \"Ít đá\",\n  \"toppings\": [\n    \"t1111111-1111-1111-1111-111111111111\"\n  ]\n}"
+              "raw": "{\n  \"productId\": \"prod-2\",\n  \"size\": \"M\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa đặc\",\n  \"note\": \"Ít đá\",\n  \"toppings\": [\n    \"top-1\"\n  ]\n}"
             }
           }
         },
@@ -944,7 +944,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"p1111111-1111-1111-1111-333333333333\",\n  \"size\": \"L\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa tươi\",\n  \"note\": \"Nhiều sữa\",\n  \"toppings\": []\n}"
+              "raw": "{\n  \"productId\": \"prod-3\",\n  \"size\": \"L\",\n  \"quantity\": 1,\n  \"milk\": \"Sữa tươi\",\n  \"note\": \"Nhiều sữa\",\n  \"toppings\": []\n}"
             }
           }
         },
@@ -1134,7 +1134,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"milk\": \"Không đường\",\n      \"note\": \"Mang đi\",\n      \"toppings\": []\n    }\n  ]\n}"
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"prod-1\",\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"milk\": \"Không đường\",\n      \"note\": \"Mang đi\",\n      \"toppings\": []\n    }\n  ]\n}"
             }
           }
         },
@@ -1437,7 +1437,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2,\n      \"milk\": \"Sữa đặc\",\n      \"note\": \"Ít đá\",\n      \"toppings\": [\n        \"t1111111-1111-1111-1111-111111111111\"\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"M\",\n      \"quantity\": 2,\n      \"milk\": \"Sữa đặc\",\n      \"note\": \"Ít đá\",\n      \"toppings\": [\n        \"top-1\"\n      ]\n    }\n  ]\n}"
             }
           }
         },
@@ -1611,7 +1611,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"M\",\n      \"quantity\": 2\n    }\n  ]\n}"
             }
           }
         },
@@ -1638,14 +1638,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/inventory/availability/p1111111-1111-1111-1111-222222222222?size=M",
+              "raw": "{{baseUrl}}/inventory/availability/prod-2?size=M",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "inventory",
                 "availability",
-                "p1111111-1111-1111-1111-222222222222"
+                "prod-2"
               ],
               "query": [
                 {
@@ -1711,14 +1711,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/inventory/recipes/p1111111-1111-1111-1111-222222222222",
+              "raw": "{{baseUrl}}/inventory/recipes/prod-2",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "inventory",
                 "recipes",
-                "p1111111-1111-1111-1111-222222222222"
+                "prod-2"
               ]
             }
           }
@@ -2009,7 +2009,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"p3333333-3333-3333-3333-222222222222\",\n  \"recipes\": [\n    {\n      \"ingredientId\": \"ing-12\",\n      \"size\": \"M\",\n      \"amount\": 15,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-17\",\n      \"size\": \"M\",\n      \"amount\": 40,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-6\",\n      \"size\": \"M\",\n      \"amount\": 150,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-7\",\n      \"size\": \"M\",\n      \"amount\": 1,\n      \"wasteRate\": 0\n    }\n  ]\n}"
+              "raw": "{\n  \"productId\": \"prod-10\",\n  \"recipes\": [\n    {\n      \"ingredientId\": \"ing-12\",\n      \"size\": \"M\",\n      \"amount\": 15,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-17\",\n      \"size\": \"M\",\n      \"amount\": 40,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-6\",\n      \"size\": \"M\",\n      \"amount\": 150,\n      \"wasteRate\": 0\n    },\n    {\n      \"ingredientId\": \"ing-7\",\n      \"size\": \"M\",\n      \"amount\": 1,\n      \"wasteRate\": 0\n    }\n  ]\n}"
             }
           }
         },
@@ -2040,16 +2040,16 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory/recipes/p3333333-3333-3333-3333-333333333333/copy-from/p3333333-3333-3333-3333-222222222222",
+              "raw": "{{baseUrl}}/inventory/recipes/prod-11/copy-from/prod-10",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "inventory",
                 "recipes",
-                "p3333333-3333-3333-3333-333333333333",
+                "prod-11",
                 "copy-from",
-                "p3333333-3333-3333-3333-222222222222"
+                "prod-10"
               ]
             }
           }
@@ -2081,14 +2081,14 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/inventory/recipes/p3333333-3333-3333-3333-333333333333/ingredient/ing-17?size=M",
+              "raw": "{{baseUrl}}/inventory/recipes/prod-11/ingredient/ing-17?size=M",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "inventory",
                 "recipes",
-                "p3333333-3333-3333-3333-333333333333",
+                "prod-11",
                 "ingredient",
                 "ing-17"
               ],
@@ -2200,7 +2200,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"deliveryAddress\": \"123 Nguyễn Văn Cừ, Q.5, TP.HCM\",\n  \"notes\": \"Đơn test State Machine\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 2,\n      \"toppingIds\": [\n        \"t1111111-1111-1111-1111-111111111111\"\n      ]\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"deliveryAddress\": \"123 Nguyễn Văn Cừ, Q.5, TP.HCM\",\n  \"notes\": \"Đơn test State Machine\",\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"M\",\n      \"qty\": 2,\n      \"toppingIds\": [\n        \"top-1\"\n      ]\n    }\n  ]\n}"
             }
           }
         },
@@ -2247,7 +2247,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Barista Test Order\",\n  \"phone\": \"0902223333\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"S\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Barista Test Order\",\n  \"phone\": \"0902223333\",\n  \"items\": [\n    {\n      \"productId\": \"prod-1\",\n      \"size\": \"S\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -2562,7 +2562,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"prod-1\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -2653,7 +2653,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"prod-1\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -3278,7 +3278,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -3508,7 +3508,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -3943,7 +3943,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n  \"size\": \"XL\",\n  \"quantity\": 0\n}"
+              "raw": "{\n  \"productId\": \"prod-2\",\n  \"size\": \"XL\",\n  \"quantity\": 0\n}"
             }
           }
         },
@@ -4103,7 +4103,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Test Vượt Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-222222222222\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Test Vượt Kho\",\n  \"phone\": \"0901112222\",\n  \"items\": [\n    {\n      \"productId\": \"prod-2\",\n      \"size\": \"L\",\n      \"qty\": 9999\n    }\n  ]\n}"
             }
           }
         },
@@ -4267,7 +4267,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"p1111111-1111-1111-1111-111111111111\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
+              "raw": "{\n  \"customerName\": \"Nguyễn Văn A\",\n  \"phone\": \"0903334444\",\n  \"items\": [\n    {\n      \"productId\": \"prod-1\",\n      \"size\": \"M\",\n      \"qty\": 1\n    }\n  ]\n}"
             }
           }
         },

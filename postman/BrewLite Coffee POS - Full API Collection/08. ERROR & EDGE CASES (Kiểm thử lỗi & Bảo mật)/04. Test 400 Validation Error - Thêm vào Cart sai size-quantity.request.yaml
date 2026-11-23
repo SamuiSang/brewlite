@@ -8,7 +8,7 @@ body:
   type: text
   content: |-
     {
-      "productId": "p1111111-1111-1111-1111-222222222222",
+      "productId": "prod-2",
       "size": "XL",
       "quantity": 0
     }

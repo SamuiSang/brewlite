@@ -8,7 +8,7 @@ body:
   type: text
   content: |-
     {
-      "productId": "p3333333-3333-3333-3333-222222222222",
+      "productId": "prod-10",
       "recipes": [
         {
           "ingredientId": "ing-12",

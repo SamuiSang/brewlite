@@ -135,6 +135,7 @@ interface CartStore {
   // Actions
   addItem: (item: Omit<CartItem, 'id'> & { id?: string }) => void;
   updateItem: (id: string, updated: Partial<CartItem>) => void;
+  replaceItem: (oldId: string, updated: Omit<CartItem, 'id'>) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   setQuantity: (id: string, quantity: number) => void;
@@ -209,9 +210,10 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (newItem) => {
         set((state) => {
+          const sortedToppings = [...(newItem.toppings || [])].sort();
           const generatedId =
             newItem.id ||
-            `${newItem.drinkId}-${newItem.size}-${newItem.milk}-${newItem.toppings.sort().join('-')}-${newItem.note || ''}`;
+            `${newItem.drinkId}-${newItem.size}-${newItem.milk}-${sortedToppings.join('-')}-${newItem.note || ''}`;
 
           const existingIndex = state.items.findIndex((it) => it.id === generatedId);
           let updated: CartItem[];
@@ -226,6 +228,7 @@ export const useCartStore = create<CartStore>()(
               ...state.items,
               {
                 ...newItem,
+                toppings: sortedToppings,
                 id: generatedId,
               },
             ];
@@ -241,6 +244,31 @@ export const useCartStore = create<CartStore>()(
           const newItems = state.items.map((it) => (it.id === id ? { ...it, ...updated } : it));
           saveCartForUser(state.authUser?.id, newItems);
           return { items: newItems };
+        });
+      },
+
+      replaceItem: (oldId, newItem) => {
+        set((state) => {
+          const sortedToppings = [...(newItem.toppings || [])].sort();
+          const newId = `${newItem.drinkId}-${newItem.size}-${newItem.milk}-${sortedToppings.join('-')}-${newItem.note || ''}`;
+          const nextItem: CartItem = { ...newItem, toppings: sortedToppings, id: newId };
+
+          const duplicateIndex = state.items.findIndex((it) => it.id === newId && it.id !== oldId);
+          let updated: CartItem[];
+          if (duplicateIndex > -1) {
+            updated = state.items
+              .filter((it) => it.id !== oldId)
+              .map((it) =>
+                it.id === newId
+                  ? { ...nextItem, quantity: it.quantity + nextItem.quantity }
+                  : it,
+              );
+          } else {
+            updated = state.items.map((it) => (it.id === oldId ? nextItem : it));
+          }
+
+          saveCartForUser(state.authUser?.id, updated);
+          return { items: updated };
         });
       },
 
@@ -551,7 +579,7 @@ export const useCartStore = create<CartStore>()(
 
               const itemsList: OrderItem[] = (bo.orderItems || []).map((oi: any) => ({
                 name: oi.product?.name || 'Đồ uống',
-                details: `Size ${oi.size || 'M'}`,
+                details: `Size ${oi.size || 'M'}${oi.toppings?.length ? ` · ${oi.toppings.map((t: any) => t.topping?.name).filter(Boolean).join(', ')}` : ''}`,
                 qty: oi.qty,
                 price: Number(oi.lineTotal || 0),
                 image: oi.product?.imageUrl || '/images/drinks/default.png',

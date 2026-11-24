@@ -12,6 +12,15 @@ import { OrderStateMachine, OrderStatus } from './order-state-machine';
 
 @Injectable()
 export class OrdersService {
+  // Idempotency cache: lưu kết quả đơn hàng theo idempotencyKey trong 10 phút
+  private readonly idempotencyCache = new Map<
+    string,
+    { order: any; timestamp: number }
+  >();
+
+  // Map theo dõi các request đang xử lý (In-flight requests) để chống race condition
+  private readonly inFlightRequests = new Map<string, Promise<any>>();
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -170,70 +179,142 @@ export class OrdersService {
    * 2. Khóa tồn kho đồng thời (Optimistic Locking).
    * 3. Trừ kho nguyên liệu và lưu nhật ký giao dịch kho (Inventory Transactions).
    * 4. Voucher & Loyalty points.
+   * 5. Chống tạo đơn trùng lặp (Idempotency Key & Concurrent Request Deduplication).
    */
-  async createOrder(dto: CreateOrderDto) {
+  async createOrder(dto: CreateOrderDto, idempotencyKey?: string) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Giỏ hàng không được để trống');
     }
 
-    // 1. Gom số lượng yêu cầu theo từng productId để kiểm tra tổng tồn kho sản phẩm
-    const requiredProductQtyMap = new Map<string, number>();
-    for (const item of dto.items) {
-      const current = requiredProductQtyMap.get(item.productId) || 0;
-      requiredProductQtyMap.set(item.productId, current + item.qty);
-    }
-
-    const productIds = Array.from(requiredProductQtyMap.keys());
-    const allToppingIds = Array.from(
-      new Set(dto.items.flatMap((i) => i.toppingIds || [])),
-    );
-
-    // 2. Tải toppings hợp lệ (nếu có)
-    let toppingsMap = new Map<string, { id: string; price: Prisma.Decimal }>();
-    if (allToppingIds.length > 0) {
-      const toppings = await this.prisma.topping.findMany({
-        where: {
-          id: { in: allToppingIds },
-          isAvailable: true,
-        },
-      });
-
-      if (toppings.length !== allToppingIds.length) {
-        throw new NotFoundException(
-          'Một hoặc nhiều loại topping không tồn tại hoặc tạm hết hàng',
-        );
+    // 1. Kiểm tra Idempotency Cache: Nếu cùng key đã xử lý thành công, trả về kết quả cũ
+    const trimmedKey = idempotencyKey?.trim();
+    if (trimmedKey) {
+      const cached = this.idempotencyCache.get(trimmedKey);
+      if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+        return cached.order;
       }
 
-      toppingsMap = new Map(toppings.map((t) => [t.id, t]));
+      // Nếu có request trùng key đang trong quá trình thực thi, chờ promise đó hoàn thành
+      const inFlight = this.inFlightRequests.get(trimmedKey);
+      if (inFlight) {
+        return await inFlight;
+      }
     }
 
-    // 3. Cơ chế Retry khi gặp Optimistic Concurrency Conflict
-    const MAX_RETRIES = 3;
-    let attempt = 0;
+    // Key chống trùng lặp theo user trong 2.5 giây khi client gửi request trùng
+    const userDedupKey = dto.userId
+      ? `user-dedup:${dto.userId}:${dto.items
+          .map(
+            (i) =>
+              `${i.productId}:${i.size}:${i.qty}:${(i.toppingIds || []).slice().sort().join(',')}`,
+          )
+          .join('|')}`
+      : undefined;
 
-    while (attempt < MAX_RETRIES) {
-      attempt++;
-      try {
-        return await this.executeCreateOrderTransaction(
-          dto,
-          requiredProductQtyMap,
-          productIds,
-          toppingsMap,
-        );
-      } catch (error) {
-        if (error instanceof ConflictException && attempt < MAX_RETRIES) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 50 * attempt + Math.floor(Math.random() * 50)),
+    if (userDedupKey) {
+      const cached = this.idempotencyCache.get(userDedupKey);
+      if (cached && Date.now() - cached.timestamp < 2500) {
+        return cached.order;
+      }
+      const inFlight = this.inFlightRequests.get(userDedupKey);
+      if (inFlight) {
+        return await inFlight;
+      }
+    }
+
+    const processOrder = async () => {
+      // 1. Gom số lượng yêu cầu theo từng productId để kiểm tra tổng tồn kho sản phẩm
+      const requiredProductQtyMap = new Map<string, number>();
+      for (const item of dto.items) {
+        const current = requiredProductQtyMap.get(item.productId) || 0;
+        requiredProductQtyMap.set(item.productId, current + item.qty);
+      }
+
+      const productIds = Array.from(requiredProductQtyMap.keys());
+      const allToppingIds = Array.from(
+        new Set(dto.items.flatMap((i) => i.toppingIds || [])),
+      );
+
+      // 2. Tải toppings hợp lệ (nếu có)
+      let toppingsMap = new Map<string, { id: string; price: Prisma.Decimal }>();
+      if (allToppingIds.length > 0) {
+        const toppings = await this.prisma.topping.findMany({
+          where: {
+            id: { in: allToppingIds },
+            isAvailable: true,
+          },
+        });
+
+        if (toppings.length !== allToppingIds.length) {
+          throw new NotFoundException(
+            'Một hoặc nhiều loại topping không tồn tại hoặc tạm hết hàng',
           );
-          continue;
         }
-        throw error;
+
+        toppingsMap = new Map(toppings.map((t) => [t.id, t]));
       }
+
+      // 3. Cơ chế Retry khi gặp Optimistic Concurrency Conflict
+      const MAX_RETRIES = 3;
+      let attempt = 0;
+
+      while (attempt < MAX_RETRIES) {
+        attempt++;
+        try {
+          return await this.executeCreateOrderTransaction(
+            dto,
+            requiredProductQtyMap,
+            productIds,
+            toppingsMap,
+          );
+        } catch (error) {
+          if (error instanceof ConflictException && attempt < MAX_RETRIES) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 50 * attempt + Math.floor(Math.random() * 50)),
+            );
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      throw new ConflictException(
+        'Hệ thống đang quá tải giao dịch cho sản phẩm này. Vui lòng thử lại sau giây lát!',
+      );
+    };
+
+    const inFlightPromise = processOrder();
+
+    if (trimmedKey) {
+      this.inFlightRequests.set(trimmedKey, inFlightPromise);
+    }
+    if (userDedupKey) {
+      this.inFlightRequests.set(userDedupKey, inFlightPromise);
     }
 
-    throw new ConflictException(
-      'Hệ thống đang quá tải giao dịch cho sản phẩm này. Vui lòng thử lại sau giây lát!',
-    );
+    try {
+      const order = await inFlightPromise;
+      if (trimmedKey) {
+        this.idempotencyCache.set(trimmedKey, {
+          order,
+          timestamp: Date.now(),
+        });
+      }
+      if (userDedupKey) {
+        this.idempotencyCache.set(userDedupKey, {
+          order,
+          timestamp: Date.now(),
+        });
+      }
+      return order;
+    } finally {
+      if (trimmedKey) {
+        this.inFlightRequests.delete(trimmedKey);
+      }
+      if (userDedupKey) {
+        this.inFlightRequests.delete(userDedupKey);
+      }
+    }
   }
 
   /**

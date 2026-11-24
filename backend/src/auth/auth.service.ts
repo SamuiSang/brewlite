@@ -38,9 +38,14 @@ export class AuthService {
       },
     });
 
-    // 4. Trả về thông tin (không bao gồm passwordHash)
+    // 4. Tạo Payload và ký JWT Token để tự động đăng nhập ngay sau khi đăng ký
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    // 5. Trả về thông tin kèm accessToken (không bao gồm passwordHash)
     return {
       message: 'Đăng ký tài khoản thành công',
+      accessToken,
       user: {
         id: user.id,
         email: user.email,

@@ -13,7 +13,6 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
-  ShieldCheck,
   X,
   AlertCircle,
 } from 'lucide-react';
@@ -32,9 +31,12 @@ export default function CheckoutPage() {
   // Form states
   const [customerName, setCustomerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [saveChangedPhone, setSaveChangedPhone] = useState(true);
   const [orderNote, setOrderNote] = useState('Vui lòng gọi tên tôi khi đơn hàng sẵn sàng.');
   const [orderError, setOrderError] = useState('');
   const [paymentMethod] = useState<'vnpay'>('vnpay');
+  const hasEditedNameRef = useRef(false);
+  const hasEditedPhoneRef = useRef(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -68,6 +70,7 @@ export default function CheckoutPage() {
     authToken,
     authUser,
     profile,
+    fetchProfile,
     updateProfile,
     appliedVoucher,
     useLoyaltyPoints,
@@ -79,12 +82,20 @@ export default function CheckoutPage() {
     idempotencyKeyRef.current = crypto.randomUUID();
   }, []);
 
+  useEffect(() => {
+    if (authToken) {
+      fetchProfile();
+    }
+  }, [authToken, fetchProfile]);
+
   // Kiểm tra đăng nhập: nếu chưa đăng nhập thì tự động chuyển hướng đến /signin
   useEffect(() => {
     if (mounted && (!authToken || !authUser)) {
       router.push('/signin?redirect=/checkout');
     }
   }, [mounted, authToken, authUser, router]);
+
+  const savedPhone = (authUser?.phone || profile?.phone || '').trim();
 
   const totalItems = mounted ? getTotalItems() : 2;
   const subtotal = mounted ? getSubtotal() : 124000;
@@ -98,19 +109,16 @@ export default function CheckoutPage() {
   const finalTotal = Math.max(0, baseTotal - pointsDiscount);
   const pointsToEarn = Math.floor(finalTotal / 10000);
 
-  // Điền sẵn thông tin từ tài khoản đã đăng nhập
+  // Điền sẵn thông tin từ tài khoản đã đăng nhập (không ghi đè nếu người dùng đã tự sửa)
   useEffect(() => {
-    if (authUser) {
-      if (authUser.fullName) {
-        setCustomerName(authUser.fullName);
-      }
-      if (authUser.phone) {
-        setPhoneNumber(authUser.phone);
-      }
+    const resolvedName = profile?.name || authUser?.fullName || '';
+    const resolvedPhone = profile?.phone || authUser?.phone || '';
+
+    if (!hasEditedNameRef.current && resolvedName) {
+      setCustomerName(resolvedName);
     }
-    if (profile) {
-      if (profile.name) setCustomerName(profile.name);
-      if (profile.phone) setPhoneNumber(profile.phone);
+    if (!hasEditedPhoneRef.current && resolvedPhone) {
+      setPhoneNumber(resolvedPhone);
     }
   }, [authUser, profile]);
 
@@ -157,7 +165,7 @@ export default function CheckoutPage() {
               customerName: customerName || authUser?.fullName || 'Khách hàng',
               phoneNumber,
               orderNote,
-              paymentMethod: 'Cổng thanh toán VNPAY Sandbox',
+              paymentMethod: 'Cổng thanh toán VNPAY',
             });
             clearCart();
             if (pointsUsed > 0 && updateProfile && profile) {
@@ -211,14 +219,17 @@ export default function CheckoutPage() {
       let backendOrderId = '';
 
       if (defaultProductId) {
+        const trimmedName = customerName.trim() || authUser.fullName;
+        const trimmedPhone = phoneNumber.trim();
+
         // Tạo đơn hàng trạng thái PENDING trên Backend (gửi kèm JWT và userId)
         const orderRes = await fetch(`${apiUrl}/orders`, {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({
             userId: authUser.id,
-            customerName: customerName || authUser.fullName,
-            phone: phoneNumber,
+            customerName: trimmedName,
+            phone: trimmedPhone,
             notes: orderNote,
             promotionCode: appliedVoucher?.code || undefined,
             useLoyaltyPoints: pointsUsed,
@@ -254,6 +265,32 @@ export default function CheckoutPage() {
               : orderData.message || 'Không thể tạo đơn hàng'
           );
           return;
+        }
+
+        // Lưu SĐT vào tài khoản người dùng nếu nhập lần đầu hoặc chọn cập nhật SĐT mới
+        const shouldSavePhoneToAccount =
+          Boolean(trimmedPhone) &&
+          (!savedPhone || (trimmedPhone !== savedPhone && saveChangedPhone));
+
+        if (shouldSavePhoneToAccount) {
+          try {
+            const profileRes = await fetch(`${apiUrl}/auth/me`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({ phone: trimmedPhone }),
+            });
+            if (profileRes.ok) {
+              const updatedUser = await profileRes.json();
+              updateProfile({ phone: updatedUser.phone || trimmedPhone });
+            } else {
+              updateProfile({ phone: trimmedPhone });
+            }
+          } catch (profileErr) {
+            console.error('Lỗi lưu số điện thoại vào tài khoản:', profileErr);
+          }
         }
 
         backendOrderId = orderData.id;
@@ -391,7 +428,10 @@ export default function CheckoutPage() {
                     type="text"
                     required
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(e) => {
+                      hasEditedNameRef.current = true;
+                      setCustomerName(e.target.value);
+                    }}
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
                     placeholder="Nhập họ và tên..."
                   />
@@ -405,10 +445,32 @@ export default function CheckoutPage() {
                     type="tel"
                     required
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={(e) => {
+                      hasEditedPhoneRef.current = true;
+                      setPhoneNumber(e.target.value);
+                    }}
                     className="w-full bg-[#f4efe7] text-xs font-semibold text-[#14241b] rounded-2xl px-4 py-3 border border-transparent focus:border-[#163d2c] focus:bg-white focus:outline-none transition-all"
                     placeholder="Nhập số điện thoại..."
                   />
+                  {mounted &&
+                    (!savedPhone ? (
+                      <p className="text-[11px] text-[#66776c] mt-1.5">
+                        Số điện thoại sẽ tự động lưu vào tài khoản cho các lần đặt sau.
+                      </p>
+                    ) : (
+                      phoneNumber.trim() !== '' &&
+                      phoneNumber.trim() !== savedPhone && (
+                        <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-[#163d2c] font-medium cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={saveChangedPhone}
+                            onChange={(e) => setSaveChangedPhone(e.target.checked)}
+                            className="accent-[#163d2c] rounded cursor-pointer"
+                          />
+                          <span>Cập nhật số mới vào thông tin tài khoản</span>
+                        </label>
+                      )
+                    ))}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -426,14 +488,14 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Payment Method Card - VNPAY Sandbox */}
+            {/* Payment Method Card - VNPAY */}
             <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#e8e2d7] shadow-xs flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
                   Phương thức thanh toán
                 </h2>
                 <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#c5dec3]">
-                  VNPAY Sandbox
+                  VNPAY
                 </span>
               </div>
 
@@ -444,41 +506,15 @@ export default function CheckoutPage() {
                     <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm font-bold text-[#14241b]">
-                        Cổng thanh toán VNPAY Sandbox
-                      </span>
-                      <span className="bg-[#163d2c] text-[#e3ede1] text-[9px] font-bold px-2 py-0.5 rounded-md">
-                        2 bước qua Webhook
-                      </span>
-                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-[#14241b] block">
+                      Cổng thanh toán VNPAY
+                    </span>
                     <p className="text-[11px] text-[#42614e] mt-0.5">
-                      Thanh toán qua quét mã VNPAY-QR hoặc thẻ ATM / tài khoản ngân hàng NCB Sandbox
+                      Thanh toán qua mã VNPAY-QR, ví VNPAY hoặc thẻ ATM / tài khoản ngân hàng nội địa
                     </p>
                   </div>
                 </div>
                 <QrCode className="w-6 h-6 text-[#163d2c] shrink-0" />
-              </div>
-
-              {/* Sandbox info callout */}
-              <div className="bg-[#f7f5f0] border border-[#e4ded4] rounded-2xl p-4 text-xs text-[#204a35] space-y-2">
-                <div className="flex items-center gap-2 font-bold text-[#163d2c]">
-                  <ShieldCheck className="w-4 h-4 text-[#266345]" />
-                  <span>Cơ chế Thanh toán 2 bước (Chống lỗi tự gán PAID)</span>
-                </div>
-                <p className="text-[11px] text-[#4b6b58] leading-relaxed">
-                  Đơn hàng được khởi tạo ở trạng thái <strong>PENDING</strong> kèm mã VNPAY-QR. Chỉ khi Cổng VNPAY Sandbox gửi Webhook Callback (IPN) xác nhận, đơn hàng mới chuyển sang <strong>PAID</strong> và cộng điểm thưởng Loyalty.
-                </p>
-                <div className="bg-white rounded-xl p-3 border border-[#ded7cb] text-[11px] space-y-1 text-[#2d4034]">
-                  <div className="flex justify-between">
-                    <span>Thẻ test NCB:</span>
-                    <strong className="font-mono text-[#163d2c]">9704 1985 2619 1432 198</strong>
-                  </div>
-                  <div className="flex justify-between text-[#708076]">
-                    <span>Tên chủ thẻ: <strong>NGUYEN VAN A</strong></span>
-                    <span>Hạn: <strong>07/15</strong> · OTP: <strong>123456</strong></span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -566,7 +602,7 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-center gap-2 text-[11px] text-[#708076]">
                 <Lock className="w-3.5 h-3.5 text-[#55695c]" />
-                <span>Cổng VNPAY Sandbox chính thức · Bảo mật chuẩn PCI-DSS</span>
+                <span>Thanh toán qua cổng VNPAY · Bảo mật chuẩn PCI-DSS</span>
               </div>
             </div>
           </div>
@@ -588,10 +624,10 @@ export default function CheckoutPage() {
                 {/* Modal Header */}
                 <div className="text-center pb-3 border-b border-[#f0ebe0]">
                   <span className="bg-[#e4ede3] text-[#163d2c] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full inline-block mb-2">
-                    Trạng thái: PENDING (Chờ xác nhận VNPAY)
+                    Chờ xác nhận thanh toán VNPAY
                   </span>
                   <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#14241b]">
-                    Thanh toán VNPAY Sandbox
+                    Thanh toán qua VNPAY
                   </h3>
                   <p className="text-xs text-[#708076] mt-1">
                     Số tiền: <strong className="text-[#163d2c] font-bold">{formatVND(qrModal.amount)}</strong> · Mã đơn: {qrModal.orderCode}
@@ -599,39 +635,19 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* VNPAY QR Code Display */}
-                <div className="bg-[#fcfbf9] border border-[#e8e2d7] rounded-2xl p-4 flex flex-col items-center justify-center my-3">
+                <div className="bg-[#fcfbf9] border border-[#e8e2d7] rounded-2xl p-4 flex flex-col items-center justify-center my-4">
                   <div className="text-center">
                     <img
                       src={qrModal.qrDataUrl || qrModal.qrCodeUrl}
-                      alt="VNPAY Sandbox QR Code"
+                      alt="Mã QR thanh toán VNPAY"
                       className="w-56 h-56 object-contain rounded-xl shadow-xs border border-[#e0dad0] mx-auto p-2 bg-white"
                     />
                     <p className="text-[11px] text-[#2d4034] font-semibold mt-2.5">
-                      Mã VNPAY-QR Sandbox (Ký số HMAC-SHA512)
+                      Mã VNPAY-QR
                     </p>
                     <p className="text-[10px] text-[#708076] mt-0.5">
-                      Quét mã bằng Camera / Ứng dụng VNPAY hoặc bấm nút bên dưới để thanh toán
+                      Quét mã bằng ứng dụng VNPAY / Ngân hàng hoặc bấm nút bên dưới để thanh toán
                     </p>
-                  </div>
-                </div>
-
-                {/* Test credentials info */}
-                <div className="bg-[#f4efe7] rounded-2xl p-2.5 text-[10px] text-[#4d5e53] mb-4 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Cổng thanh toán:</span>
-                    <strong className="text-[#14241b]">VNPAY Sandbox (Test)</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Mã Website (vnp_TmnCode):</span>
-                    <strong className="text-[#14241b]">8VXIB1MM</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Thẻ test NCB:</span>
-                    <span className="font-mono text-[#163d2c] font-bold">9704 1985 2619 1432 198</span>
-                  </div>
-                  <div className="flex justify-between text-[#708076] pt-0.5 border-t border-[#e2dacf]">
-                    <span>Tên: <strong>NGUYEN VAN A</strong></span>
-                    <span>Hạn: <strong>07/15</strong> · OTP: <strong>123456</strong></span>
                   </div>
                 </div>
 
@@ -649,7 +665,7 @@ export default function CheckoutPage() {
                     href={qrModal.vnpayUrl}
                     className="w-full bg-[#163d2c] hover:bg-[#102f21] text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm text-center"
                   >
-                    <span>Mở Cổng VNPAY Sandbox để thanh toán</span>
+                    <span>Mở cổng thanh toán VNPAY</span>
                     <ExternalLink className="w-4 h-4" />
                   </a>
 

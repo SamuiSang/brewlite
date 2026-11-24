@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Headers,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto, ValidateVoucherDto } from './dto/create-order.dto';
@@ -30,17 +31,24 @@ export class OrdersController {
 
   /**
    * API Tạo đơn hàng mới kèm kiểm tra công thức nguyên liệu (BOM) & Optimistic Lock
+   * Hỗ trợ Header Idempotency-Key để chống duplicate order khi client double-click hoặc retry
    * Bắt buộc xác thực người dùng (JwtAuthGuard)
    * Tuyệt đối không nhận userId từ body request để chống tấn công IDOR
    * POST /orders
    */
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: CreateOrderDto, @Req() req: any) {
+  create(
+    @Body() dto: CreateOrderDto,
+    @Req() req: any,
+    @Headers('idempotency-key') idempotencyKeyHeader?: string,
+    @Headers('x-idempotency-key') xIdempotencyKeyHeader?: string,
+  ) {
     const authUserId = req.user?.sub || req.user?.id;
     // Cưỡng chế gắn userId từ token xác thực
     dto.userId = authUserId;
-    return this.ordersService.createOrder(dto);
+    const idempotencyKey = idempotencyKeyHeader || xIdempotencyKeyHeader;
+    return this.ordersService.createOrder(dto, idempotencyKey);
   }
 
   /**

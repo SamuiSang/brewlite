@@ -132,14 +132,14 @@ export default function MenuContent() {
       image: product.image,
       size: 'S',
       sizeLabel: 'Regular',
-      milk: 'dairy',
-      milkLabel: 'Sữa tươi tiêu chuẩn',
+      milk: '100%',
+      milkLabel: '100% đường',
       toppings: [],
       toppingsLabels: [],
       note: '',
       unitPrice: product.basePrice,
       quantity: 1,
-      optionsLabel: 'Regular · Sữa tươi tiêu chuẩn',
+      optionsLabel: 'Regular · 100% đường',
     });
 
     setAddedId(product.id);
